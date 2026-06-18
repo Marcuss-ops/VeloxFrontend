@@ -1,19 +1,29 @@
 {
-  "name": "velox-frontend-web",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "description": "Velox SPA (Creator Studio + YouTube Manager + Drive + Livestream + Dark Editor). The SPA bundle is consumed by the Velox master server via VELOX_SPA_DIR. This package.json matches the synced web/package-lock.json byte-for-byte so `npm ci` reproduces the upstream tree exactly.",
+  "name": "web",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.tsx --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\""
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
@@ -57,8 +67,5 @@
     "typescript-eslint": "^8.56.1",
     "vite": "^7.3.1",
     "vitest": "^4.0.18"
-  },
-  "engines": {
-    "node": ">=20.0.0"
   }
 }

@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dark mode (default) - True Deep Black */
+    --background: 0 0% 3%; 
+    --foreground: 0 0% 95%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 263 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 8%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 8%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 10%;
+    --ring: 263 70% 50%;
+    --radius: 0.5rem;
+  }
+
+  /* Light mode */
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@layer components {
+  .sidebar-shell {
+    background: linear-gradient(180deg, rgba(8, 14, 24, 0.98), rgba(11, 17, 29, 0.96));
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 24px 80px rgba(2, 6, 23, 0.58);
+    backdrop-filter: blur(28px);
+  }
+
+  .sidebar-section {
+    @apply px-5 py-4 border-b border-white/[0.06];
+  }
+
+  .sidebar-section-title {
+    @apply text-[11px] font-black uppercase tracking-[0.22em] text-slate-100;
+  }
+
+  .sidebar-panel {
+    @apply rounded-2xl border border-white/[0.06] bg-white/[0.03] ring-1 ring-white/[0.04];
+  }
+
+  .sidebar-panel-soft {
+    @apply rounded-2xl border border-white/[0.05] bg-white/[0.02];
+  }
+
+  .layer-item {
+    @apply flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-slate-300 transition-all;
+  }
+
+  .layer-item:hover {
+    @apply border-sky-400/30 bg-sky-400/10 text-white;
+    box-shadow: 0 10px 24px rgba(14, 165, 233, 0.10);
+  }
+
+  .layer-item.active {
+    @apply border-sky-400/40 bg-sky-400/10 text-white;
+    box-shadow: 0 12px 28px rgba(14, 165, 233, 0.14);
+  }
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
