@@ -669,6 +669,8 @@ export default function EditorPage() {
                               name: 'Breaking News Text',
                               x: 70,
                               y: 315,
+                              width: 300,
+                              height: 50,
                               text: 'BREAKING NEWS',
                               fontSize: 36,
                               fontFamily: 'Impact',
@@ -697,7 +699,7 @@ export default function EditorPage() {
                               width: 120,
                               height: 50,
                               fill: '#dc2626',
-                              cornerRadius: 8,
+                              borderRadius: 8,
                               rotation: 0,
                               scaleX: 1,
                               scaleY: 1,
@@ -711,6 +713,8 @@ export default function EditorPage() {
                               name: 'LIVE Text',
                               x: 75,
                               y: 60,
+                              width: 100,
+                              height: 30,
                               text: 'LIVE',
                               fontSize: 22,
                               fontFamily: 'Arial',
@@ -766,7 +770,7 @@ export default function EditorPage() {
                               width: 280,
                               height: 120,
                               fill: '#ffffff',
-                              cornerRadius: 20,
+                              borderRadius: 20,
                               stroke: '#000000',
                               strokeWidth: 4,
                               rotation: 0,
@@ -782,6 +786,8 @@ export default function EditorPage() {
                               name: 'Speech Bubble Text',
                               x: 470,
                               y: 115,
+                              width: 200,
+                              height: 40,
                               text: 'MA DAVVERO?!',
                               fontSize: 24,
                               fontFamily: 'Impact',
@@ -823,6 +829,7 @@ export default function EditorPage() {
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
+                        const { setUploading } = useUIStore.getState();
                         try {
                           setUploading(true);
                           const res = await uploadImage(file);

@@ -128,7 +128,7 @@ export async function processImage(
         image = image.blur(operations.filter.value * 10);
         break;
       case 'sharpen':
-        image = image.sharpen(operations.filter.value * 5);
+        image = image.sharpen({ sigma: operations.filter.value * 5 });
         break;
       case 'grayscale':
         image = image.grayscale();

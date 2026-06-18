@@ -298,7 +298,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     }
   }, [isDrawingLasso, lassoPoints, commitLassoCrop]);
 
-  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+  const handleStageClick = useCallback((e: Konva.KonvaEventObject<any>) => {
     if (isPanning) return;
     if (cropEditingId) return;
     const isBackground = e.target === stageRef.current || e.target.name() === 'canvas-background';
