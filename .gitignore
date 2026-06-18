@@ -1,14 +1,5 @@
-# Build artifacts at any nesting level (web/, web/dark_editor/, eventuali altre app).
-**/dist/
-**/build/
-**/.svelte-kit/
-**/.cache/
-**/test-results/
-**/node_modules/
-
-# Editor / system files
+node_modules/
 *.log
 .DS_Store
-Thumbs.db
-.env
-.env.*
+.idea/
+.vscode/
