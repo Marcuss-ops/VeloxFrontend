@@ -6,12 +6,8 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   Home,
-  Film,
   Type,
   Image as ImageIcon,
-  Crop,
-  Square,
-  Circle,
   Wand2,
   Maximize,
   Undo,
@@ -19,50 +15,25 @@ import {
   Grid3x3,
   Magnet,
   ZoomIn,
-  Save,
-  ChevronRight,
-  Layout,
-  Upload, // Added Upload icon
+  Upload,
   Eye,
-  FolderHeart,
-  Library,
-  Trash2,
   Share2,
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/DropdownMenu';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import Toolbar from '@/components/editor/Toolbar';
 import ToolbarDock from './components/ToolbarDock';
 import LayersPanel from '@/components/editor/LayersPanel';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
-import PresetPanel from '@/components/editor/PresetPanel';
-import FilterPanel from '@/components/editor/FilterPanel';
 import ExportDialog from '@/components/editor/ExportDialog';
 import AIDialog from '@/components/editor/AIDialog';
 import YouTubeDialog from '@/components/editor/YouTubeDialog';
 import FeedPreviewDialog from '@/components/editor/FeedPreviewDialog';
-import FeatureTest from '@/components/editor/FeatureTest';
-import VersioningPanel from '@/components/editor/VersioningPanel';
-import AdvancedTemplatePanel from '@/components/editor/AdvancedTemplatePanel';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore'; // Added missing import
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
-import { getProject } from '@/lib/api';
-import { uploadImage } from '@/lib/api';
+import { getProject, uploadImage } from '@/lib/api';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { onEditorSaveRequest } from '@/lib/editorEvents';
-import { addTemplate, deleteTemplate, loadTemplates, type EditorTemplate } from '@/lib/templates';
 import { v4 as uuidv4 } from 'uuid';
 
 // Dynamically import Canvas to avoid SSR issues with Konva
@@ -83,9 +54,9 @@ export default function EditorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const { loadObjects, setCanvasSize, addObject } = useEditorStore();
+  const { loadObjects, addObject } = useEditorStore();
   const { setCurrentProject, setDirty, currentProject, isDirty, isSaving, saveProject, updateProjectName } = useProjectStore();
-  const { addToast, showExportDialog, showAIDialog, showYouTubeDialog, showFeedPreviewDialog, setFeedPreviewDialog, showRightSidebar, toggleRightSidebar } = useUIStore();
+  const { addToast, showExportDialog, showAIDialog, showYouTubeDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
   const { objects, canvasWidth, canvasHeight, selectedIds } = useEditorStore();
   const canvasRef = useRef<any>(null);
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -93,31 +64,12 @@ export default function EditorPage() {
   const ignoreNextObjectsRef = useRef(false);
   const autosaveTimerRef = useRef<number | null>(null);
   const lastPreviewAtRef = useRef<number>(0);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [templates, setTemplates] = useState<EditorTemplate[]>([]);
-  const [newTemplateName, setNewTemplateName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [sidebarPinned, setSidebarPinned] = useState(false);
   const sidebarTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const [sidebarTab, setSidebarTab] = useState<'design' | 'templates' | 'assets'>('design');
-  const [customAssets, setCustomAssets] = useState<Array<{id: string, name: string, src: string}>>([]);
-  const customAssetInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize keyboard shortcuts
   useKeyboard();
-
-  useEffect(() => {
-    setTemplates(loadTemplates());
-    try {
-      const stored = localStorage.getItem('dark_editor_custom_assets');
-      if (stored) {
-        setCustomAssets(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
 
   // Auto-open sidebar when object selected, auto-close after 4s idle
   useEffect(() => {
@@ -315,35 +267,6 @@ export default function EditorPage() {
       }
     };
   }, [currentProject, isDirty, objects, performSave]);
-
-  const handleSaveTemplate = () => {
-    const name = newTemplateName.trim() || `${currentProject?.name || 'Template'} ${new Date().toLocaleString()}`;
-    const template: EditorTemplate = {
-      id: uuidv4(),
-      name,
-      createdAt: new Date().toISOString(),
-      canvas: { objects, canvasWidth, canvasHeight },
-    };
-    addTemplate(template);
-    const next = loadTemplates();
-    setTemplates(next);
-    setNewTemplateName('');
-    addToast({ type: 'success', message: 'Template saved' });
-  };
-
-  const handleApplyTemplate = (template: EditorTemplate) => {
-    ignoreNextObjectsRef.current = true;
-    loadObjects(template.canvas.objects as Parameters<typeof loadObjects>[0]);
-    setCanvasSize(template.canvas.canvasWidth, template.canvas.canvasHeight);
-    setDirty(true);
-    addToast({ type: 'success', message: `Applied template: ${template.name}` });
-    setShowTemplates(false);
-  };
-
-  const handleDeleteTemplate = (id: string) => {
-    deleteTemplate(id);
-    setTemplates(loadTemplates());
-  };
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -549,374 +472,19 @@ export default function EditorPage() {
           <div className="pl-[30px] flex flex-col h-full bg-slate-900 border-l border-slate-800" onClick={handleSidebarEnter}>
             {/* Sidebar Tabs */}
             <div className="flex border-b border-slate-850 bg-slate-950 text-xs font-semibold select-none">
-              <button
-                onClick={() => setSidebarTab('design')}
-                className={`flex-1 py-3 text-center border-b-2 transition-all ${
-                  sidebarTab === 'design' ? 'border-primary text-primary bg-slate-900/50' : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
+              <div className="flex-1 py-3 text-center border-b-2 border-primary text-primary bg-slate-900/50">
                 Design
-              </button>
-              <button
-                onClick={() => setSidebarTab('templates')}
-                className={`flex-1 py-3 text-center border-b-2 transition-all ${
-                  sidebarTab === 'templates' ? 'border-primary text-primary bg-slate-900/50' : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Template
-              </button>
-              <button
-                onClick={() => setSidebarTab('assets')}
-                className={`flex-1 py-3 text-center border-b-2 transition-all ${
-                  sidebarTab === 'assets' ? 'border-primary text-primary bg-slate-900/50' : 'border-transparent text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Asset
-              </button>
+              </div>
             </div>
 
             {/* Tab Contents */}
             <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
-              {sidebarTab === 'design' && (
-                <div className="flex-1 flex flex-col min-h-0">
-                  <PropertiesPanel />
-                  <div className="border-t border-slate-800 flex-1 overflow-hidden flex flex-col min-h-0">
-                    <LayersPanel />
-                  </div>
+              <div className="flex-1 flex flex-col min-h-0">
+                <PropertiesPanel />
+                <div className="border-t border-slate-800 flex-1 overflow-hidden flex flex-col min-h-0">
+                  <LayersPanel />
                 </div>
-              )}
-
-              {sidebarTab === 'templates' && (
-                <div className="p-4 space-y-4 flex flex-col h-full overflow-y-auto">
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salva come Template</h4>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={newTemplateName}
-                        onChange={(e) => setNewTemplateName(e.target.value)}
-                        placeholder="Nome template (es. Telegiornale)"
-                        className="h-9 text-xs"
-                      />
-                      <Button size="sm" onClick={handleSaveTemplate} disabled={objects.length === 0}>
-                        Salva
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-800 pt-3 space-y-3">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Libreria Template ({templates.length})</h4>
-                    {templates.length === 0 ? (
-                      <div className="text-xs text-slate-500 italic p-2">Nessun template salvato. Crea uno stile e salvalo per riutilizzarlo in altre nicchie!</div>
-                    ) : (
-                      <div className="space-y-2">
-                        {templates.map((t) => (
-                          <div
-                            key={t.id}
-                            className="flex flex-col gap-2 border border-slate-800 rounded-lg p-2.5 bg-slate-950/40"
-                          >
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-slate-200 truncate">{t.name}</div>
-                              <div className="text-[10px] text-slate-500">
-                                {new Date(t.createdAt).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 justify-end">
-                              <Button size="xs" variant="outline" onClick={() => handleApplyTemplate(t)}>
-                                Applica
-                              </Button>
-                              <Button size="xs" variant="destructive" onClick={() => handleDeleteTemplate(t.id)}>
-                                Elimina
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {sidebarTab === 'assets' && (
-                <div className="p-4 space-y-4 flex flex-col h-full overflow-y-auto">
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Asset di Brand Precaricati</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        {
-                          id: 'news-badge',
-                          name: 'Breaking News',
-                          src: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=150&q=80',
-                          action: () => {
-                            addObject({
-                              id: uuidv4(),
-                              type: 'rect',
-                              name: 'Breaking News Red Bar',
-                              x: 50,
-                              y: 300,
-                              width: 700,
-                              height: 80,
-                              fill: '#e11d48',
-                              rotation: 0,
-                              scaleX: 1,
-                              scaleY: 1,
-                              opacity: 0.9,
-                              visible: true,
-                              locked: false,
-                            });
-                            addObject({
-                              id: uuidv4(),
-                              type: 'text',
-                              name: 'Breaking News Text',
-                              x: 70,
-                              y: 315,
-                              width: 300,
-                              height: 50,
-                              text: 'BREAKING NEWS',
-                              fontSize: 36,
-                              fontFamily: 'Impact',
-                              fill: '#ffffff',
-                              rotation: 0,
-                              scaleX: 1,
-                              scaleY: 1,
-                              opacity: 1,
-                              visible: true,
-                              locked: false,
-                            });
-                            addToast({ type: 'success', message: 'Elemento Breaking News aggiunto!' });
-                          }
-                        },
-                        {
-                          id: 'live-badge',
-                          name: 'LIVE Indicator',
-                          src: 'https://images.unsplash.com/photo-1598257006458-087169a1f08d?auto=format&fit=crop&w=150&q=80',
-                          action: () => {
-                            addObject({
-                              id: uuidv4(),
-                              type: 'rect',
-                              name: 'LIVE Red Badge',
-                              x: 50,
-                              y: 50,
-                              width: 120,
-                              height: 50,
-                              fill: '#dc2626',
-                              borderRadius: 8,
-                              rotation: 0,
-                              scaleX: 1,
-                              scaleY: 1,
-                              opacity: 1,
-                              visible: true,
-                              locked: false,
-                            });
-                            addObject({
-                              id: uuidv4(),
-                              type: 'text',
-                              name: 'LIVE Text',
-                              x: 75,
-                              y: 60,
-                              width: 100,
-                              height: 30,
-                              text: 'LIVE',
-                              fontSize: 22,
-                              fontFamily: 'Arial',
-                              fill: '#ffffff',
-                              fontWeight: 'bold',
-                              rotation: 0,
-                              scaleX: 1,
-                              scaleY: 1,
-                              opacity: 1,
-                              visible: true,
-                              locked: false,
-                            });
-                            addToast({ type: 'success', message: 'Elemento LIVE aggiunto!' });
-                          }
-                        },
-                        {
-                          id: 'yellow-border',
-                          name: 'Yellow Frame',
-                          src: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80',
-                          action: () => {
-                            addObject({
-                              id: uuidv4(),
-                              type: 'rect',
-                              name: 'Yellow Border Outline',
-                              x: 0,
-                              y: 0,
-                              width: 800,
-                              height: 450,
-                              fill: 'transparent',
-                              stroke: '#facc15',
-                              strokeWidth: 20,
-                              rotation: 0,
-                              scaleX: 1,
-                              scaleY: 1,
-                              opacity: 1,
-                              visible: true,
-                              locked: false,
-                            });
-                            addToast({ type: 'success', message: 'Cornice Gialla aggiunta!' });
-                          }
-                        },
-                        {
-                          id: 'speech-bubble',
-                          name: 'Speech Bubble',
-                          src: 'https://images.unsplash.com/photo-1533750349088-cd871a723597?auto=format&fit=crop&w=150&q=80',
-                          action: () => {
-                            addObject({
-                              id: uuidv4(),
-                              type: 'rect',
-                              name: 'Speech Bubble Base',
-                              x: 450,
-                              y: 80,
-                              width: 280,
-                              height: 120,
-                              fill: '#ffffff',
-                              borderRadius: 20,
-                              stroke: '#000000',
-                              strokeWidth: 4,
-                              rotation: 0,
-                              scaleX: 1,
-                              scaleY: 1,
-                              opacity: 1,
-                              visible: true,
-                              locked: false,
-                            });
-                            addObject({
-                              id: uuidv4(),
-                              type: 'text',
-                              name: 'Speech Bubble Text',
-                              x: 470,
-                              y: 115,
-                              width: 200,
-                              height: 40,
-                              text: 'MA DAVVERO?!',
-                              fontSize: 24,
-                              fontFamily: 'Impact',
-                              fill: '#000000',
-                              rotation: 0,
-                              scaleX: 1,
-                              scaleY: 1,
-                              opacity: 1,
-                              visible: true,
-                              locked: false,
-                            });
-                            addToast({ type: 'success', message: 'Fumetto aggiunto!' });
-                          }
-                        }
-                      ].map((asset) => (
-                        <button
-                          key={asset.id}
-                          onClick={asset.action}
-                          className="flex flex-col items-center gap-1 p-2 rounded-lg border border-slate-800 hover:border-primary hover:bg-primary/5 transition-all text-left bg-slate-950/20"
-                        >
-                          <img
-                            src={asset.src}
-                            alt={asset.name}
-                            className="w-full h-16 object-cover rounded-md"
-                          />
-                          <span className="text-[10px] font-semibold text-slate-300 truncate w-full text-center">{asset.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-800 pt-3 space-y-2">
-                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Carica Asset Locale</h4>
-                    <input
-                      ref={customAssetInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const { setUploading } = useUIStore.getState();
-                        try {
-                          setUploading(true);
-                          const res = await uploadImage(file);
-                          const newAsset = {
-                            id: uuidv4(),
-                            name: file.name.split('.')[0],
-                            src: res.url.startsWith('http') || res.url.startsWith('data:') ? res.url : `/dark_editor_v2/${res.url}`,
-                          };
-                          const updated = [newAsset, ...customAssets];
-                          setCustomAssets(updated);
-                          localStorage.setItem('dark_editor_custom_assets', JSON.stringify(updated));
-                          addToast({ type: 'success', message: 'Asset caricato con successo!' });
-                        } catch (err) {
-                          addToast({ type: 'error', message: 'Errore durante il caricamento' });
-                        } finally {
-                          setUploading(false);
-                        }
-                      }}
-                    />
-                    <Button
-                      variant="outline"
-                      className="w-full text-xs h-9 flex items-center justify-center gap-1.5"
-                      onClick={() => customAssetInputRef.current?.click()}
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      Carica Nuova Immagine
-                    </Button>
-                  </div>
-
-                  {customAssets.length > 0 && (
-                    <div className="space-y-2 border-t border-slate-800 pt-3">
-                      <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Asset Condivisi ({customAssets.length})</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {customAssets.map((asset) => (
-                          <div
-                            key={asset.id}
-                            className="relative group flex flex-col items-center gap-1 p-2 rounded-lg border border-slate-800 bg-slate-950/20"
-                          >
-                            <button
-                              onClick={() => {
-                                addObject({
-                                  id: uuidv4(),
-                                  type: 'image',
-                                  name: asset.name,
-                                  x: 100,
-                                  y: 100,
-                                  width: 250,
-                                  height: 180,
-                                  rotation: 0,
-                                  scaleX: 1,
-                                  scaleY: 1,
-                                  opacity: 1,
-                                  visible: true,
-                                  locked: false,
-                                  src: asset.src,
-                                });
-                                addToast({ type: 'success', message: `Immagine ${asset.name} aggiunta!` });
-                              }}
-                              className="w-full flex flex-col items-center gap-1"
-                            >
-                              <img
-                                src={asset.src}
-                                alt={asset.name}
-                                className="w-full h-16 object-cover rounded-md"
-                              />
-                              <span className="text-[10px] font-semibold text-slate-300 truncate w-full text-center">{asset.name}</span>
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const updated = customAssets.filter(a => a.id !== asset.id);
-                                setCustomAssets(updated);
-                                localStorage.setItem('dark_editor_custom_assets', JSON.stringify(updated));
-                                addToast({ type: 'info', message: 'Asset rimosso' });
-                              }}
-                              className="absolute top-1 right-1 p-1 bg-red-600/90 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                              title="Rimuovi"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </aside>
@@ -928,60 +496,6 @@ export default function EditorPage() {
       {showYouTubeDialog && <YouTubeDialog />}
       <FeedPreviewDialog isOpen={showFeedPreviewDialog} onClose={() => setFeedPreviewDialog(false)} />
 
-      <Dialog open={showTemplates} onOpenChange={setShowTemplates}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Templates</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Input
-                value={newTemplateName}
-                onChange={(e) => setNewTemplateName(e.target.value)}
-                placeholder="Template name…"
-              />
-              <Button onClick={handleSaveTemplate} disabled={objects.length === 0}>
-                Save
-              </Button>
-            </div>
-
-            {templates.length === 0 ? (
-              <div className="text-sm text-muted-foreground">No templates yet.</div>
-            ) : (
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-                {templates.map((t) => (
-                  <div
-                    key={t.id}
-                    className="flex items-center justify-between gap-2 border border-border rounded-lg p-3 bg-card"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{t.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(t.createdAt).toLocaleString()}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" onClick={() => handleApplyTemplate(t)}>
-                        Apply
-                      </Button>
-                      <Button variant="destructive" onClick={() => handleDeleteTemplate(t.id)}>
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTemplates(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

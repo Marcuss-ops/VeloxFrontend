@@ -757,11 +757,11 @@ export function ObjectRenderer({ obj, commonProps, shadowProps, editingId, handl
               visible={editingId !== obj.id}
               {...shadowProps}
               {...fillProps}
-              shadowColor={obj.textShadow?.color}
-              shadowBlur={obj.textShadow?.blur ?? 0}
-              shadowOffsetX={obj.textShadow?.offsetX ?? 0}
-              shadowOffsetY={obj.textShadow?.offsetY ?? 0}
-              shadowOpacity={obj.textShadow ? 1 : 0}
+              shadowColor={obj.textShadow?.color ?? shadowProps.shadowColor}
+              shadowBlur={obj.textShadow?.blur ?? shadowProps.shadowBlur ?? 0}
+              shadowOffsetX={obj.textShadow?.offsetX ?? shadowProps.shadowOffset?.x ?? 0}
+              shadowOffsetY={obj.textShadow?.offsetY ?? shadowProps.shadowOffset?.y ?? 0}
+              shadowOpacity={obj.textShadow ? 1 : (shadowProps.shadowOpacity ?? 0)}
             />
           ) : (
             <Text
@@ -778,11 +778,11 @@ export function ObjectRenderer({ obj, commonProps, shadowProps, editingId, handl
               visible={editingId !== obj.id}
               {...shadowProps}
               {...fillProps}
-              shadowColor={obj.textShadow?.color}
-              shadowBlur={obj.textShadow?.blur ?? 0}
-              shadowOffsetX={obj.textShadow?.offsetX ?? 0}
-              shadowOffsetY={obj.textShadow?.offsetY ?? 0}
-              shadowOpacity={obj.textShadow ? 1 : 0}
+              shadowColor={obj.textShadow?.color ?? shadowProps.shadowColor}
+              shadowBlur={obj.textShadow?.blur ?? shadowProps.shadowBlur ?? 0}
+              shadowOffsetX={obj.textShadow?.offsetX ?? shadowProps.shadowOffset?.x ?? 0}
+              shadowOffsetY={obj.textShadow?.offsetY ?? shadowProps.shadowOffset?.y ?? 0}
+              shadowOpacity={obj.textShadow ? 1 : (shadowProps.shadowOpacity ?? 0)}
             />
           )}
         </Group>

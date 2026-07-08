@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
+import { v4 as uuidv4 } from 'uuid';
 import {
   Type,
   Image as ImageIcon,
@@ -83,6 +84,7 @@ export default function ToolbarDock() {
     setZoom,
     addObject,
     updateObject,
+    selectObject,
     objects,
     selectedIds,
   } = useEditorStore();
@@ -184,20 +186,74 @@ export default function ToolbarDock() {
     }
 
     if (toolId === 'text') {
-      setActiveTool('text');
-      addToast({ type: 'info', message: 'Click on the canvas to place text' });
+      const id = uuidv4();
+      addObject({
+        id,
+        type: 'text',
+        name: 'Text',
+        x: 200,
+        y: 200,
+        width: 250,
+        height: 50,
+        text: 'Double-click to edit',
+        fontSize: 28,
+        fontFamily: 'Arial',
+        fill: '#111827',
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        visible: true,
+        locked: false,
+      });
+      selectObject(id);
+      addToast({ type: 'success', message: 'Text added! Double-click to edit' });
       return;
     }
 
     if (toolId === 'rect') {
-      setActiveTool('rect');
-      addToast({ type: 'info', message: 'Click on the canvas to place a shape' });
+      const id = uuidv4();
+      addObject({
+        id,
+        type: 'rect',
+        name: 'Rectangle',
+        x: 250,
+        y: 150,
+        width: 150,
+        height: 100,
+        fill: '#3b82f6',
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        visible: true,
+        locked: false,
+      });
+      selectObject(id);
+      addToast({ type: 'success', message: 'Shape added' });
       return;
     }
 
     if (toolId === 'circle') {
-      setActiveTool('circle');
-      addToast({ type: 'info', message: 'Click on the canvas to place a circle' });
+      const id = uuidv4();
+      addObject({
+        id,
+        type: 'circle',
+        name: 'Circle',
+        x: 300,
+        y: 200,
+        width: 100,
+        height: 100,
+        fill: '#3b82f6',
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        visible: true,
+        locked: false,
+      });
+      selectObject(id);
+      addToast({ type: 'success', message: 'Circle added' });
       return;
     }
 

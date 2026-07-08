@@ -4,8 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 
-// Base directories
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Base directories — use env var so upload and fetch always use the same absolute path
+const DATA_DIR = process.env.DARK_EDITOR_DATA_DIR || path.join(process.cwd(), 'data');
 const TEMP_DIR = path.join(DATA_DIR, 'temp');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
 
@@ -58,6 +58,16 @@ export function getTempFile(filename: string): Buffer | null {
     return fs.readFileSync(filepath);
   }
   return null;
+}
+
+// Get temp file URL (relative to dark_editor_v2 base)
+export function getTempFileUrl(filename: string): string {
+  return `temp/${filename}`;
+}
+
+// Check if temp file exists
+export function tempFileExists(filename: string): boolean {
+  return fs.existsSync(path.join(TEMP_DIR, filename));
 }
 
 // Delete file from temp
