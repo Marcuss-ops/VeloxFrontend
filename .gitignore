@@ -11,3 +11,37 @@ out/
 build/
 *.tsbuildinfo
 *.tsbuildinfo.*
+
+# --- universal build artifact exclusions (merged 2026-07-11) ---
+
+# Cache directories
+.cache/
+.turbo/
+.nyc_output/
+
+# Test coverage
+coverage/
+
+# Environment files (operator-side deterministic; universal)
+.env
+.env.development.local
+.env.local
+.env.production.local
+.env.test.local
+
+# Package manager artifacts
+.pnp
+.pnp.js
+
+# Package manager debug logs
+lerna-debug.log*
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Storybook static
+storybook-static/
+
+# Vercel
+.vercel/
