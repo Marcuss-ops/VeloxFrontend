@@ -57,7 +57,7 @@ Environment=VELOX_DARK_EDITOR_PROXY_URL=<internal-proxy-url>
 
 ```bash
 # 1. Copia file servizio aggiornato
-sudo cp /home/pierone/Pyt/VeloxEditing/refactored/DataServer/velox-server.service /etc/systemd/system/
+sudo cp <repo-root>/refactored/DataServer/velox-server.service /etc/systemd/system/
 
 # 2. Ricarica systemd
 sudo systemctl daemon-reload

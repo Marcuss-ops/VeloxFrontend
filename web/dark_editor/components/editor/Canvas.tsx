@@ -69,6 +69,15 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     setLassoPoints([]);
   }, [cropEditingId]);
 
+  const snap = useCallback(
+    (value: number) => {
+      if (!snapToGrid) return value;
+      const size = gridSize > 0 ? gridSize : 1;
+      return Math.round(value / size) * size;
+    },
+    [gridSize, snapToGrid]
+  );
+  
   // Update transformer when selection changes
   useEffect(() => {
     if (!transformerRef.current || !stageRef.current) return;
@@ -422,7 +431,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
       shadowColor: obj.dropShadow.color,
       shadowBlur: obj.dropShadow.blur,
       shadowOffset: { x: obj.dropShadow.offsetX, y: obj.dropShadow.offsetY },
-      shadowOpacity: obj.dropShadow.spread ?? 0.5,
+      shadowOpacity: 0.5,
     } : {};
     
     return (

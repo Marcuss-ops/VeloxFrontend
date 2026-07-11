@@ -53,6 +53,7 @@ export const useJobDetailPolling = ({
   const [errorCount, setErrorCount] = useState(0);
   const [currentBackoff, setCurrentBackoff] = useState(refreshInterval);
   const currentBackoffRef = useRef(refreshInterval);
+  const errorCountRef = useRef(0);
 
   const updateBackoff = useCallback((value: number) => {
     setCurrentBackoff(value);
@@ -95,7 +96,7 @@ export const useJobDetailPolling = ({
       autoRefresh &&
       job?.status === 'PROCESSING' &&
       isTabVisible &&
-      errorCount < maxRetries;
+      errorCountRef.current < maxRetries;
 
     if (shouldPoll && !isRequestInProgressRef.current) {
       setIsPolling(true);
@@ -109,11 +110,13 @@ export const useJobDetailPolling = ({
         try {
           await onRefreshRef.current();
           // Reset error count and backoff on success
+          errorCountRef.current = 0;
           setErrorCount(0);
           updateBackoff(refreshInterval);
         } catch (_error) {
           // Increment error count
-          const newErrorCount = errorCount + 1;
+          errorCountRef.current += 1;
+          const newErrorCount = errorCountRef.current;
           setErrorCount(newErrorCount);
 
           // Calculate exponential backoff
@@ -154,11 +157,12 @@ export const useJobDetailPolling = ({
         timeoutRef.current = null;
       }
     };
-  }, [job?.job_id, job?.status, autoRefresh, isTabVisible, refreshInterval, errorCount, maxRetries, updateBackoff]);
+  }, [job?.job_id, job?.status, autoRefresh, isTabVisible, refreshInterval, maxRetries, updateBackoff]);
 
   // Reset errors when job changes
   useEffect(() => {
     if (!job) return;
+    errorCountRef.current = 0;
     setErrorCount(0);
     updateBackoff(refreshInterval);
   }, [job?.job_id, refreshInterval, updateBackoff]);
