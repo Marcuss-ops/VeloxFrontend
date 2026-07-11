@@ -9,3 +9,5 @@ dist/
 .next/
 out/
 build/
+*.tsbuildinfo
+*.tsbuildinfo.*
