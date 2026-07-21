@@ -4,6 +4,25 @@
 export { fetchJSON, fetchVoid, ApiError } from './core';
 export type { RequestOptions } from './core';
 
+// Session-aware BFF client + new modules (InstaEdit session-based auth)
+export { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete, ApiError as ClientApiError, API_BASE_URL } from './client';
+export type { ClientOptions } from './client';
+
+export { authApi, getMe } from './authApi';
+export type { AuthUser, MeResponse } from './authApi';
+
+export { socialApi } from './socialApi';
+export type { VeloxDestination, CreateDestinationRequest, CreateDestinationResponse, PlatformAccount } from './socialApi';
+
+export { veloxApi } from './veloxApi';
+export type { VeloxJob, VeloxDelivery, VeloxJobDetail, VeloxWorker, VeloxAsset, CreateVeloxJobRequest, ListJobsParams } from './veloxApi';
+
+export { projectsApi } from './projectsApi';
+export type { Project, CreateProjectRequest } from './projectsApi';
+
+export { deliveriesApi } from './deliveriesApi';
+export type { Delivery } from './deliveriesApi';
+
 // Legacy Bridge for backward compatibility with old JS modules
 export { legacyApiAdapter, loadingManager, normalizeError, showToast, setToastHandler } from './legacyBridge';
 export type {

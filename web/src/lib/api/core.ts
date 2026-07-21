@@ -220,10 +220,10 @@ export async function fetchJSON<T>(
       const response = await fetch(url, {
         ...fetchOptions,
         signal: controller.signal,
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-Admin-Token': 'velox-dev-token',
           ...fetchOptions.headers,
         },
       });
@@ -293,6 +293,7 @@ export async function fetchVoid(
       const response = await fetch(url, {
         ...fetchOptions,
         signal: controller.signal,
+        credentials: 'include',
       });
 
       if (!response.ok) {

@@ -31,7 +31,7 @@ describe('API Core', () => {
       expect(global.fetch).toHaveBeenCalledWith('/api/v1/test', expect.any(Object));
     });
 
-    it('should include correct headers', async () => {
+    it('should include credentials and no admin token', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({}),
@@ -41,15 +41,15 @@ describe('API Core', () => {
 
       expect(global.fetch).toHaveBeenCalledWith('/api/v1/test', {
         signal: expect.any(AbortSignal),
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-Admin-Token': 'velox-dev-token',
         },
       });
     });
 
-    it('should handle POST request with body', async () => {
+    it('should handle POST request with body and credentials', async () => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ success: true }),
@@ -63,10 +63,10 @@ describe('API Core', () => {
       expect(global.fetch).toHaveBeenCalledWith('/api/v1/test', {
         method: 'POST',
         signal: expect.any(AbortSignal),
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'X-Admin-Token': 'velox-dev-token',
         },
         body: JSON.stringify({ key: 'value' }),
       });
