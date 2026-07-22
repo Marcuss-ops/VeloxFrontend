@@ -1,12 +1,5 @@
 export type VideoStyle = 'normal' | 'ai-image' | 'ai-video';
 
-export interface GroupChannel {
-    id: string;
-    channel: string;
-    lang?: string;
-    title?: string;
-}
-
 export interface TitleOverride {
     languages: string[];
     voiceover_langs?: string[];

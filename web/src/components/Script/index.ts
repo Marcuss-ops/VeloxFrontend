@@ -43,13 +43,11 @@ export { TitleListEditor } from './titles/TitleListEditor';
 
 // Config
 export { AssetConfig } from './config/AssetConfig';
-export { ChannelLanguageSelector } from './config/ChannelLanguageSelector';
 export { LanguageSelectors } from './config/LanguageSelectors';
 export { StyleGroupSelector } from './config/StyleGroupSelector';
 
 // Hooks
 export { useScriptGenerator } from './hooks/useScriptGenerator';
-export { useChannelLanguages } from './hooks/useChannelLanguages';
 
 // Data
 export { loadCategories } from './data/titleCategoriesData';

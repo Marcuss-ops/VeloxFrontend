@@ -108,7 +108,7 @@ export function useScriptCanvas(params: UseScriptCanvasParams): UseScriptCanvasR
         onClearProjectHistory,
     } = params;
 
-    const { groupChannels, onCreateMasterPayload } = useScript();
+    const { onCreateMasterPayload } = useScript();
 
     // Use controlled modal state from props, or fallback to internal state
     const [internalTitleModalOpen, setInternalTitleModalOpen] = useState(false);
@@ -144,53 +144,6 @@ export function useScriptCanvas(params: UseScriptCanvasParams): UseScriptCanvasR
     }, [projectHistory]);
 
 
-
-    // Auto-select channels based on languages
-    useEffect(() => {
-        const group = project.youtubeGroup || '';
-        if (!group) return;
-
-        const rawChannels = groupChannels?.[group] || [];
-        if (!Array.isArray(rawChannels) || rawChannels.length === 0) return;
-
-        const keyOf = (c: any) => String(c?.id || c?.channel || '').trim();
-        const langOf = (c: any) => String(c?.lang || '').toLowerCase();
-        const byKey = new Map<string, any>();
-        rawChannels.forEach((c: any) => byKey.set(keyOf(c), c));
-
-        const pickByLang = (lang: string) => {
-            const base = String(lang || '').split('-')[0].toLowerCase();
-            const exact = rawChannels.find((c: any) => langOf(c) === base);
-            if (exact) return keyOf(exact);
-            const prefixed = rawChannels.find((c: any) => langOf(c).startsWith(`${base}-`));
-            if (prefixed) return keyOf(prefixed);
-            return keyOf(rawChannels[0]);
-        };
-
-        const current = project.youtubeChannelByLang || {};
-        let changed = false;
-        const next = { ...current };
-
-        for (const lang of project.voiceoverLangs || []) {
-            const existing = next[lang];
-            if (existing && byKey.has(existing)) continue;
-            const auto = pickByLang(lang);
-            if (auto && auto !== existing) {
-                next[lang] = auto;
-                changed = true;
-            }
-        }
-
-        for (const key of Object.keys(next)) {
-            if (!(project.voiceoverLangs || []).includes(key)) {
-                delete next[key];
-                changed = true;
-            }
-        }
-
-        if (!changed) return;
-        onProjectUpdate({ youtubeChannelByLang: next });
-    }, [project.youtubeGroup, project.voiceoverLangs, project.youtubeChannelByLang, groupChannels, onProjectUpdate]);
 
     // Handle drive click
     const handleDriveClick = useCallback((type: string, payload?: any) => {

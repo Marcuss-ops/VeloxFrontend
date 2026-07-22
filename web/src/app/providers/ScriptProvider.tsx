@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { createDefaultVideoProject, type GroupChannel, type VideoProject } from '../../components/Script/types';
+import { createDefaultVideoProject, type VideoProject } from '../../components/Script/types';
 
 export interface GenerationProgress {
     percent: number;
@@ -25,10 +25,6 @@ export interface ScriptContextValue {
     progress: GenerationProgress;
     setProgress: (progress: GenerationProgress) => void;
     
-    // Group channels (replaces window.groupChannels)
-    groupChannels: Record<string, GroupChannel[]>;
-    setGroupChannels: React.Dispatch<React.SetStateAction<Record<string, GroupChannel[]>>>;
-    fetchGroupChannels: () => Promise<void>;
     
     // Event emitters (replaces CustomEvent)
     emitCreateMasterPayload: (payload: unknown) => void;
@@ -55,8 +51,6 @@ export const ScriptProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         logs: [],
     });
     
-    // Group channels
-    const [groupChannels, setGroupChannels] = useState<Record<string, GroupChannel[]>>({});
     
     // Event callbacks (replaces global CustomEvents)
     const payloadCallbacksRef = useRef<Set<(payload: unknown) => void>>(new Set());
@@ -70,12 +64,6 @@ export const ScriptProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Set current project
     const setCurrentProject = useCallback((project: VideoProject) => {
         setCurrentProjectState(project);
-    }, []);
-    
-    // Fetch group channels from API
-    const fetchGroupChannels = useCallback(async () => {
-        // YouTube Manager has been removed; group channels are no longer fetched.
-        setGroupChannels({});
     }, []);
     
     // Event emitters (delivered via context callbacks only)
@@ -114,11 +102,6 @@ export const ScriptProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
     }, []);
     
-    // Initial fetch of group channels
-    useEffect(() => {
-        fetchGroupChannels();
-    }, [fetchGroupChannels]);
-    
     const value: ScriptContextValue = useMemo(() => ({
         currentProject,
         setCurrentProject,
@@ -131,14 +114,11 @@ export const ScriptProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setIsGenerating,
         progress,
         setProgress,
-        groupChannels,
-        setGroupChannels,
-        fetchGroupChannels,
         emitCreateMasterPayload,
         emitCreateMasterResponse,
         onCreateMasterPayload,
         onCreateMasterResponse,
-    }), [currentProject, projects, currentIndex, isGenerating, progress, groupChannels, updateProject, setCurrentProject, setProjects, setCurrentIndex, setIsGenerating, setProgress, setGroupChannels, fetchGroupChannels, emitCreateMasterPayload, emitCreateMasterResponse, onCreateMasterPayload, onCreateMasterResponse]);
+    }), [currentProject, projects, currentIndex, isGenerating, progress, updateProject, setCurrentProject, setProjects, setCurrentIndex, setIsGenerating, setProgress, emitCreateMasterPayload, emitCreateMasterResponse, onCreateMasterPayload, onCreateMasterResponse]);
     
     return <ScriptContext.Provider value={value}>{children}</ScriptContext.Provider>;
 };
