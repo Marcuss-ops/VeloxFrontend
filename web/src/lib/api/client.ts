@@ -111,6 +111,15 @@ export async function apiFetch<T>(
   if (csrfToken !== undefined) {
     finalHeaders['X-CSRF-Token'] = csrfToken;
   }
+
+  // CSRF double-submit: if the cookie is missing for a mutation, we still send
+  // the request so the BFF can return a canonical 401/403 that the AuthProvider
+  // can turn into a login redirect. We only warn in development to avoid
+  // leaking endpoint information in production consoles.
+  if (import.meta.env.DEV && MUTATION_METHODS.has(method) && !finalHeaders['X-CSRF-Token']) {
+    // eslint-disable-next-line no-console
+    console.warn(`[API] Missing csrf_token cookie for ${method} ${endpoint}`);
+  }
   // Set Content-Type for requests with a body
   if (fetchOpts.body && !finalHeaders['Content-Type']) {
     finalHeaders['Content-Type'] = 'application/json';

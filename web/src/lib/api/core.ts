@@ -5,7 +5,7 @@
  *
  * API Namespaces:
  * - /api/v1/*        Core API (jobs, workers, analytics) - DEFAULT
- * - /api/v1/admin/*  Admin-only API (ansible, etc.) - requires admin token
+ * - /api/v1/admin/*  Admin-only API (ansible, etc.)
  * - /api/v2/*        Extended API (queue operations)
  * - /api/drive/*     Google Drive API
  * - /api/bundle/*    Bundle management API
