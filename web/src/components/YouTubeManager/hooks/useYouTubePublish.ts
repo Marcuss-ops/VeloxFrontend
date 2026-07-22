@@ -1,16 +1,14 @@
 /**
  * useYouTubePublish Hook
- * 
- * Manages YouTube video publishing workflow including:
- * - File staging from Drive
- * - Upload to multiple channels
- * - Scheduling
- * 
- * Extracted from DriveImporter to separate publish logic from UI.
+ *
+ * Manages the publishing workflow through Velox/InstaEdit destinations:
+ * - Takes selected Drive files and destination ids
+ * - Creates a Velox job per (file, destination) pair
+ * - Velox/InstaEdit handle the actual platform upload using opaque destinations
  */
 
 import { useState, useCallback } from 'react';
-import { driveApi, youtubeApi, type YouTubeUploadOptions } from '@/lib/api';
+import { veloxApi } from '@/lib/api';
 import type { FileItem } from './useDriveFolderBrowser';
 
 // Types
@@ -29,11 +27,17 @@ export interface PublishOptions {
   scheduleTime?: string;
 }
 
+export interface CreatedJob {
+  fileName: string;
+  externalDestinationId: string;
+  jobId: string;
+}
+
 export interface PublishResult {
-  /** Number of successful uploads */
+  /** Number of Velox jobs created */
   successCount: number;
-  /** Upload details */
-  uploads: Array<{ fileName: string; channelId: string }>;
+  /** Created job details */
+  jobs: CreatedJob[];
 }
 
 export interface UseYouTubePublishReturn {
@@ -41,19 +45,19 @@ export interface UseYouTubePublishReturn {
   isPublishing: boolean;
   /** Error message if any */
   error: string | null;
-  
+
   // Actions
   /** Publish selected files now */
   publishNow: (
     files: FileItem[],
-    channelIds: string[],
+    destinationIds: string[],
     options: PublishOptions
   ) => Promise<PublishResult>;
-  
+
   /** Schedule files for later */
   schedulePublish: (
     files: FileItem[],
-    channelIds: string[],
+    destinationIds: string[],
     options: PublishOptions
   ) => Promise<PublishResult>;
 }
@@ -66,122 +70,151 @@ function stripExtension(name: string): string {
 }
 
 /**
- * Hook to manage YouTube video publishing
+ * Hook to manage publishing through Velox/InstaEdit destinations.
  */
 export function useYouTubePublish(): UseYouTubePublishReturn {
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const buildMetadata = (file: FileItem, options: PublishOptions): Record<string, unknown> => {
+    const tagList = options.tags
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean);
+
+    const metadata: Record<string, unknown> = {
+      title: options.title.trim() || stripExtension(file.name),
+      description: options.description,
+      tags: tagList,
+      privacy_status: options.visibility,
+    };
+
+    if (options.scheduleDate && options.scheduleTime) {
+      metadata.scheduled_time = `${options.scheduleDate}T${options.scheduleTime}`;
+    }
+
+    return metadata;
+  };
+
+  const createVeloxJob = async (
+    file: FileItem,
+    destinationId: string,
+    options: PublishOptions
+  ): Promise<CreatedJob> => {
+    const job = await veloxApi.createJob({
+      projectId: file.id,
+      renderSpec: {
+        type: 'passthrough',
+        source: 'drive',
+        driveFileId: file.id,
+        driveFileName: file.name,
+      },
+      deliveryPlan: {
+        destinations: [
+          {
+            externalDestinationId: destinationId,
+            metadata: buildMetadata(file, options),
+          },
+        ],
+      },
+    });
+
+    return {
+      fileName: file.name,
+      externalDestinationId: destinationId,
+      jobId: job.id,
+    };
+  };
+
   /**
    * Publish videos immediately
    */
-  const publishNow = useCallback(async (
-    files: FileItem[],
-    channelIds: string[],
-    options: PublishOptions
-  ): Promise<PublishResult> => {
-    // Validation
-    if (files.length === 0) {
-      throw new Error('No files selected for upload');
-    }
-    if (channelIds.length === 0) {
-      throw new Error('Select at least one YouTube channel');
-    }
-
-    setIsPublishing(true);
-    setError(null);
-
-    try {
-      const tagList = options.tags.split(',').map(t => t.trim()).filter(Boolean);
-      const uploads: Array<{ fileName: string; channelId: string }> = [];
-
-      // Stage and upload each file
-      for (const file of files) {
-        const stagedFilePath = await driveApi.stageDownload(file.id);
-        const uploadTitle = options.title.trim() || stripExtension(file.name);
-
-        // Upload to each channel
-        for (const channelId of channelIds) {
-          await youtubeApi.uploadFromPath(stagedFilePath, {
-            channel_id: channelId,
-            title: uploadTitle,
-            description: options.description,
-            tags: tagList,
-            privacy: options.visibility,
-          });
-          uploads.push({ fileName: file.name, channelId });
-        }
+  const publishNow = useCallback(
+    async (
+      files: FileItem[],
+      destinationIds: string[],
+      options: PublishOptions
+    ): Promise<PublishResult> => {
+      // Validation
+      if (files.length === 0) {
+        throw new Error('No files selected for upload');
+      }
+      if (destinationIds.length === 0) {
+        throw new Error('Select at least one destination');
       }
 
-      return {
-        successCount: uploads.length,
-        uploads,
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Publishing failed';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsPublishing(false);
-    }
-  }, []);
+      setIsPublishing(true);
+      setError(null);
+
+      try {
+        const jobs: CreatedJob[] = [];
+
+        for (const file of files) {
+          for (const destinationId of destinationIds) {
+            const created = await createVeloxJob(file, destinationId, options);
+            jobs.push(created);
+          }
+        }
+
+        return {
+          successCount: jobs.length,
+          jobs,
+        };
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Publishing failed';
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsPublishing(false);
+      }
+    },
+    []
+  );
 
   /**
    * Schedule videos for later publishing
    */
-  const schedulePublish = useCallback(async (
-    files: FileItem[],
-    channelIds: string[],
-    options: PublishOptions
-  ): Promise<PublishResult> => {
-    // Validation
-    if (!options.scheduleDate || !options.scheduleTime) {
-      throw new Error('Select a date and time for publishing');
-    }
-    if (files.length === 0) {
-      throw new Error('No files selected for upload');
-    }
-
-    const publishAt = new Date(`${options.scheduleDate}T${options.scheduleTime}`);
-    
-    setIsPublishing(true);
-    setError(null);
-
-    try {
-      const tagList = options.tags.split(',').map(t => t.trim()).filter(Boolean);
-      const uploads: Array<{ fileName: string; channelId: string }> = [];
-
-      // Stage and schedule each file
-      for (const file of files) {
-        const stagedFilePath = await driveApi.stageDownload(file.id);
-        const uploadTitle = options.title.trim() || stripExtension(file.name);
-
-        // Schedule for each channel
-        for (const channelId of channelIds) {
-          await youtubeApi.uploadFromPath(stagedFilePath, {
-            channel_id: channelId,
-            title: uploadTitle,
-            description: options.description,
-            tags: tagList,
-            privacy: options.visibility,
-            scheduled_time: publishAt.toISOString(),
-          });
-          uploads.push({ fileName: file.name, channelId });
-        }
+  const schedulePublish = useCallback(
+    async (
+      files: FileItem[],
+      destinationIds: string[],
+      options: PublishOptions
+    ): Promise<PublishResult> => {
+      // Validation
+      if (!options.scheduleDate || !options.scheduleTime) {
+        throw new Error('Select a date and time for publishing');
+      }
+      if (files.length === 0) {
+        throw new Error('No files selected for upload');
       }
 
-      return {
-        successCount: uploads.length,
-        uploads,
-      };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Scheduling failed';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsPublishing(false);
-    }
-  }, []);
+      setIsPublishing(true);
+      setError(null);
+
+      try {
+        const jobs: CreatedJob[] = [];
+
+        for (const file of files) {
+          for (const destinationId of destinationIds) {
+            const created = await createVeloxJob(file, destinationId, options);
+            jobs.push(created);
+          }
+        }
+
+        return {
+          successCount: jobs.length,
+          jobs,
+        };
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Scheduling failed';
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsPublishing(false);
+      }
+    },
+    []
+  );
 
   return {
     isPublishing,

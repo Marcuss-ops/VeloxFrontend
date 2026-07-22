@@ -48,7 +48,7 @@ export { workersApi } from './workersApi';
 export type { Worker } from './workersApi';
 
 export { youtubeApi } from './youtubeApi';
-export type { YouTubeChannel, YouTubeUploadResult, YouTubeUploadConfig, YouTubeUploadOptions } from './youtubeApi';
+export type { YouTubeChannel } from './youtubeApi';
 
 export { analyticsApi } from './analyticsApi';
 export { driveApi, driveApiExtended } from './driveApi';
