@@ -1,6 +1,8 @@
 import React from 'react';
 import { Job } from '../../Workers/types';
-import { getVideoName, formatDateTime, categorizeYouTubeError } from '../../Workers/jobUtils';
+import { getVideoName, formatDateTime } from '../../Workers/jobUtils';
+import { DeliveryStatusCell } from '../../Workers/DeliveryStatusCell';
+import { DeliveryOutputCell } from '../../Workers/DeliveryOutputCell';
 
 
 interface DashboardCompletedTabProps {
@@ -10,37 +12,9 @@ interface DashboardCompletedTabProps {
 export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jobs }) => {
     const pagedJobs = jobs.slice(0, 100);
 
-    const getYouTubeStatus = (job: Job) => {
-        const ytRes = job.last_upload_result;
-        if (!ytRes) return { icon: 'warning', label: 'Nessun Upload', color: 'amber' };
-        
-        if (ytRes.success === true) {
-            return { icon: 'check_circle', label: 'Video OK', color: 'green' };
-        }
-        
-        const errorMsg = ytRes.error || ytRes.message || ytRes.detail;
-        const errorInfo = errorMsg ? categorizeYouTubeError(errorMsg) : null;
-        
-        if (errorInfo) {
-            return { icon: errorInfo.icon, label: `Video ${errorInfo.category}`, color: errorInfo.color };
-        }
-        
-        return { icon: 'error', label: 'Upload Failed', color: 'red' };
-    };
-
     const getDriveStatus = (job: Job) => {
         const driveRes = job.last_drive_upload_result;
         return driveRes?.success === true;
-    };
-
-    const getYouTubeUrl = (job: Job) => {
-        const ytRes = job.last_upload_result;
-        if (!ytRes) return null;
-
-        const videoId = ytRes.video_id || ytRes.videoId || ytRes.youtubeVideoId;
-        if (videoId) return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
-
-        return ytRes.url || ytRes.link || ytRes.video_url || null;
     };
 
     const getDriveLink = (job: Job) => {
@@ -78,8 +52,6 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                                 const vid = getVideoName(job);
                                 const dateStr = formatDateTime(job.completed_at ?? job.updated_at);
                                 const driveSuccess = getDriveStatus(job);
-                                const ytStatus = getYouTubeStatus(job);
-                                const ytUrl = getYouTubeUrl(job);
                                 const driveLink = getDriveLink(job);
                                 
                                 return (
@@ -99,9 +71,7 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                                                     <span className="material-symbols-rounded text-[12px]">cloud_upload</span> Drive OK
                                                 </span>
                                             )}
-                                            <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-${ytStatus.color}-500/10 text-${ytStatus.color}-400 border border-${ytStatus.color}-500/20 text-[10px] font-bold uppercase`}>
-                                                <span className="material-symbols-rounded text-[12px]">{ytStatus.icon}</span> {ytStatus.label}
-                                            </span>
+                                            <DeliveryStatusCell jobId={jobId} />
                                         </td>
                                         <td className="p-4">
                                             {driveLink && (
@@ -109,11 +79,7 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                                                     <span className="material-symbols-rounded text-[14px]">cloud_upload</span> Drive
                                                 </a>
                                             )}
-                                            {ytStatus.color === 'green' && ytUrl && (
-                                                <a href={ytUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-red-600/10 text-red-500 rounded text-xs hover:bg-red-600/20">
-                                                    Video
-                                                </a>
-                                            )}
+                                            <DeliveryOutputCell jobId={jobId} />
                                         </td>
                                         <td className="p-4 text-right">
                                             <a href={`/jobs/detail/${encodeURIComponent(jobId)}`} className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors">
