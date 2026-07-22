@@ -1,4 +1,8 @@
-import type { DailyStat } from './FinanceChart';
+export interface DailyStat {
+    date: string;
+    revenue: number;
+    views: number;
+}
 
 export interface ChannelStats {
     name: string;
@@ -27,3 +31,4 @@ export interface FinanceData {
     channels: ChannelStats[];
     daily_stats: DailyStat[];
 }
+

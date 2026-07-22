@@ -1,14 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { Chart, registerables } from 'chart.js';
+import type { DailyStat } from './types';
 
 // Register all Chart.js components
 Chart.register(...registerables);
-
-export interface DailyStat {
-    date: string;
-    revenue: number;
-    views: number;
-}
 
 interface FinanceChartProps {
     data: DailyStat[];
