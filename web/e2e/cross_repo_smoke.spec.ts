@@ -71,6 +71,33 @@ function registerApiMocks(
             }
             return;
         }
+        // POST /dark_editor_v2/api/drive/upload: a mount-time or auto-save
+        // regression that fires this returns a safe error ({success:false})
+        // instead of silently hitting the real Next dev server (502 /
+        // EAI_AGAIN). ToolbarDock / useDriveIntegration callers typically
+        // read .success; false here matches the no-op semantics of the
+        // existing GET mocks and lets visible assertions trip instead of
+        // an opaque network failure.
+        if (
+            route.request().method() === 'POST' &&
+            route.request().url().includes('/upload')
+        ) {
+            await route.fulfill({ json: { success: false } });
+            return;
+        }
+        await route.fallback();
+    });
+
+    // POST /dark_editor_v2/api/process/*: filter / transform / upscale /
+    // remove-bg / etc. all return an empty object so a regression that
+    // auto-fires them at mount time fails a visible assertion (toast /
+    // canvas state / disabled-button state) instead of hitting the real
+    // Next dev server (502 / EAI_AGAIN / SVG hang on upload wait).
+    page.route('**/dark_editor_v2/api/process/**', async (route) => {
+        if (route.request().method() === 'POST') {
+            await route.fulfill({ json: {} });
+            return;
+        }
         await route.fallback();
     });
 
