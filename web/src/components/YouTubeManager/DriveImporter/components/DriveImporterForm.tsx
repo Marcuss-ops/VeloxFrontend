@@ -280,11 +280,11 @@ export const DriveImporterForm: React.FC<DriveImporterFormProps> = ({
                 )}
             </div>
 
-            {/* YouTube Channels Selection */}
+            {/* Destinations Selection */}
             <div className="space-y-3 pt-2 border-t border-gray-700">
                 <label className="flex items-center gap-2 text-sm font-medium text-text-secondary">
                     <Globe className="w-4 h-4" />
-                    YouTube channels ({selectedChannels.length} selected)
+                    Destinations ({selectedChannels.length} selected)
                 </label>
 
                 {/* Channel Groups Selection */}
