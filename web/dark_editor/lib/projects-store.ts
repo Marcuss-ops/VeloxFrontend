@@ -1,8 +1,8 @@
 // Local projects storage using JSON file
 // Server-side only (Next.js API routes)
 
-import fs from 'fs';
 import path from 'path';
+import { defaultFileSystem, type FileSystemPort } from './fs';
 
 export interface StoredProject {
   id: string;
@@ -18,17 +18,17 @@ export interface StoredProject {
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DATA_FILE = path.join(DATA_DIR, 'projects.json');
 
-function ensureDataFile(): StoredProject[] {
+function ensureDataFile(fileSystem: FileSystemPort = defaultFileSystem): StoredProject[] {
   try {
-    if (!fs.existsSync(DATA_FILE)) {
+    if (!fileSystem.existsSync(DATA_FILE)) {
       const dir = path.dirname(DATA_FILE);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      if (!fileSystem.existsSync(dir)) {
+        fileSystem.mkdirSync(dir, { recursive: true });
       }
-      fs.writeFileSync(DATA_FILE, JSON.stringify([], null, 2));
+      fileSystem.writeFileSync(DATA_FILE, JSON.stringify([], null, 2));
       return [];
     }
-    const data = fs.readFileSync(DATA_FILE, 'utf-8');
+    const data = fileSystem.readFileSync(DATA_FILE, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
     console.error('Error reading projects:', error);
@@ -36,39 +36,42 @@ function ensureDataFile(): StoredProject[] {
   }
 }
 
-function saveProjects(projects: StoredProject[]): void {
+function saveProjects(projects: StoredProject[], fileSystem: FileSystemPort = defaultFileSystem): void {
   try {
     const dir = path.dirname(DATA_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!fileSystem.existsSync(dir)) {
+      fileSystem.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(projects, null, 2));
+    fileSystem.writeFileSync(DATA_FILE, JSON.stringify(projects, null, 2));
   } catch (error) {
     console.error('Error saving projects:', error);
   }
 }
 
-export function listProjects(type?: string): StoredProject[] {
-  const projects = ensureDataFile();
+export function listProjects(type?: string, fileSystem: FileSystemPort = defaultFileSystem): StoredProject[] {
+  const projects = ensureDataFile(fileSystem);
   if (type) {
     return projects.filter((p) => p.type === type);
   }
   return projects;
 }
 
-export function getProject(id: string): StoredProject | null {
-  const projects = ensureDataFile();
+export function getProject(id: string, fileSystem: FileSystemPort = defaultFileSystem): StoredProject | null {
+  const projects = ensureDataFile(fileSystem);
   return projects.find((p) => p.id === id) || null;
 }
 
-export function createProject(project: {
-  id?: string;
-  name: string;
-  type?: string;
-  canvas_json: Record<string, unknown>;
-  preview_filename?: string;
-}): StoredProject {
-  const projects = ensureDataFile();
+export function createProject(
+  project: {
+    id?: string;
+    name: string;
+    type?: string;
+    canvas_json: Record<string, unknown>;
+    preview_filename?: string;
+  },
+  fileSystem: FileSystemPort = defaultFileSystem
+): StoredProject {
+  const projects = ensureDataFile(fileSystem);
   const now = new Date().toISOString();
 
   // Upsert: if id is provided and exists, update instead of creating duplicate
@@ -83,7 +86,7 @@ export function createProject(project: {
         preview_url: project.preview_filename || projects[existingIndex].preview_url,
         updated_at: now,
       };
-      saveProjects(projects);
+      saveProjects(projects, fileSystem);
       return projects[existingIndex];
     }
   }
@@ -99,12 +102,16 @@ export function createProject(project: {
     updated_at: now,
   };
   projects.push(newProject);
-  saveProjects(projects);
+  saveProjects(projects, fileSystem);
   return newProject;
 }
 
-export function updateProject(id: string, updates: Partial<StoredProject>): StoredProject | null {
-  const projects = ensureDataFile();
+export function updateProject(
+  id: string,
+  updates: Partial<StoredProject>,
+  fileSystem: FileSystemPort = defaultFileSystem
+): StoredProject | null {
+  const projects = ensureDataFile(fileSystem);
   const index = projects.findIndex((p) => p.id === id);
   if (index === -1) return null;
 
@@ -113,18 +120,22 @@ export function updateProject(id: string, updates: Partial<StoredProject>): Stor
     ...updates,
     updated_at: new Date().toISOString(),
   };
-  saveProjects(projects);
+  saveProjects(projects, fileSystem);
   return projects[index];
 }
 
-export function deleteProject(id: string): boolean {
-  const projects = ensureDataFile();
+export function deleteProject(id: string, fileSystem: FileSystemPort = defaultFileSystem): boolean {
+  const projects = ensureDataFile(fileSystem);
   const filtered = projects.filter((p) => p.id !== id);
   if (filtered.length === projects.length) return false;
-  saveProjects(filtered);
+  saveProjects(filtered, fileSystem);
   return true;
 }
 
-export function assignProjectToFolder(projectId: string, folderId: string | null): StoredProject | null {
-  return updateProject(projectId, { folder_id: folderId });
+export function assignProjectToFolder(
+  projectId: string,
+  folderId: string | null,
+  fileSystem: FileSystemPort = defaultFileSystem
+): StoredProject | null {
+  return updateProject(projectId, { folder_id: folderId }, fileSystem);
 }
