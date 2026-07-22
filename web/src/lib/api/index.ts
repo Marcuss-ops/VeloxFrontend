@@ -11,8 +11,11 @@ export type { ClientOptions } from './client';
 export { authApi, getMe } from './authApi';
 export type { AuthUser, MeResponse } from './authApi';
 
-export { socialApi } from './socialApi';
-export type { VeloxDestination, CreateDestinationRequest, CreateDestinationResponse, PlatformAccount } from './socialApi';
+export { accountsApi } from './accountsApi';
+export type { PlatformAccount } from './accountsApi';
+
+export { socialDestinationsApi } from './socialDestinationsApi';
+export type { SocialDestination, CreateSocialDestinationRequest, UpdateSocialDestinationRequest } from './socialDestinationsApi';
 
 export { veloxApi } from './veloxApi';
 export type { VeloxJob, VeloxDelivery, VeloxJobDetail, VeloxWorker, VeloxAsset, CreateVeloxJobRequest, ListJobsParams } from './veloxApi';
