@@ -11,10 +11,11 @@ interface VideoCardData extends FeedItem {
 interface GroupFeedVideoCardProps {
     video: VideoCardData;
     isExplosive?: boolean;
-    onOpen: (video: VideoCardData) => void;
+    groupName: string;
+    onOpen: (video: FeedItem) => void;
 }
 
-export const GroupFeedVideoCard: React.FC<GroupFeedVideoCardProps> = ({ video, isExplosive = false, onOpen }) => {
+export const GroupFeedVideoCard: React.FC<GroupFeedVideoCardProps> = ({ video, isExplosive = false, groupName, onOpen }) => {
     const views = formatViewCount(video.view_count);
     const showRelevance = video.relevanceScore !== undefined && video.relevanceScore > 0;
 
@@ -48,7 +49,7 @@ export const GroupFeedVideoCard: React.FC<GroupFeedVideoCardProps> = ({ video, i
                     </div>
                 )}
                 <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                    <button onClick={(e) => { e.stopPropagation(); addToStudio(video, ''); }} className="bg-black/80 hover:bg-emerald-600 p-1 rounded transition-all" title="Aggiungi a Creator Studio">
+                    <button onClick={(e) => { e.stopPropagation(); addToStudio(video, groupName); }} className="bg-black/80 hover:bg-emerald-600 p-1 rounded transition-all" title="Aggiungi a Creator Studio">
                         <span className="material-symbols-rounded text-[14px] text-white">edit</span>
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); copyToClipboard(video.url || ''); }} className="bg-black/80 hover:bg-purple-600 p-1 rounded transition-all" title="Copia link">

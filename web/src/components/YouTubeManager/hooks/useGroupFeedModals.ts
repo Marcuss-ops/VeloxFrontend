@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { youtubeApi, utilApi } from '../../../lib/api';
-import { getSavedNews, saveNewsItem, type NewsItem, type FeedItem } from '../../../lib/utils';
+import { getSavedNews, saveNewsItem, type NewsItem, type FeedItem, type NewsStatus } from '../../../lib/utils';
 
 export function useGroupFeedModals(groupName: string) {
     // News modal state
@@ -9,7 +9,7 @@ export function useGroupFeedModals(groupName: string) {
     const [modalYoutube, setModalYoutube] = useState<{ title: string; url: string; thumbnail?: string; views?: string }[]>([]);
     const [modalLoading, setModalLoading] = useState(false);
     const [modalNotes, setModalNotes] = useState({ hook: '', cut: '', thumbnail: '' });
-    const [modalStatus, setModalStatus] = useState<'watchlist' | 'todo' | 'ignored' | 'archived' | null>(null);
+    const [modalStatus, setModalStatus] = useState<NewsStatus | null>(null);
     const [showSavedNewsModal, setShowSavedNewsModal] = useState(false);
     const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
 
@@ -83,7 +83,7 @@ export function useGroupFeedModals(groupName: string) {
         setSelectedUrls(newSet);
     };
 
-    const bulkChangeStatus = (status: 'watchlist' | 'todo' | 'ignored' | 'archived') => {
+    const bulkChangeStatus = (status: NewsStatus) => {
         const saved = getSavedNews();
         selectedUrls.forEach(url => {
             const item = saved.get(url);
@@ -156,7 +156,7 @@ export function useGroupFeedModals(groupName: string) {
             .catch((err: any) => console.error('[GroupFeed] Error fetching YouTube videos:', err));
     };
 
-    const handleModalStatusChange = (status: 'watchlist' | 'todo' | 'ignored' | 'archived') => {
+    const handleModalStatusChange = (status: NewsStatus) => {
         if (!selectedNews) return;
         console.log('[GroupFeed] Changing status to:', status);
         saveNewsItem({ url: selectedNews.url, title: selectedNews.title, status, notes: modalNotes, savedAt: Date.now() });

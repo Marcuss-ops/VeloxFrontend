@@ -1,15 +1,14 @@
 import React from 'react';
-import type { NewsItem } from '../../../../lib/utils';
-import { getSavedNews } from '../../../../lib/utils';
+import { NEWS_STATUS_META, getSavedNews, type SavedNewsItem, type NewsStatus } from '../../../../lib/utils';
 
 interface GroupFeedSavedNewsModalProps {
     selectedUrls: Set<string>;
     onClose: () => void;
     onToggleSelect: (url: string) => void;
     onToggleSelectAll: () => void;
-    onBulkChangeStatus: (status: 'watchlist' | 'todo' | 'ignored' | 'archived') => void;
+    onBulkChangeStatus: (status: NewsStatus) => void;
     onBulkDelete: () => void;
-    onOpenNews: (item: NewsItem) => void;
+    onOpenNews: (item: SavedNewsItem) => void;
 }
 
 export const GroupFeedSavedNewsModal: React.FC<GroupFeedSavedNewsModalProps> = ({
@@ -37,10 +36,11 @@ export const GroupFeedSavedNewsModal: React.FC<GroupFeedSavedNewsModalProps> = (
                         {selectedUrls.size > 0 && (
                             <>
                                 <span className="text-xs text-gray-400">{selectedUrls.size} selezionati</span>
-                                <button onClick={() => onBulkChangeStatus('watchlist')} className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all">Watchlist</button>
-                                <button onClick={() => onBulkChangeStatus('todo')} className="px-2 py-1 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white rounded text-xs transition-all">Da Fare</button>
-                                <button onClick={() => onBulkChangeStatus('ignored')} className="px-2 py-1 bg-gray-600/20 hover:bg-gray-600 text-gray-400 hover:text-white rounded text-xs transition-all">Ignora</button>
-                                <button onClick={() => onBulkChangeStatus('archived')} className="px-2 py-1 bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white rounded text-xs transition-all">Archivia</button>
+                                {(['watchlist', 'todo', 'ignored', 'archived'] as NewsStatus[]).map(s => (
+                                    <button key={s} onClick={() => onBulkChangeStatus(s)} className={`px-2 py-1 ${NEWS_STATUS_META[s].bgClass} ${NEWS_STATUS_META[s].hoverBgClass} ${NEWS_STATUS_META[s].colorClass} hover:text-white rounded text-xs transition-all`}>
+                                        {NEWS_STATUS_META[s].shortLabel}
+                                    </button>
+                                ))}
                                 <button onClick={onBulkDelete} className="px-2 py-1 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded text-xs transition-all">Elimina</button>
                             </>
                         )}
@@ -79,8 +79,8 @@ export const GroupFeedSavedNewsModal: React.FC<GroupFeedSavedNewsModalProps> = (
                                             <div className="flex-1 min-w-0">
                                                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-white hover:text-blue-400 transition-colors line-clamp-2">{item.title}</a>
                                                 <div className="flex items-center gap-2 mt-2">
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${item.status === 'watchlist' ? 'bg-blue-500/30 text-blue-300' : item.status === 'todo' ? 'bg-green-500/30 text-green-300' : item.status === 'ignored' ? 'bg-gray-500/30 text-gray-300' : 'bg-purple-500/30 text-purple-300'}`}>
-                                                        {item.status === 'watchlist' ? 'Watchlist' : item.status === 'todo' ? 'Da Fare' : item.status === 'ignored' ? 'Ignorato' : 'Archiviato'}
+                                                    <span className={`text-xs px-2 py-0.5 rounded-full ${NEWS_STATUS_META[item.status].bgClass} ${NEWS_STATUS_META[item.status].colorClass}`}>
+                                                        {NEWS_STATUS_META[item.status].label}
                                                     </span>
                                                     <span className="text-[10px] text-gray-500">{new Date(item.savedAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                                                 </div>
@@ -93,7 +93,7 @@ export const GroupFeedSavedNewsModal: React.FC<GroupFeedSavedNewsModalProps> = (
                                                 )}
                                             </div>
                                             <div className="flex gap-2 shrink-0">
-                                                <button onClick={() => onOpenNews(item as any)} className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white rounded-lg text-xs font-medium transition-all">Apri</button>
+                                                <button onClick={() => onOpenNews(item)} className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600 text-purple-400 hover:text-white rounded-lg text-xs font-medium transition-all">Apri</button>
                                             </div>
                                         </div>
                                     </div>

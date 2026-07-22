@@ -70,10 +70,31 @@ export const copyToClipboard = (text: string): Promise<void> => {
     });
 };
 
+export type NewsStatus = 'watchlist' | 'todo' | 'ignored' | 'archived';
+
+export const NEWS_STATUSES: NewsStatus[] = ['watchlist', 'todo', 'ignored', 'archived'];
+
+export interface NewsStatusMeta {
+    label: string;
+    shortLabel: string;
+    icon: string;
+    colorClass: string;
+    bgClass: string;
+    activeBgClass: string;
+    hoverBgClass: string;
+}
+
+export const NEWS_STATUS_META: Record<NewsStatus, NewsStatusMeta> = {
+    watchlist: { label: 'Watchlist', shortLabel: 'Watchlist', icon: 'bookmark', colorClass: 'text-blue-300', bgClass: 'bg-blue-500/30', activeBgClass: 'bg-blue-600', hoverBgClass: 'hover:bg-blue-600' },
+    todo: { label: 'Da Fare', shortLabel: 'Da Fare', icon: 'checklist', colorClass: 'text-green-300', bgClass: 'bg-green-500/30', activeBgClass: 'bg-green-600', hoverBgClass: 'hover:bg-green-600' },
+    ignored: { label: 'Ignorato', shortLabel: 'Ignora', icon: 'block', colorClass: 'text-gray-300', bgClass: 'bg-gray-500/30', activeBgClass: 'bg-gray-600', hoverBgClass: 'hover:bg-gray-600' },
+    archived: { label: 'Archiviato', shortLabel: 'Archivia', icon: 'archive', colorClass: 'text-purple-300', bgClass: 'bg-purple-500/30', activeBgClass: 'bg-purple-600', hoverBgClass: 'hover:bg-purple-600' },
+};
+
 export interface SavedNewsItem {
     url: string;
     title: string;
-    status: 'watchlist' | 'todo' | 'ignored' | 'archived';
+    status: NewsStatus;
     notes: { hook: string; cut: string; thumbnail: string; };
     savedAt: number;
 }

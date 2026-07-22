@@ -1,5 +1,5 @@
 import React from 'react';
-import type { NewsItem } from '../../../../lib/utils';
+import { NEWS_STATUSES, NEWS_STATUS_META, type NewsItem, type NewsStatus } from '../../../../lib/utils';
 
 interface YouTubeVideo {
     title: string;
@@ -14,9 +14,9 @@ interface GroupFeedNewsModalProps {
     loading: boolean;
     youtubeVideos: YouTubeVideo[];
     notes: { hook: string; cut: string; thumbnail: string };
-    status: 'watchlist' | 'todo' | 'ignored' | 'archived' | null;
+    status: NewsStatus | null;
     onClose: () => void;
-    onStatusChange: (status: 'watchlist' | 'todo' | 'ignored' | 'archived') => void;
+    onStatusChange: (status: NewsStatus) => void;
     onNoteChange: (field: 'hook' | 'cut' | 'thumbnail', value: string) => void;
 }
 
@@ -112,22 +112,22 @@ export const GroupFeedNewsModal: React.FC<GroupFeedNewsModalProps> = ({
                 </div>
                 <div className="p-4 border-t border-white/10 bg-slate-800/50">
                     <div className="flex flex-wrap gap-2">
-                        {(['watchlist', 'todo', 'ignored', 'archived'] as const).map(s => (
-                            <button
-                                key={s}
-                                onClick={() => onStatusChange(s)}
-                                className={`flex-1 min-w-[100px] px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1 ${
-                                    status === s
-                                        ? (s === 'watchlist' ? 'bg-blue-600' : s === 'todo' ? 'bg-green-600' : s === 'ignored' ? 'bg-gray-600' : 'bg-purple-600') + ' text-white'
-                                        : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                                }`}
-                            >
-                                <span className="material-symbols-rounded text-[14px]">
-                                    {s === 'watchlist' ? 'bookmark' : s === 'todo' ? 'checklist' : s === 'ignored' ? 'block' : 'archive'}
-                                </span>
-                                {s === 'watchlist' ? 'Watchlist' : s === 'todo' ? 'Da Fare' : s === 'ignored' ? 'Ignora' : 'Archivia'}
-                            </button>
-                        ))}
+                        {NEWS_STATUSES.map(s => {
+                            const meta = NEWS_STATUS_META[s];
+                            const active = status === s;
+                            return (
+                                <button
+                                    key={s}
+                                    onClick={() => onStatusChange(s)}
+                                    className={`flex-1 min-w-[100px] px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1 ${
+                                        active ? `${meta.activeBgClass} text-white` : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                                    }`}
+                                >
+                                    <span className="material-symbols-rounded text-[14px]">{meta.icon}</span>
+                                    {meta.label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
