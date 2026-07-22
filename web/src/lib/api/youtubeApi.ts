@@ -1,4 +1,4 @@
-import { fetchJSON, fetchVoid, ApiError } from './core';
+import { fetchJSON, fetchVoid } from './core';
 
 export interface YouTubeChannel {
   id: string;
@@ -9,32 +9,6 @@ export interface YouTubeChannel {
   token_valid?: boolean;
   language?: string;
 }
-
-export interface YouTubeUploadResult {
-  video_id: string;
-  video_url: string;
-  title: string;
-  description: string;
-  tags: string[];
-  privacy_status: string;
-  channel_id: string;
-}
-
-export interface YouTubeUploadConfig {
-  channel_id: string;
-  title: string;
-  description?: string;
-  tags?: string[];
-  privacy?: 'private' | 'unlisted' | 'public';
-  thumbnail_path?: string;
-  /** ISO 8601 scheduled time (e.g., "2024-12-31T10:00:00Z") */
-  scheduled_time?: string;
-}
-
-/**
- * YouTube upload options type alias for convenience
- */
-export type YouTubeUploadOptions = YouTubeUploadConfig;
 
 export interface YouTubePendingTaskGroupSummary {
   group_name: string;
@@ -167,101 +141,15 @@ export const youtubeApi = {
   similarAuto: (limit = 10, minVelocity = 500) =>
     fetchJSON(`/api/v1/youtube/similar/auto?limit=${limit}&min_velocity=${minVelocity}`),
 
-  // ============================================
-  // Upload Endpoints
-  // ============================================
-
-  /** Upload video from file (multipart) */
-  uploadVideo: async (file: File, config: YouTubeUploadConfig): Promise<{ ok: boolean; result: YouTubeUploadResult }> => {
-    const formData = new FormData();
-    formData.append('video', file);
-    formData.append('channel_id', config.channel_id);
-    formData.append('title', config.title);
-    if (config.description) formData.append('description', config.description);
-    if (config.tags) formData.append('tags', config.tags.join(','));
-    if (config.privacy) formData.append('privacy', config.privacy);
-
-    const response = await fetch('/api/v1/youtube/upload', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new ApiError(response.status, response.statusText);
-    }
-
-    return response.json();
-  },
-
-  /** Upload video from local path */
-  uploadFromPath: (filePath: string, config: YouTubeUploadConfig) =>
-    fetchJSON<{ ok: boolean; result: YouTubeUploadResult }>('/api/v1/youtube/upload-path', {
-      method: 'POST',
-      body: JSON.stringify({ file_path: filePath, ...config }),
-    }),
-
-  /** Batch upload videos */
-  batchUpload: (videos: { file_path: string; channel_id: string; title?: string; description?: string; tags?: string[]; privacy?: string }[]) =>
-    fetchJSON<{ ok: boolean; results: Array<{ index: number; ok: boolean; result?: YouTubeUploadResult; error?: string }>; total: number }>('/api/v1/youtube/batch-upload', {
-      method: 'POST',
-      body: JSON.stringify({ videos }),
-    }),
-
   /** List videos for a channel */
   listVideos: (channelId: string, maxResults = 50) =>
     fetchJSON(`/api/v1/youtube/videos?channel_id=${channelId}&max_results=${maxResults}`),
 
-  /** Set video thumbnail */
-  setThumbnail: (videoId: string, channelId: string, thumbnailPath: string) =>
-    fetchJSON(`/api/v1/youtube/videos/${videoId}/thumbnail`, {
-      method: 'POST',
-      body: JSON.stringify({ channel_id: channelId, thumbnail_path: thumbnailPath }),
-    }),
-
-  /** Update video metadata */
-  updateMetadata: (videoId: string, channelId: string, metadata: { title?: string; description?: string; tags?: string[]; privacy?: string }) =>
-    fetchJSON(`/api/v1/youtube/videos/${videoId}/metadata`, {
-      method: 'POST',
-      body: JSON.stringify({ channel_id: channelId, ...metadata }),
-    }),
-
-  /** Publish video (change privacy) */
-  publishVideo: (videoId: string, channelId: string, privacy: 'public' | 'unlisted') =>
-    fetchJSON(`/api/v1/youtube/videos/${videoId}/publish`, {
-      method: 'POST',
-      body: JSON.stringify({ channel_id: channelId, privacy }),
-    }),
-
-  /** Apply the same cover to multiple videos and optionally change visibility */
-  applyBulkCover: (payload: {
-    channel_id: string;
-    video_ids: string[];
-    variant_id?: string;
-    cover_base64: string;
-    cover_filename?: string;
-    publish?: boolean;
-    privacy?: 'private' | 'unlisted' | 'public';
-    max_size_mb?: number;
-  }) =>
-    fetchJSON<{
-      ok: boolean;
-      channel_id: string;
-      variant_id?: string;
-      cover_file?: string;
-      cover_size_mb?: number;
-      privacy?: string;
-      results: Array<{ video_id: string; ok: boolean; thumbnail_url?: string; privacy?: string; size_bytes?: number; error?: string }>;
-      applied_count: number;
-      failed_count: number;
-      message: string;
-    }>('/api/v1/youtube/videos/bulk-cover', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
-
-  /** Delete video */
-  deleteVideo: (videoId: string, channelId: string) =>
-    fetchVoid(`/api/v1/youtube/videos/${videoId}?channel_id=${channelId}`, { method: 'DELETE' }),
+  // NOTE: Direct upload, publish, thumbnail, metadata and delete operations
+  // have been removed. Publishing is now performed through the InstaEdit
+  // destination model: the frontend creates a Velox job whose
+  // delivery_plan only contains a pre-created external_destination_id.
+  // See veloxApi.ts and socialApi.ts for the new flow.
 
   // ============================================
   // AI Generation Endpoints

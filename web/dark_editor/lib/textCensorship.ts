@@ -25,6 +25,17 @@ const ALLOWED_WORDS = [
   'dickens', 'dickinson', 'dickensian'
 ];
 
+// Precompile regexes once to avoid allocations inside hot loops.
+const PROFANITY_REGEXES: ReadonlyArray<RegExp> = PROFANITY_LIST.map(
+  profane => new RegExp(`\\b${profane}\\b`, 'i')
+);
+const PROFANITY_REGEXES_GLOBAL: ReadonlyArray<RegExp> = PROFANITY_LIST.map(
+  profane => new RegExp(`\\b${profane}\\b`, 'gi')
+);
+const ALLOWED_REGEXES: ReadonlyArray<RegExp> = ALLOWED_WORDS.map(
+  allowed => new RegExp(`\\b${allowed}\\b`, 'i')
+);
+
 export function censorText(text: string, config: Partial<CensorshipConfig> = {}): string {
   if (!config.enabled && config.enabled !== undefined) {
     return text;
@@ -44,17 +55,10 @@ export function censorText(text: string, config: Partial<CensorshipConfig> = {})
     const lowerWord = word.toLowerCase();
     
     // Check if word is in profanity list
-    const isProfanity = PROFANITY_LIST.some(profane => {
-      // Check for exact match or word boundaries
-      const regex = new RegExp(`\\b${profane}\\b`, 'i');
-      return regex.test(word);
-    });
+    const isProfanity = PROFANITY_REGEXES.some(regex => regex.test(word));
     
     // Check if word should be allowed (false positives)
-    const isAllowed = ALLOWED_WORDS.some(allowed => {
-      const regex = new RegExp(`\\b${allowed}\\b`, 'i');
-      return regex.test(word);
-    });
+    const isAllowed = ALLOWED_REGEXES.some(regex => regex.test(word));
     
     if (isProfanity && !isAllowed) {
       return censorWord(word, finalConfig);
@@ -131,41 +135,33 @@ function getRandomChar(chars: string[]): string {
 
 // Utility function to check if text contains profanity
 export function hasProfanity(text: string): boolean {
-  const lowerText = text.toLowerCase();
-  return PROFANITY_LIST.some(profane => {
-    const regex = new RegExp(`\\b${profane}\\b`, 'i');
-    return regex.test(lowerText);
-  });
+  return PROFANITY_REGEXES.some(regex => regex.test(text));
 }
 
 // Utility function to get profanity count
 export function getProfanityCount(text: string): number {
-  const lowerText = text.toLowerCase();
   let count = 0;
   
-  PROFANITY_LIST.forEach(profane => {
-    const regex = new RegExp(`\\b${profane}\\b`, 'gi');
-    const matches = lowerText.match(regex);
+  for (const regex of PROFANITY_REGEXES_GLOBAL) {
+    const matches = text.match(regex);
     if (matches) {
       count += matches.length;
     }
-  });
+  }
   
   return count;
 }
 
 // Utility function to get all profanity words found in text
 export function getProfanityWords(text: string): string[] {
-  const lowerText = text.toLowerCase();
   const foundWords: string[] = [];
   
-  PROFANITY_LIST.forEach(profane => {
-    const regex = new RegExp(`\\b${profane}\\b`, 'gi');
-    const matches = lowerText.match(regex);
+  for (const regex of PROFANITY_REGEXES_GLOBAL) {
+    const matches = text.match(regex);
     if (matches) {
       foundWords.push(...matches);
     }
-  });
+  }
   
   return Array.from(new Set(foundWords)); // Remove duplicates
 }
