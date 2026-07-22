@@ -1,25 +1,24 @@
 /**
  * useYouTubePublish Hook Tests
+ *
+ * These tests verify that the hook creates Velox jobs with
+ * external_destination_id values instead of calling YouTube directly.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useYouTubePublish } from '@/components/YouTubeManager/hooks/useYouTubePublish';
-import { driveApi, youtubeApi } from '@/lib/api';
+import { veloxApi } from '@/lib/api';
 import type { FileItem } from '@/components/YouTubeManager/hooks/useDriveFolderBrowser';
 
 // Mock the APIs
 vi.mock('@/lib/api', () => ({
-  driveApi: {
-    stageDownload: vi.fn(),
-  },
-  youtubeApi: {
-    uploadFromPath: vi.fn(),
+  veloxApi: {
+    createJob: vi.fn(),
   },
 }));
 
-const mockDriveApi = vi.mocked(driveApi);
-const mockYoutubeApi = vi.mocked(youtubeApi);
+const mockVeloxApi = vi.mocked(veloxApi);
 
 // Helper to flush promises
 const flushPromises = () => new Promise(resolve => setImmediate(resolve));
@@ -33,10 +32,10 @@ describe('useYouTubePublish', () => {
     { id: 'file1', name: 'video1.mp4', type: 'file' },
   ];
 
-  const mockChannels = ['ch1', 'ch2'];
+  const mockDestinations = ['extdst_01jabc123', 'extdst_01jdef456'];
 
   describe('publishNow', () => {
-    it('should block publish if no channels selected', async () => {
+    it('should block publish if no destinations selected', async () => {
       const { result } = renderHook(() => useYouTubePublish());
 
       await expect(
@@ -48,7 +47,7 @@ describe('useYouTubePublish', () => {
             visibility: 'private',
           });
         })
-      ).rejects.toThrow('Select at least one YouTube channel');
+      ).rejects.toThrow('Select at least one destination');
     });
 
     it('should block publish if no files selected', async () => {
@@ -56,7 +55,7 @@ describe('useYouTubePublish', () => {
 
       await expect(
         act(async () => {
-          await result.current.publishNow([], mockChannels, {
+          await result.current.publishNow([], mockDestinations, {
             title: 'Test',
             description: '',
             tags: '',
@@ -66,35 +65,67 @@ describe('useYouTubePublish', () => {
       ).rejects.toThrow('No files selected for upload');
     });
 
-    it('should stage file before upload', async () => {
-      mockDriveApi.stageDownload.mockResolvedValueOnce('/tmp/test_path');
-      mockYoutubeApi.uploadFromPath.mockResolvedValueOnce({ ok: true, result: {} as any });
-
-      const { result } = renderHook(() => useYouTubePublish());
-
-      await act(async () => {
-        await result.current.publishNow(mockFiles, ['ch1'], {
-          title: 'Test Video',
-          description: 'Description',
-          tags: 'tag1, tag2',
-          visibility: 'private',
-        });
-      });
-
-      expect(mockDriveApi.stageDownload).toHaveBeenCalledWith('file1');
-    });
-
-    it('should call upload once per file x channel', async () => {
-      mockDriveApi.stageDownload.mockResolvedValue('/tmp/test_path');
-      mockYoutubeApi.uploadFromPath.mockResolvedValue({ ok: true, result: {} as any });
+    it('should create a Velox job per file x destination', async () => {
+      mockVeloxApi.createJob.mockResolvedValue({ id: 'job_123', renderStatus: 'PENDING' } as any);
 
       const { result } = renderHook(() => useYouTubePublish());
 
       let publishResult: any;
       await act(async () => {
         publishResult = await result.current.publishNow(
-          [{ id: 'f1', name: 'v1.mp4', type: 'file' }, { id: 'f2', name: 'v2.mp4', type: 'file' }],
-          ['ch1', 'ch2'],
+          [{ id: 'f1', name: 'v1.mp4', type: 'file' }],
+          ['extdst_01jabc123'],
+          {
+            title: 'Test Video',
+            description: 'Description',
+            tags: 'tag1, tag2',
+            visibility: 'private',
+          }
+        );
+      });
+
+      expect(mockVeloxApi.createJob).toHaveBeenCalledTimes(1);
+      expect(mockVeloxApi.createJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: 'f1',
+          renderSpec: expect.objectContaining({
+            type: 'passthrough',
+            source: 'drive',
+            driveFileId: 'f1',
+            driveFileName: 'v1.mp4',
+          }),
+          deliveryPlan: {
+            destinations: [
+              expect.objectContaining({
+                externalDestinationId: 'extdst_01jabc123',
+                metadata: expect.objectContaining({
+                  title: 'Test Video',
+                  description: 'Description',
+                  tags: ['tag1', 'tag2'],
+                  privacy_status: 'private',
+                }),
+              }),
+            ],
+          },
+        })
+      );
+      expect(publishResult!.jobs).toHaveLength(1);
+      expect(publishResult!.jobs[0].jobId).toBe('job_123');
+    });
+
+    it('should create multiple Velox jobs for multiple destinations', async () => {
+      mockVeloxApi.createJob.mockResolvedValue({ id: 'job_123', renderStatus: 'PENDING' } as any);
+
+      const { result } = renderHook(() => useYouTubePublish());
+
+      let publishResult: any;
+      await act(async () => {
+        publishResult = await result.current.publishNow(
+          [
+            { id: 'f1', name: 'v1.mp4', type: 'file' },
+            { id: 'f2', name: 'v2.mp4', type: 'file' },
+          ],
+          ['extdst_01jabc123', 'extdst_01jdef456'],
           {
             title: 'Test',
             description: '',
@@ -104,20 +135,19 @@ describe('useYouTubePublish', () => {
         );
       });
 
-      // 2 files x 2 channels = 4 uploads
-      expect(mockYoutubeApi.uploadFromPath).toHaveBeenCalledTimes(4);
-      expect(publishResult!.uploads).toHaveLength(4);
+      // 2 files x 2 destinations = 4 jobs
+      expect(mockVeloxApi.createJob).toHaveBeenCalledTimes(4);
+      expect(publishResult!.jobs).toHaveLength(4);
     });
 
     it('should propagate backend error', async () => {
-      mockDriveApi.stageDownload.mockResolvedValueOnce('/tmp/test_path');
-      mockYoutubeApi.uploadFromPath.mockRejectedValueOnce(new Error('Backend error'));
+      mockVeloxApi.createJob.mockRejectedValueOnce(new Error('Backend error'));
 
       const { result } = renderHook(() => useYouTubePublish());
 
       await expect(
         act(async () => {
-          await result.current.publishNow(mockFiles, ['ch1'], {
+          await result.current.publishNow(mockFiles, ['extdst_01jabc123'], {
             title: 'Test',
             description: '',
             tags: '',
@@ -141,7 +171,7 @@ describe('useYouTubePublish', () => {
 
       await expect(
         act(async () => {
-          await result.current.schedulePublish(mockFiles, mockChannels, {
+          await result.current.schedulePublish(mockFiles, mockDestinations, {
             title: 'Test',
             description: '',
             tags: '',
@@ -152,14 +182,13 @@ describe('useYouTubePublish', () => {
     });
 
     it('should schedule with date and time', async () => {
-      mockDriveApi.stageDownload.mockResolvedValueOnce('/tmp/test_path');
-      mockYoutubeApi.uploadFromPath.mockResolvedValueOnce({ ok: true, result: {} as any });
+      mockVeloxApi.createJob.mockResolvedValue({ id: 'job_456', renderStatus: 'PENDING' } as any);
 
       const { result } = renderHook(() => useYouTubePublish());
 
       let scheduleResult: any;
       await act(async () => {
-        scheduleResult = await result.current.schedulePublish(mockFiles, ['ch1'], {
+        scheduleResult = await result.current.schedulePublish(mockFiles, ['extdst_01jabc123'], {
           title: 'Test',
           description: '',
           tags: '',
@@ -169,49 +198,54 @@ describe('useYouTubePublish', () => {
         });
       });
 
-      expect(scheduleResult.uploads).toHaveLength(1);
+      expect(mockVeloxApi.createJob).toHaveBeenCalledTimes(1);
+      expect(mockVeloxApi.createJob).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deliveryPlan: {
+            destinations: [
+              expect.objectContaining({
+                metadata: expect.objectContaining({
+                  scheduled_time: '2024-12-31T10:00',
+                }),
+              }),
+            ],
+          },
+        })
+      );
+      expect(scheduleResult.jobs).toHaveLength(1);
     });
   });
 
   describe('isPublishing state', () => {
-    it('should set isPublishing during upload', async () => {
-      mockDriveApi.stageDownload.mockResolvedValueOnce('/tmp/test_path');
-      
-      // Slow mock upload - use callback to control timing
-      let resolveUpload: (value: any) => void;
-      const uploadPromise = new Promise(resolve => {
-        resolveUpload = resolve;
+    it('should set isPublishing during job creation', async () => {
+      let resolveCreate: (value: any) => void;
+      const createPromise = new Promise(resolve => {
+        resolveCreate = resolve;
       });
-      
-      mockYoutubeApi.uploadFromPath.mockReturnValueOnce(uploadPromise as any);
+      mockVeloxApi.createJob.mockReturnValueOnce(createPromise as any);
 
       const { result } = renderHook(() => useYouTubePublish());
 
-      // Start publish
       let publishPromise: any;
       await act(async () => {
-        publishPromise = result.current.publishNow(mockFiles, ['ch1'], {
+        publishPromise = result.current.publishNow(mockFiles, ['extdst_01jabc123'], {
           title: 'Test',
           description: '',
           tags: '',
           visibility: 'private',
         });
-        // Let async flow advance to uploadFromPath
         await new Promise(resolve => setTimeout(resolve, 50));
       });
-      
-      // Check isPublishing
+
       expect(result.current.isPublishing).toBe(true);
 
-      // Resolve the upload
       await act(async () => {
-        resolveUpload!({ ok: true, result: {} as any });
+        resolveCreate!({ id: 'job_789', renderStatus: 'PENDING' });
         await flushPromises();
       });
 
       await publishPromise;
-      
-      // Check isPublishing is false after completion
+
       expect(result.current.isPublishing).toBe(false);
     });
   });
