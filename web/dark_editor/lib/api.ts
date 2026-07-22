@@ -2,16 +2,72 @@
 // All endpoints point to Go backend at /dark_editor_v2
 // Single source of truth: Go backend owns all APIs
 
-// Use relative path - Go backend is the single owner of APIs
-// Browser will call directly to Go backend (port 8000) or through gateway
 const API_BASE = '/dark_editor_v2';
+const FOLDERS_API_BASE = `${API_BASE}/api/folders`;
+
+function buildUrl(path: string): string {
+  if (path.startsWith('http')) return path;
+  return path.startsWith(API_BASE) ? path : `${API_BASE}${path}`;
+}
+
+async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(buildUrl(path), options);
+
+  if (!response.ok) {
+    let message = 'Request failed';
+    try {
+      const data = await response.json();
+      message = data.error || message;
+    } catch {
+      message = response.statusText || message;
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+async function apiGet<T>(path: string, options?: RequestInit): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'GET' });
+}
+
+async function apiPost<T>(path: string, body?: unknown, options?: RequestInit): Promise<T> {
+  return apiRequest<T>(path, {
+    ...options,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+async function apiPut<T>(path: string, body?: unknown, options?: RequestInit): Promise<T> {
+  return apiRequest<T>(path, {
+    ...options,
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
+
+async function apiDelete<T>(path: string, options?: RequestInit): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'DELETE' });
+}
+
+async function apiUpload<T>(path: string, formData: FormData, options?: RequestInit): Promise<T> {
+  return apiRequest<T>(path, { ...options, method: 'POST', body: formData });
+}
 
 // Request Manager to handle AbortControllers for concurrent requests
 class RequestManager {
   private controllers = new Map<string, AbortController>();
 
   getSignal(key: string): AbortSignal {
-    // Abort previous request of the same type if it exists
     if (this.controllers.has(key)) {
       this.controllers.get(key)!.abort();
     }
@@ -122,165 +178,54 @@ export interface Project {
   folder_id?: string | null;
 }
 
-// Upload an image
 export async function uploadImage(file: File): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
-  
-  const response = await fetch(`${API_BASE}/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Upload failed');
-  }
-  
-  return response.json();
+  return apiUpload<UploadResponse>('/upload', formData);
 }
 
-// Apply a filter to an image
 export async function applyFilter(request: FilterRequest): Promise<FilterResponse> {
-  const response = await fetch(`${API_BASE}/process/filter`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Filter failed');
-  }
-  
-  return response.json();
+  return apiPost<FilterResponse>('/process/filter', request);
 }
 
-// Transform an image (crop/resize)
 export async function transformImage(request: TransformRequest): Promise<FilterResponse> {
-  const response = await fetch(`${API_BASE}/process/transform`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Transform failed');
-  }
-  
-  return response.json();
+  return apiPost<FilterResponse>('/process/transform', request);
 }
 
-// Export an image
 export async function exportImage(request: ExportRequest): Promise<{ url: string; filename: string }> {
-  const response = await fetch(`${API_BASE}/export`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Export failed');
-  }
-  
-  return response.json();
+  return apiPost<{ url: string; filename: string }>('/export', request);
 }
 
-// Generate an image using AI
 export async function generateImage(request: GenerateRequest): Promise<GenerateResponse> {
-  const response = await fetch(`${API_BASE}/generate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Generation failed');
-  }
-  
-  return response.json();
+  return apiPost<GenerateResponse>('/generate', request);
 }
 
 export async function upscaleImage(request: UpscaleRequest): Promise<UpscaleResponse> {
-  const response = await fetch(`${API_BASE}/api/upscale`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Upscale failed');
-  }
-  
-  return response.json();
+  return apiPost<UpscaleResponse>('/api/upscale', request);
 }
 
-// Remove background
 export async function removeBackground(request: RemoveBgRequest): Promise<RemoveBgResponse> {
   const signal = requestManager.getSignal(`remove-bg-${request.filename}`);
-  
-  const response = await fetch(`${API_BASE}/api/remove-bg`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-    signal,
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Background removal failed');
+  try {
+    return await apiPost<RemoveBgResponse>('/api/remove-bg', request, { signal });
+  } finally {
+    requestManager.clear(`remove-bg-${request.filename}`);
   }
-  
-  const result = await response.json();
-  requestManager.clear(`remove-bg-${request.filename}`);
-  return result;
 }
 
-// Get background removal status
 export async function getBackgroundRemovalStatus(taskId: string): Promise<RemoveBgStatusResponse> {
-  const response = await fetch(`${API_BASE}/api/remove-bg/status/${taskId}`);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get background removal status');
-  }
-  
-  return response.json();
+  return apiGet<RemoveBgStatusResponse>(`/api/remove-bg/status/${taskId}`);
 }
 
-// List projects
 export async function listProjects(type?: string): Promise<Project[]> {
-  const url = type 
-    ? `${API_BASE}/api/projects?type=${encodeURIComponent(type)}`
-    : `${API_BASE}/api/projects`;
-  
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to list projects');
-  }
-  
-  return response.json();
+  const query = type ? `?type=${encodeURIComponent(type)}` : '';
+  return apiGet<Project[]>(`/api/projects${query}`);
 }
 
-// Get a project
 export async function getProject(id: string): Promise<Project> {
-  const response = await fetch(`${API_BASE}/api/projects/${id}`);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get project');
-  }
-  
-  return response.json();
+  return apiGet<Project>(`/api/projects/${id}`);
 }
 
-// Save a project
 export async function saveProject(project: {
   id?: string;
   name: string;
@@ -288,47 +233,20 @@ export async function saveProject(project: {
   canvas_json: Record<string, unknown>;
   preview_filename?: string;
 }): Promise<{ id: string; message: string }> {
-  const response = await fetch(`${API_BASE}/api/projects`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(project),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to save project');
-  }
-  
-  return response.json();
+  return apiPost<{ id: string; message: string }>('/api/projects', project);
 }
 
-// Delete a project
 export async function deleteProject(id: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/projects/${id}`, {
-    method: 'DELETE',
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete project');
-  }
-  
-  return response.json();
+  return apiDelete<{ success: boolean }>(`/api/projects/${id}`);
 }
 
-// Get temp file URL
 export function getTempFileUrl(filename: string): string {
   return `${API_BASE}/temp/${filename}`;
 }
 
-// Get project file URL
 export function getProjectFileUrl(projectId: string, filename: string): string {
   return `${API_BASE}/projects/${projectId}/${filename}`;
 }
-
-// =====================
-// PRESET MANAGEMENT
-// =====================
 
 export interface Preset {
   id: string;
@@ -342,31 +260,14 @@ export interface Preset {
   updatedAt: string;
 }
 
-// List presets
 export async function listPresets(): Promise<Preset[]> {
-  const response = await fetch(`${API_BASE}/api/presets`);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to list presets');
-  }
-  
-  return response.json();
+  return apiGet<Preset[]>('/api/presets');
 }
 
-// Get a preset
 export async function getPreset(id: string): Promise<Preset> {
-  const response = await fetch(`${API_BASE}/api/presets/${id}`);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get preset');
-  }
-  
-  return response.json();
+  return apiGet<Preset>(`/api/presets/${id}`);
 }
 
-// Save a preset
 export async function savePreset(preset: {
   name: string;
   type: 'complete' | 'text';
@@ -374,21 +275,9 @@ export async function savePreset(preset: {
   objects?: Record<string, unknown>[];
   textObjects?: Record<string, unknown>[];
 }): Promise<{ id: string; message: string }> {
-  const response = await fetch(`${API_BASE}/api/presets`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(preset),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to save preset');
-  }
-  
-  return response.json();
+  return apiPost<{ id: string; message: string }>('/api/presets', preset);
 }
 
-// Update a preset
 export async function updatePreset(id: string, preset: {
   name?: string;
   type?: 'complete' | 'text';
@@ -396,37 +285,12 @@ export async function updatePreset(id: string, preset: {
   objects?: Record<string, unknown>[];
   textObjects?: Record<string, unknown>[];
 }): Promise<Preset> {
-  const response = await fetch(`${API_BASE}/api/presets/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(preset),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update preset');
-  }
-  
-  return response.json();
+  return apiPut<Preset>(`/api/presets/${id}`, preset);
 }
 
-// Delete a preset
 export async function deletePreset(id: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/presets/${id}`, {
-    method: 'DELETE',
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete preset');
-  }
-  
-  return response.json();
+  return apiDelete<{ success: boolean }>(`/api/presets/${id}`);
 }
-
-// =====================
-// FOLDER MANAGEMENT
-// =====================
 
 export interface ProjectFolder {
   id: string;
@@ -435,94 +299,31 @@ export interface ProjectFolder {
   created_at?: string;
 }
 
-// Folder CRUD is exposed by the dark editor app under its Next.js basePath.
-// These calls must include the basePath, otherwise the browser resolves them
-// against `/api/*` and receives an HTML page instead of JSON.
-const FOLDERS_API_BASE = `${API_BASE}/api/folders`;
-
-// List folders
 export async function listFolders(): Promise<ProjectFolder[]> {
-  const response = await fetch(FOLDERS_API_BASE, { cache: 'no-store' });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to list folders');
-  }
-  
-  return response.json();
+  return apiGet<ProjectFolder[]>(FOLDERS_API_BASE, { cache: 'no-store' });
 }
 
-// Create folder
 export async function createFolder(folder: {
   name: string;
   parent_id?: string | null;
 }): Promise<ProjectFolder> {
-  const response = await fetch(FOLDERS_API_BASE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(folder),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create folder');
-  }
-  
-  return response.json();
+  return apiPost<ProjectFolder>(FOLDERS_API_BASE, folder);
 }
 
-// Update folder
 export async function updateFolder(id: string, folder: {
   name?: string;
   parent_id?: string | null;
 }): Promise<ProjectFolder> {
-  const response = await fetch(`${FOLDERS_API_BASE}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(folder),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to update folder');
-  }
-  
-  return response.json();
+  return apiPut<ProjectFolder>(`${FOLDERS_API_BASE}/${id}`, folder);
 }
 
-// Delete folder
 export async function deleteFolder(id: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${FOLDERS_API_BASE}/${id}`, {
-    method: 'DELETE',
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete folder');
-  }
-  
-  return response.json();
+  return apiDelete<{ success: boolean }>(`${FOLDERS_API_BASE}/${id}`);
 }
 
-// Assign project to folder
 export async function assignProjectToFolder(projectId: string, folderId: string | null): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/projects/${projectId}/folder`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ folder_id: folderId }),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to assign project to folder');
-  }
-  
-  return response.json();
+  return apiPut<{ success: boolean }>(`/api/projects/${projectId}/folder`, { folder_id: folderId });
 }
-
-// =====================
-// DRIVE INTEGRATION
-// =====================
 
 export interface DriveGroup {
   name: string;
@@ -545,91 +346,33 @@ export interface DriveFile {
   size?: number;
 }
 
-// Get Drive groups (channel groups)
 export async function getDriveGroups(): Promise<DriveGroup[]> {
-  const response = await fetch(`${API_BASE}/api/drive/groups`);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get Drive groups');
-  }
-  
-  const data = await response.json();
+  const data = await apiGet<{ groups: DriveGroup[] }>('/api/drive/groups');
   return data.groups || [];
 }
 
-// Get Drive files in a folder
 export async function getDriveFiles(folderId?: string): Promise<DriveFile[]> {
-  const url = folderId 
-    ? `${API_BASE}/api/drive/files?folder_id=${encodeURIComponent(folderId)}`
-    : `${API_BASE}/api/drive/files`;
-  
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get Drive files');
-  }
-  
-  const data = await response.json();
+  const query = folderId ? `?folder_id=${encodeURIComponent(folderId)}` : '';
+  const data = await apiGet<{ files: DriveFile[] }>(`/api/drive/files${query}`);
   return data.files || [];
 }
 
-// Upload to Drive
 export async function uploadToDrive(file: File, folderId?: string): Promise<{ success: boolean; file_id?: string; web_view_link?: string }> {
   const formData = new FormData();
   formData.append('file', file);
   if (folderId) formData.append('folder_id', folderId);
-  
-  const response = await fetch(`${API_BASE}/api/drive/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to upload to Drive');
-  }
-  
-  return response.json();
+  return apiUpload<{ success: boolean; file_id?: string; web_view_link?: string }>('/api/drive/upload', formData);
 }
 
-// Create folder on Drive
 export async function createDriveFolder(name: string, parentId?: string): Promise<{ id: string; name: string; webViewLink?: string }> {
-  const response = await fetch(`${API_BASE}/api/drive/folders`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, parent_id: parentId }),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to create Drive folder');
-  }
-  
-  return response.json();
+  return apiPost<{ id: string; name: string; webViewLink?: string }>('/api/drive/folders', { name, parent_id: parentId });
 }
 
-// List Drive folders (subfolders of a parent folder)
 export async function listDriveFolders(parentId?: string): Promise<Array<{ id: string; name: string }>> {
-  const url = parentId 
-    ? `${API_BASE}/api/drive/folders?parent_id=${encodeURIComponent(parentId)}`
-    : `${API_BASE}/api/drive/folders`;
-  
-  const response = await fetch(url);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to list Drive folders');
-  }
-  
-  const data = await response.json();
+  const query = parentId ? `?parent_id=${encodeURIComponent(parentId)}` : '';
+  const data = await apiGet<{ folders: Array<{ id: string; name: string }> }>(`/api/drive/folders${query}`);
   return data.folders || [];
 }
-
-// =====================
-// DRIVE LINKS (Copertine)
-// =====================
 
 export interface DriveLink {
   id: string;
@@ -641,65 +384,46 @@ export interface DriveLink {
   updatedAt?: number;
 }
 
-// Get Drive links from drive_links.json
 export async function getDriveLinks(): Promise<DriveLink[]> {
-  const response = await fetch(`${API_BASE}/api/drive/links`);
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get Drive links');
-  }
-  
-  const data = await response.json();
+  const data = await apiGet<{ links: DriveLink[] }>('/api/drive/links');
   return data.links || [];
 }
 
-// Get Drive links organized by category (Copertine, Clips, etc.)
+const DRIVE_LINK_PARENT_NAMES: Record<string, string> = {
+  '1wt4hqmHD5qEsNhpUUBszlRkSHhyFgtGh': 'Stock Master',
+  '1ID_oFJF15Q5nmiZF0d2NaJeKhsOJpQNS': 'Clips',
+  '1wFhLmyyIH5rKSbtQuCuua9a2LKQymA8A': 'Voiceover',
+  '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ': 'Copertine',
+  'folder-1772027317539': 'Video',
+};
+
+const COPERTINE_PARENT_ID = '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ';
+
 export async function getDriveLinksByCategory(): Promise<Record<string, DriveLink[]>> {
   const links = await getDriveLinks();
-  
-  // Group by parent folder name
   const categories: Record<string, DriveLink[]> = {};
-  
-  // Known parent folders
-  const parentNames: Record<string, string> = {
-    '1wt4hqmHD5qEsNhpUUBszlRkSHhyFgtGh': 'Stock Master',
-    '1ID_oFJF15Q5nmiZF0d2NaJeKhsOJpQNS': 'Clips',
-    '1wFhLmyyIH5rKSbtQuCuua9a2LKQymA8A': 'Voiceover',
-    '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ': 'Copertine',
-    'folder-1772027317539': 'Video',
-  };
-  
+
   for (const link of links) {
     if (link.parentId) {
-      const categoryName = parentNames[link.parentId] || link.parentId;
-      if (!categories[categoryName]) {
-        categories[categoryName] = [];
-      }
+      const categoryName = DRIVE_LINK_PARENT_NAMES[link.parentId] || link.parentId;
+      categories[categoryName] = categories[categoryName] || [];
       categories[categoryName].push(link);
     } else {
-      // Root level folder
-      if (!categories['Root']) {
-        categories['Root'] = [];
-      }
+      categories['Root'] = categories['Root'] || [];
       categories['Root'].push(link);
     }
   }
-  
+
   return categories;
 }
 
-// Get Copertine folders (for thumbnail exports)
 export async function getCopertineFolders(): Promise<DriveLink[]> {
   const links = await getDriveLinks();
-  
-  // Find folders under "Copertine" parent
-  const copertineParentId = '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ';
-  
-  return links.filter(link => 
-    link.parentId === copertineParentId || 
-    link.name.toLowerCase().includes('copertin') ||
-    link.id === copertineParentId
+
+  return links.filter(
+    (link) =>
+      link.parentId === COPERTINE_PARENT_ID ||
+      link.name.toLowerCase().includes('copertin') ||
+      link.id === COPERTINE_PARENT_ID
   );
 }
-
