@@ -6,7 +6,6 @@
  * - modals/   : Reusable modal dialogs
  * - titles/   : Title management components
  * - config/   : Configuration/selector components
- * - youtube/  : YouTube metadata and preview components
  * - hooks/    : Custom React hooks
  * - data/     : Static data and constants
  * - editor/   : Script editor (ScriptCanvas, Toolbar)
@@ -47,10 +46,6 @@ export { AssetConfig } from './config/AssetConfig';
 export { ChannelLanguageSelector } from './config/ChannelLanguageSelector';
 export { LanguageSelectors } from './config/LanguageSelectors';
 export { StyleGroupSelector } from './config/StyleGroupSelector';
-
-// YouTube
-export { YouTubeMetaSection } from './youtube/YouTubeMetaSection';
-export { YouTubePreviewCards } from './youtube/YouTubePreviewCards';
 
 // Hooks
 export { useScriptGenerator } from './hooks/useScriptGenerator';

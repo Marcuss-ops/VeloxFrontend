@@ -90,7 +90,7 @@ export const driveApi = {
 
   /** Stage a Drive file for upload by downloading to server temp path */
   stageDownload: async (fileId: string, destPath?: string): Promise<string> => {
-    const safeName = destPath || `/tmp/velox_youtube_uploads/${Date.now()}_${fileId}`;
+    const safeName = destPath || `/tmp/velox_uploads/${Date.now()}_${fileId}`;
     // This endpoint returns success/failure, uses fetchJSON for error handling
     await fetchJSON<{ success: boolean; path: string }>(`/api/drive/download/${encodeURIComponent(fileId)}?dest=${encodeURIComponent(safeName)}`);
     return safeName;
@@ -106,9 +106,6 @@ export const driveApi = {
 
 
 export const driveApiExtended = {
-  /** Get drive groups */
-  groups: () => fetchJSON('/api/youtube/manager/groups'),
-
   /** Read txt file content */
   readTxt: (fileId: string) =>
     fetchJSON<{ content: string }>('/api/drive/read-txt', {

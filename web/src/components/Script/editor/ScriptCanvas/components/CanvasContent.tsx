@@ -5,7 +5,6 @@ import { LanguageSelectors } from '../../../config/LanguageSelectors';
 import { AssetConfig } from '../../../config/AssetConfig';
 import { AssetManagementHub } from '../../../AssetManagementHub';
 import { AIPromptSection } from '../../../config/AIPromptSection';
-import { YouTubePreviewCards } from '../../../youtube/YouTubePreviewCards';
 import { DrivePickerModal } from '../../../modals/DrivePickerModal';
 import { RemoteStatusPanel } from '../../../RemoteStatusPanel';
 import { GenerationProgress } from '../../../GenerationProgress';
@@ -268,22 +267,6 @@ export const CanvasContent: React.FC<CanvasContentProps> = ({
                     onStyleChange={(val) => onProjectUpdate({ aiPromptStyle: val })}
                 />
             )}
-
-            {/* PREVIEW CARDS */}
-            <YouTubePreviewCards
-                titles={project.titles}
-                group={project.youtubeGroup}
-                voiceoverLangs={project.voiceoverLangs}
-                channelByLang={project.youtubeChannelByLang || {}}
-                onChannelChange={(lang, channelKey) => {
-                    onProjectUpdate({
-                        youtubeChannelByLang: {
-                            ...(project.youtubeChannelByLang || {}),
-                            [lang]: channelKey,
-                        },
-                    });
-                }}
-            />
 
             {/* DRIVE PICKER MODAL */}
             <DrivePickerModal

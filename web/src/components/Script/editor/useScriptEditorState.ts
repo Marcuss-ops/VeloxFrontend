@@ -66,8 +66,6 @@ export const useScriptEditorState = () => {
     const [selectionHistory, setSelectionHistory] = useState<SelectionSnapshot[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     
-    const driveGroupsRef = useRef<any[] | null>(null);
-
     const project = projects[currentIndex] || createDefaultVideoProject();
     const canUndoCurrentProject = selectionHistory.some((s) => s.projectIndex === currentIndex);
 
@@ -140,17 +138,10 @@ export const useScriptEditorState = () => {
     }, [currentIndex]);
 
     // Fetch dei gruppi Drive
+    // NOTE: the legacy /api/youtube/manager/groups endpoint has been removed;
+    // Drive folder resolution now falls back to the generic Drive API.
     const fetchDriveGroups = useCallback(async () => {
-        if (driveGroupsRef.current) return driveGroupsRef.current;
-        try {
-            const data = await driveApiExtended.groups() as { ok?: boolean; groups?: DriveGroupEntry[] };
-            if (!data?.ok || !Array.isArray(data.groups)) return null;
-            driveGroupsRef.current = data.groups;
-            return data.groups;
-        } catch (e) {
-            console.warn('[SCRIPT] fetchDriveGroups failed', e);
-            return null;
-        }
+        return null;
     }, []);
 
     // Trova un gruppo Drive per nome
