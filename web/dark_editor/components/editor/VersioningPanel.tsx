@@ -33,6 +33,15 @@ export default function VersioningPanel() {
   
   const projectId = currentProject?.id || 'default';
   const projectVersions = useVersioningStore((state) => state.getVersionsForProject(projectId));
+
+  // O(1) lookup map to avoid repeated .find() when resolving versions
+  const versionsById = React.useMemo(() => {
+    const map: Record<string, Version> = {};
+    for (const v of projectVersions) {
+      map[v.id] = v;
+    }
+    return map;
+  }, [projectVersions]);
   
   // Auto-save effect
   useEffect(() => {
@@ -57,7 +66,7 @@ export default function VersioningPanel() {
   };
   
   const handleLoadVersion = (versionId: string) => {
-    const version = projectVersions.find(v => v.id === versionId);
+    const version = versionsById[versionId];
     if (version) {
       // This would trigger loading in the editor store
       // For now, we'll just show a toast

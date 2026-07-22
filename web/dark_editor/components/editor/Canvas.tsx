@@ -103,10 +103,11 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     transformerRef.current.getLayer()?.batchDraw();
   }, [selectedIds, cropEditingId]);
 
-  const cropTarget = React.useMemo(() => {
+  const cropTarget = useEditorStore((state) => {
     if (!cropEditingId) return null;
-    return objects.find((obj) => obj.id === cropEditingId && obj.type === 'image') ?? null;
-  }, [cropEditingId, objects]);
+    const obj = state.objects[cropEditingId];
+    return obj?.type === 'image' ? obj : null;
+  });
 
   // Initialize crop selection to cover 100% of the image size (maintaining aspect ratio)
   useEffect(() => {
@@ -322,12 +323,12 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
 
   const handleTextDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>, id: string) => {
     e.cancelBubble = true;
-    const obj = objects.find((o) => o.id === id);
+    const obj = useEditorStore.getState().objects[id];
     if (obj && obj.type === 'text') {
       setEditingId(id);
       selectObject(id);
     }
-  }, [objects, selectObject, setEditingId]);
+  }, [selectObject, setEditingId]);
 
   const commitCrop = useCallback(() => {
     if (!cropTarget || !cropDraft) return;
@@ -388,75 +389,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cropEditingId, cropEditingMode, commitCrop, commitLassoCrop, discardCrop]);
 
-  const renderObject = (obj: CanvasObject) => {
-    const isSelected = selectedIdSet.has(obj.id);
-    const isEditing = editingId === obj.id;
-    const isCropTarget = cropEditingId === obj.id && obj.type === 'image' && cropDraft;
-    
-    // Hide standard transformer bounding box controls when image crop editing is active
-    const isTransformable = isSelected && !isEditing && !isCropTarget && !obj.locked;
 
-    const commonProps = {
-      id: obj.id,
-      x: obj.x,
-      y: obj.y,
-      rotation: obj.rotation,
-      scaleX: obj.scaleX,
-      scaleY: obj.scaleY,
-      opacity: obj.opacity,
-      visible: obj.visible,
-      draggable: !obj.locked && activeTool !== 'pan' && !isPanning && !(cropEditingId === obj.id && obj.type === 'image'),
-      listening: !(cropEditingId === obj.id && obj.type === 'image'),
-      onClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
-        if (activeTool === 'pan' || isPanning) return;
-        e.cancelBubble = true;
-        
-        // Multi-select with Shift
-        const isShift = e.evt.shiftKey;
-        selectObject(obj.id, isShift);
-      },
-      onDragStart: () => {
-        // Clear selection or perform actions on drag start
-      },
-      onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
-        const node = e.target;
-        updateObject(obj.id, {
-          x: Math.round(node.x()),
-          y: Math.round(node.y()),
-        });
-      },
-      onTransformEnd: () => {
-        const node = stageRef.current?.findOne(`#${obj.id}`);
-        if (!node) return;
-        
-        updateObject(obj.id, {
-          x: Math.round(node.x()),
-          y: Math.round(node.y()),
-          scaleX: node.scaleX(),
-          scaleY: node.scaleY(),
-          rotation: Math.round(node.rotation()),
-        });
-      },
-    };
-
-    const shadowProps = obj.dropShadow ? {
-      shadowColor: obj.dropShadow.color,
-      shadowBlur: obj.dropShadow.blur,
-      shadowOffset: { x: obj.dropShadow.offsetX, y: obj.dropShadow.offsetY },
-      shadowOpacity: 0.5,
-    } : {};
-    
-    return (
-      <ObjectRenderer
-        key={obj.id}
-        obj={obj}
-        commonProps={commonProps}
-        shadowProps={shadowProps}
-        editingId={editingId}
-        handleTextDblClick={handleTextDblClick}
-      />
-    );
-  };
 
   return (
     <div className="canvas-container w-full h-full overflow-hidden">
@@ -508,7 +441,21 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
             <Rect key={`ghline-${i}`} x={0} y={y} width={canvasWidth} height={1} fill="rgba(59,130,246,0.8)" listening={false} />
           ))}
           
-          {objects.map(renderObject)}
+          {objects.map((obj) => (
+            <CanvasObjectNode
+              key={obj.id}
+              obj={obj}
+              isSelected={selectedIdSet.has(obj.id)}
+              isEditing={editingId === obj.id}
+              isCropEditingObject={cropEditingId === obj.id && obj.type === 'image'}
+              activeTool={activeTool}
+              isPanning={isPanning}
+              handleTextDblClick={handleTextDblClick}
+              selectObject={selectObject}
+              updateObject={updateObject}
+              stageRef={stageRef}
+            />
+          ))}
           {cropTarget && cropDraft && cropEditingMode !== 'free' && (
             <CropSelectionOverlay
               target={cropTarget}
@@ -595,5 +542,97 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
 });
 
 Canvas.displayName = 'Canvas';
+
+interface CanvasObjectNodeProps {
+  obj: CanvasObject;
+  isSelected: boolean;
+  isEditing: boolean;
+  isCropEditingObject: boolean;
+  activeTool: string;
+  isPanning: boolean;
+  handleTextDblClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
+  selectObject: (id: string | null, addToSelection?: boolean) => void;
+  updateObject: (id: string, updates: Partial<CanvasObject>) => void;
+  stageRef: React.RefObject<Konva.Stage | null>;
+}
+
+const CanvasObjectNode = React.memo(function CanvasObjectNode({
+  obj,
+  isEditing,
+  isCropEditingObject,
+  activeTool,
+  isPanning,
+  handleTextDblClick,
+  selectObject,
+  updateObject,
+  stageRef,
+}: CanvasObjectNodeProps) {
+  const commonProps = useMemo(
+    () => ({
+      id: obj.id,
+      x: obj.x,
+      y: obj.y,
+      rotation: obj.rotation,
+      scaleX: obj.scaleX,
+      scaleY: obj.scaleY,
+      opacity: obj.opacity,
+      visible: obj.visible,
+      draggable: !obj.locked && activeTool !== 'pan' && !isPanning && !isCropEditingObject,
+      listening: !isCropEditingObject,
+      onClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
+        if (activeTool === 'pan' || isPanning) return;
+        e.cancelBubble = true;
+        selectObject(obj.id, e.evt.shiftKey);
+      },
+      onDragStart: () => {
+        // Clear selection or perform actions on drag start
+      },
+      onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
+        const node = e.target;
+        updateObject(obj.id, {
+          x: Math.round(node.x()),
+          y: Math.round(node.y()),
+        });
+      },
+      onTransformEnd: () => {
+        const node = stageRef.current?.findOne(`#${obj.id}`);
+        if (!node) return;
+
+        updateObject(obj.id, {
+          x: Math.round(node.x()),
+          y: Math.round(node.y()),
+          scaleX: node.scaleX(),
+          scaleY: node.scaleY(),
+          rotation: Math.round(node.rotation()),
+        });
+      },
+    }),
+    [obj, activeTool, isPanning, isCropEditingObject, selectObject, updateObject, stageRef]
+  );
+
+  const shadowProps = useMemo(
+    () =>
+      obj.dropShadow
+        ? {
+            shadowColor: obj.dropShadow.color,
+            shadowBlur: obj.dropShadow.blur,
+            shadowOffset: { x: obj.dropShadow.offsetX, y: obj.dropShadow.offsetY },
+            shadowOpacity: 0.5,
+          }
+        : {},
+    [obj.dropShadow]
+  );
+
+  return (
+    <ObjectRenderer
+      key={obj.id}
+      obj={obj}
+      commonProps={commonProps}
+      shadowProps={shadowProps}
+      editingId={isEditing ? obj.id : null}
+      handleTextDblClick={handleTextDblClick}
+    />
+  );
+});
 
 export default Canvas;

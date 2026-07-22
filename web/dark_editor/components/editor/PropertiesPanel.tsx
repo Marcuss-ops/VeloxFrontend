@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
-import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { uploadImage } from '@/lib/api';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
 import { Settings, Lock, Sparkles, Type, Move, Scaling, Palette, Image as ImageIcon, Upload, X } from 'lucide-react';
@@ -29,10 +28,9 @@ const FONT_WEIGHTS = [
 
 export default function PropertiesPanel() {
   const { selectedIds, updateObject } = useEditorStore();
-  const objects = useObjectsArray();
-  const selectedObject = selectedIds.length === 1
-    ? objects.find((obj) => obj.id === selectedIds[0])
-    : null;
+  const selectedObject = useEditorStore((state) =>
+    state.selectedIds.length === 1 ? state.objects[state.selectedIds[0]] : null
+  );
 
   const { updateObjectLive, saveToHistory } = useEditorStore();
 
