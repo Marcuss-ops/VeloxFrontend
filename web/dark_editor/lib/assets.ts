@@ -17,7 +17,6 @@ export const ASSETS: Asset[] = [
   { id: 'shape-triangle', name: 'Triangle', type: 'shape', category: 'shapes' },
   
   // Social
-  { id: 'social-yt', name: 'YouTube Icon', type: 'image', src: '/assets/social/youtube.png', category: 'social' },
   { id: 'social-ig', name: 'Instagram Icon', type: 'image', src: '/assets/social/instagram.png', category: 'social' },
   
   // Effects

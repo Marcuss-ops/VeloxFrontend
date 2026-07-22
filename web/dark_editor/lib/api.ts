@@ -667,7 +667,7 @@ export async function getDriveLinksByCategory(): Promise<Record<string, DriveLin
     '1ID_oFJF15Q5nmiZF0d2NaJeKhsOJpQNS': 'Clips',
     '1wFhLmyyIH5rKSbtQuCuua9a2LKQymA8A': 'Voiceover',
     '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ': 'Copertine',
-    'folder-1772027317539': 'VideoYoutube',
+    'folder-1772027317539': 'Video',
   };
   
   for (const link of links) {

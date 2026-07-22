@@ -95,7 +95,7 @@ export const useTemplateStore = create<TemplateStore>()(
         },
         {
           id: 'thumbnail-template',
-          name: 'YouTube Thumbnail',
+          name: 'Video Thumbnail',
           description: 'Complete thumbnail template with placeholders',
           type: 'complete',
           objects: [
@@ -184,8 +184,8 @@ export const useTemplateStore = create<TemplateStore>()(
           ],
           createdAt: Date.now(),
           updatedAt: Date.now(),
-          category: 'YouTube',
-          tags: ['thumbnail', 'youtube', 'complete', 'dynamic'],
+          category: 'Video',
+          tags: ['thumbnail', 'complete', 'dynamic'],
         },
         {
           id: 'telegiornale-template',
@@ -480,7 +480,7 @@ export const useTemplateStore = create<TemplateStore>()(
         },
         {
           id: 'gaming-template',
-          name: 'Template Gaming Youtube',
+          name: 'Template Gaming',
           description: 'High energy layout for gameplay videos and live streams',
           type: 'complete',
           objects: [

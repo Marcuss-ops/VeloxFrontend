@@ -6,8 +6,8 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import { fontVariables } from '@/lib/fonts';
 
 export const metadata: Metadata = {
-  title: 'YouTube Dashboard — Velox',
-  description: 'Gestione gruppi YouTube e video del gruppo selezionato.',
+  title: 'Dark Editor — Velox',
+  description: 'Image editing, templates and social-agnostic asset creation.',
 };
 
 export default function RootLayout({

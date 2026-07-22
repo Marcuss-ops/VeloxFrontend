@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const VERSION_LABEL = "Velox YouTube Dashboard";
+const VERSION_LABEL = "Velox Dark Editor";
 
 export default function VersionLogger() {
   useEffect(() => {

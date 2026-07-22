@@ -23,9 +23,17 @@ export type { Project, CreateProjectRequest } from './projectsApi';
 export { deliveriesApi } from './deliveriesApi';
 export type { Delivery } from './deliveriesApi';
 
-// Legacy Bridge for backward compatibility with old JS modules
-export { legacyApiAdapter, LoadingManager, normalizeError, showToast, setToastHandler } from './legacyBridge';
-export { VeloxAPIProvider, useVeloxAPI } from './VeloxAPIProvider';
+// Legacy Bridge typed React adapter
+export {
+  LoadingManager,
+  normalizeError,
+  LegacyApiProvider,
+  useLegacyApi,
+  useLegacyLoadingState,
+  useLegacyToast,
+  useVeloxAPI,
+  VeloxAPIProvider,
+} from './legacyBridge';
 export type {
   ApiResponse,
   JobPayload,
@@ -36,8 +44,12 @@ export type {
   NormalizedError,
   ToastType,
   ToastOptions,
-  LegacyApiAdapter
+  ToastHandler,
+  LegacyApiAdapter,
+  LegacyApiProviderProps,
+  LegacyApiContextValue,
 } from './legacyBridge';
+export { VeloxAPIProvider, useVeloxAPI } from './VeloxAPIProvider';
 
 export { jobsApi } from './jobsApi';
 export type { Job, JobsResponse, JobStatus } from './jobsApi';

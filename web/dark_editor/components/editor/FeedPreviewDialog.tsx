@@ -79,8 +79,8 @@ export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialog
               <Eye className="w-5 h-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold text-white tracking-tight">YouTube Feed Simulator</DialogTitle>
-              <p className="text-xs text-slate-400">Preview how your thumbnail matches YouTube&apos;s context</p>
+              <DialogTitle className="text-xl font-bold text-white tracking-tight">Social Feed Preview</DialogTitle>
+              <p className="text-xs text-slate-400">Preview how your thumbnail looks in a social feed</p>
             </div>
           </div>
 
@@ -118,13 +118,13 @@ export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialog
           <div className="flex-1 bg-[#0f0f0f] overflow-y-auto p-6 flex items-start justify-center custom-scrollbar">
             
             {deviceMode === 'desktop' ? (
-              /* Youtube Desktop Feed */
+              /* Desktop Feed */
               <div className="w-full max-w-[1000px] text-white">
-                {/* Simulated YouTube Search Bar */}
+                {/* Simulated Search Bar */}
                 <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-800/60 opacity-60">
                   <div className="flex items-center gap-2">
-                    <span className="text-red-600 font-bold tracking-tighter text-xl flex items-center gap-1">
-                      <Play className="w-6 h-6 fill-red-600" /> YouTube
+                    <span className="text-slate-200 font-bold tracking-tighter text-xl flex items-center gap-1">
+                      <Play className="w-6 h-6 fill-slate-200" /> Video
                     </span>
                   </div>
                   <div className="w-96 h-9 bg-[#222222] border border-[#303030] rounded-full flex items-center px-4 text-sm text-slate-400">
@@ -203,7 +203,7 @@ export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialog
                 </div>
               </div>
             ) : (
-              /* Youtube Mobile Feed Simulator */
+              /* Mobile Feed Simulator */
               <div className="w-[375px] border-[8px] border-slate-800 rounded-[40px] bg-[#0f0f0f] shadow-2xl overflow-hidden flex flex-col h-[650px] relative">
                 {/* Mobile Header Bar */}
                 <div className="h-10 bg-black/95 px-5 flex items-center justify-between text-xs text-slate-400 font-medium z-10">
@@ -214,10 +214,10 @@ export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialog
                   </div>
                 </div>
 
-                {/* Simulated Youtube App Header */}
+                {/* Simulated App Header */}
                 <div className="h-12 border-b border-slate-900 bg-[#0f0f0f] px-4 flex items-center justify-between shrink-0">
-                  <span className="text-red-600 font-black tracking-tighter text-lg flex items-center gap-0.5">
-                    <Play className="w-5 h-5 fill-red-600" /> YouTube
+                  <span className="text-slate-200 font-black tracking-tighter text-lg flex items-center gap-0.5">
+                    <Play className="w-5 h-5 fill-slate-200" /> Video
                   </span>
                   <div className="flex items-center gap-4 text-white">
                     <span className="text-[11px] font-bold bg-slate-800 px-2 py-0.5 rounded-full">Pro</span>

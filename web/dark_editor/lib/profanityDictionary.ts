@@ -1,5 +1,5 @@
 // Dictionary of common profanities and strong words in different languages
-// to ensure YouTube video title and thumbnail safety compliance.
+// to ensure text and thumbnail safety compliance.
 
 export const PROFANITY_DICTIONARY: Record<string, string[]> = {
   en: [

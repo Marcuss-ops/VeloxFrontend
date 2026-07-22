@@ -1,33 +1,25 @@
 /**
- * Legacy Bridge Compatibility Layer
- * 
- * AGENT 13B - Bridge Compatibility Layer
- * 
- * Questo modulo fornisce un adapter API unico che può essere usato sia da React
- * che dal codice legacy JS (sections/st/modules/*.js).
- * 
- * Obiettivi:
- * 1. Definire adapter API unico (client shared) usato sia da React che da legacy JS
- * 2. Introdurre contract payload minimali per tab legacy critici
- * 3. Normalizzare gestione errori/loading (evitare divergenze lato UX e parsing)
- * 
- * Usage (React/TS):
- *   import { legacyApiAdapter, useVeloxAPI } from '@/lib/api';
- *   // via context: const api = useVeloxAPI();
- *   // via import:  const api = legacyApiAdapter;
+ * Legacy Bridge React Adapter
+ *
+ * Typed React adapter that replaces the old global singleton and window.* hacks.
+ * All state lives inside a React context and is consumed via hooks.
+ *
+ * Usage:
+ *   import { LegacyApiProvider, useLegacyApi } from '@/lib/api/legacyBridge';
+ *   // Provider (wrap the app once):
+ *   <LegacyApiProvider>{...}</LegacyApiProvider>
+ *   // Consumer:
+ *   const api = useLegacyApi();
  *   const jobs = await api.jobs.list();
- *   const result = await api.jobs.retry(jobId);
  */
 
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { fetchJSON, fetchVoid, ApiError } from './core';
 
 // ============================================================================
-// PAYLOAD CONTRACTS - Tipi per tab legacy critici
+// PAYLOAD CONTRACTS
 // ============================================================================
 
-/**
- * Standard API Response wrapper
- */
 export interface ApiResponse<T = unknown> {
   ok: boolean;
   data?: T;
@@ -36,14 +28,8 @@ export interface ApiResponse<T = unknown> {
   reason?: string;
 }
 
-/**
- * Job Status enum - normalizzato tra backend e frontend
- */
 export type JobStatus = 'PENDING' | 'ASSIGNED' | 'PROCESSING' | 'COMPLETED' | 'ERROR' | 'FAILED' | 'CANCELLED';
 
-/**
- * Job payload contract - minimale per legacy tabs
- */
 export interface JobPayload {
   job_id: string;
   video_name?: string;
@@ -81,9 +67,6 @@ export interface JobPayload {
   };
 }
 
-/**
- * Jobs list response contract
- */
 export interface JobsListResponse {
   jobs: JobPayload[];
   total?: number;
@@ -91,9 +74,6 @@ export interface JobsListResponse {
   limit?: number;
 }
 
-/**
- * Worker payload contract
- */
 export interface WorkerPayload {
   worker_id: string;
   worker_name?: string;
@@ -110,9 +90,6 @@ export interface WorkerPayload {
   jobs_failed?: number;
 }
 
-/**
- * Analytics submission payload
- */
 export interface SubmissionPayload {
   job_id?: string;
   project_name?: string;
@@ -127,7 +104,7 @@ export interface SubmissionPayload {
 }
 
 // ============================================================================
-// LOADING STATE MANAGER - Normalizza stati di loading
+// LOADING STATE MANAGER
 // ============================================================================
 
 export interface LoadingState {
@@ -148,7 +125,7 @@ export class LoadingManager {
     this.state = {
       isLoading: true,
       operation,
-      startTime: Date.now()
+      startTime: Date.now(),
     };
     this.notify();
   }
@@ -171,14 +148,12 @@ export class LoadingManager {
   }
 
   private notify(): void {
-    this.listeners.forEach(listener => listener(this.getState()));
+    this.listeners.forEach((listener) => listener(this.getState()));
   }
 }
 
-const internalLoadingManager = new LoadingManager();
-
 // ============================================================================
-// ERROR NORMALIZER - Normalizza errori da backend diversi
+// ERROR NORMALIZER
 // ============================================================================
 
 export interface NormalizedError {
@@ -190,56 +165,52 @@ export interface NormalizedError {
 }
 
 export function normalizeError(error: unknown): NormalizedError {
-  // ApiError from core.ts
   if (error instanceof ApiError) {
     return {
       type: error.status >= 500 ? 'server' : error.status >= 400 ? 'client' : 'unknown',
       status: error.status,
       message: error.message,
       detail: error.statusText,
-      originalError: error
+      originalError: error,
     };
   }
 
-  // Network errors (fetch failed)
   if (error instanceof TypeError && error.message.includes('fetch')) {
     return {
       type: 'network',
       status: 0,
       message: 'Errore di connessione. Verifica la rete.',
-      originalError: error
+      originalError: error,
     };
   }
 
-  // Generic Error
   if (error instanceof Error) {
     if (error.name === 'AbortError') {
       return {
         type: 'timeout',
         status: 408,
         message: 'Richiesta scaduta (timeout)',
-        originalError: error
+        originalError: error,
       };
     }
     return {
       type: 'unknown',
       status: 0,
       message: error.message || 'Errore sconosciuto',
-      originalError: error
+      originalError: error,
     };
   }
 
-  // Fallback
   return {
     type: 'unknown',
     status: 0,
     message: 'Errore sconosciuto',
-    originalError: error
+    originalError: error,
   };
 }
 
 // ============================================================================
-// TOAST NOTIFICATION INTERFACE - Normalizza notifiche UI
+// TOAST NOTIFICATION INTERFACE
 // ============================================================================
 
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
@@ -251,200 +222,235 @@ export interface ToastOptions {
   detail?: string;
 }
 
-type ToastHandler = (options: ToastOptions) => void;
-
-let globalToastHandler: ToastHandler | null = null;
-
-export function setToastHandler(handler: ToastHandler): void {
-  globalToastHandler = handler;
-}
-
-export function showToast(message: string, type: ToastType = 'info', detail?: string): void {
-  if (globalToastHandler) {
-    globalToastHandler({ message, type, detail });
-  } else {
-    // Fallback to console
-    console.warn(`[${type.toUpperCase()}] ${message}${detail ? `: ${detail}` : ''}`);
-  }
-}
+export type ToastHandler = (options: ToastOptions) => void;
 
 // ============================================================================
-// LEGACY API ADAPTER
+// LEGACY API ADAPTER INTERFACE
 // ============================================================================
 
-/**
- * Legacy API Adapter
- * 
- * Fornisce metodi compatibili con il codice legacy ma usando
- * il client API unificato con gestione errori/loading normalizzata.
- */
-export const legacyApiAdapter = {
-  // ------------------------------------------------------------------
-  // JOBS API - Per dashboard.js (tabs: coda, esecuzione, completati, errori)
-  // ------------------------------------------------------------------
+export interface LegacyApiAdapter {
   jobs: {
-    /**
-     * Lista tutti i job (usato in tutti i tab dashboard)
-     */
-    async list(options?: { status?: JobStatus[]; limit?: number }): Promise<JobsListResponse> {
-      const params = new URLSearchParams();
-      if (options?.limit) params.set('limit', String(options.limit));
-      const query = params.toString() ? `?${params.toString()}` : '';
-      return fetchJSON<JobsListResponse>(`/api/jobs${query}`);
-    },
-
-    /**
-     * Ottieni dettaglio job
-     */
-    async get(jobId: string): Promise<JobPayload> {
-      return fetchJSON<JobPayload>(`/api/v1/jobs/${encodeURIComponent(jobId)}`);
-    },
-
-    /**
-     * Riprova job fallito
-     */
-    async retry(jobId: string): Promise<ApiResponse> {
-      return fetchJSON<ApiResponse>(`/api/v1/jobs/${encodeURIComponent(jobId)}/retry`, {
-        method: 'POST'
-      });
-    },
-
-    /**
-     * Elimina job dalla coda
-     */
-    async delete(jobId: string): Promise<void> {
-      return fetchVoid(`/api/v1/jobs/${encodeURIComponent(jobId)}`, {
-        method: 'DELETE'
-      });
-    },
-
-    /**
-     * Cleanup coda (elimina tutti i pending)
-     */
-    async cleanupQueue(): Promise<ApiResponse> {
-      return fetchJSON<ApiResponse>('/cleanup_queue', { method: 'POST' });
-    },
-
-    /**
-     * Cleanup processing (elimina tutti i job in esecuzione)
-     */
-    async cleanupProcessing(): Promise<ApiResponse> {
-      return fetchJSON<ApiResponse>('/cleanup_processing', { method: 'POST' });
-    },
-
-    /**
-     * Cleanup singolo job in processing
-     */
-    async cleanupProcessingJob(jobId: string): Promise<ApiResponse> {
-      return fetchJSON<ApiResponse>(`/cleanup_processing/${encodeURIComponent(jobId)}`, {
-        method: 'POST'
-      });
-    }
-  },
-
-  // ------------------------------------------------------------------
-  // WORKERS API - Per dashboard.js (tab: worker-logs)
-  // ------------------------------------------------------------------
+    list(options?: { status?: JobStatus[]; limit?: number }): Promise<JobsListResponse>;
+    get(jobId: string): Promise<JobPayload>;
+    retry(jobId: string): Promise<ApiResponse>;
+    delete(jobId: string): Promise<void>;
+    cleanupQueue(): Promise<ApiResponse>;
+    cleanupProcessing(): Promise<ApiResponse>;
+    cleanupProcessingJob(jobId: string): Promise<ApiResponse>;
+  };
   workers: {
-    /**
-     * Lista tutti i worker
-     */
-    async list(): Promise<WorkerPayload[]> {
-      const result = await fetchJSON<WorkerPayload[] | { workers: WorkerPayload[] }>('/api/workers');
-      // Handle both array and object response
-      return Array.isArray(result) ? result : (result as { workers: WorkerPayload[] }).workers || [];
-    },
-
-    /**
-     * Ottieni log di un worker
-     */
-    async logs(workerId: string, lines: number = 200): Promise<{ ok: boolean; logs?: string[]; error?: string }> {
-      return fetchJSON(`/api/v1/workers/${encodeURIComponent(workerId)}/logs?tail=${lines}`);
-    },
-
-    /**
-     * Ottieni stato worker
-     */
-    async status(): Promise<Record<string, WorkerPayload>> {
-      return fetchJSON('/api/v1/workers/status');
-    }
-  },
-
-  // ------------------------------------------------------------------
-  // ANALYTICS API - Per dashboard.js (tab: api)
-  // ------------------------------------------------------------------
+    list(): Promise<WorkerPayload[]>;
+    logs(workerId: string, lines?: number): Promise<{ ok: boolean; logs?: string[]; error?: string }>;
+    status(): Promise<Record<string, WorkerPayload>>;
+  };
   analytics: {
-    /**
-     * Submissions recenti (API standalone)
-     */
-    async submissions(limit: number = 200): Promise<{ items: SubmissionPayload[] }> {
-      return fetchJSON(`/api/v1/submissions?limit=${limit}`);
-    }
-  },
-
-  // ------------------------------------------------------------------
-  // UTILITY FUNCTIONS
-  // ------------------------------------------------------------------
+    submissions(limit?: number): Promise<{ items: SubmissionPayload[] }>;
+  };
   utils: {
-    /**
-     * Fetch generico con caching (compatibile con fetchJSON legacy di dashboard.js)
-     */
-    async fetchJSON<T = unknown>(url: string, _cacheMs?: number): Promise<T> {
-      // Per ora usiamo fetch diretto con caching semplice
-      // In futuro possiamo integrare con react-query o simile
-      // _cacheMs is kept for API compatibility but not yet used
-      return fetchJSON<T>(url);
-    },
-
-    /**
-     * POST generico
-     */
-    async post<T = unknown>(url: string, body: unknown): Promise<T> {
-      return fetchJSON<T>(url, {
-        method: 'POST',
-        body: JSON.stringify(body)
-      });
-    },
-
-    /**
-     * DELETE generico
-     */
-    async delete<T = unknown>(url: string): Promise<T> {
-      return fetchJSON<T>(url, { method: 'DELETE' });
-    }
-  },
-
-  // ------------------------------------------------------------------
-  // ERROR HANDLING
-  // ------------------------------------------------------------------
+    fetchJSON<T = unknown>(url: string, _cacheMs?: number): Promise<T>;
+    post<T = unknown>(url: string, body: unknown): Promise<T>;
+    delete<T = unknown>(url: string): Promise<T>;
+  };
   errors: {
-    normalize: normalizeError,
-    ApiError
-  },
-
-  // ------------------------------------------------------------------
-  // LOADING STATE
-  // ------------------------------------------------------------------
+    normalize: typeof normalizeError;
+    ApiError: typeof ApiError;
+  };
   loading: {
-    start: (operation: string) => internalLoadingManager.start(operation),
-    stop: () => internalLoadingManager.stop(),
-    getState: () => internalLoadingManager.getState(),
-    subscribe: (listener: LoadingListener) => internalLoadingManager.subscribe(listener)
-  },
-
-  // ------------------------------------------------------------------
-  // TOAST NOTIFICATIONS
-  // ------------------------------------------------------------------
+    start: (operation: string) => void;
+    stop: () => void;
+    getState: () => LoadingState;
+    subscribe: (listener: LoadingListener) => () => void;
+  };
   toast: {
-    show: showToast,
-    setHandler: setToastHandler
+    show: ToastHandler;
+  };
+}
+
+function createLegacyApiAdapter(
+  loadingManager: LoadingManager,
+  toastHandler: ToastHandler | null
+): LegacyApiAdapter {
+  const showToastOrFallback: ToastHandler = (options) => {
+    if (toastHandler) {
+      toastHandler(options);
+    } else {
+      console.warn(
+        `[${options.type.toUpperCase()}] ${options.message}${options.detail ? `: ${options.detail}` : ''}`
+      );
+    }
+  };
+
+  return {
+    jobs: {
+      async list(options?: { status?: JobStatus[]; limit?: number }): Promise<JobsListResponse> {
+        const params = new URLSearchParams();
+        if (options?.limit) params.set('limit', String(options.limit));
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return fetchJSON<JobsListResponse>(`/api/jobs${query}`);
+      },
+
+      async get(jobId: string): Promise<JobPayload> {
+        return fetchJSON<JobPayload>(`/api/v1/jobs/${encodeURIComponent(jobId)}`);
+      },
+
+      async retry(jobId: string): Promise<ApiResponse> {
+        return fetchJSON<ApiResponse>(`/api/v1/jobs/${encodeURIComponent(jobId)}/retry`, {
+          method: 'POST',
+        });
+      },
+
+      async delete(jobId: string): Promise<void> {
+        return fetchVoid(`/api/v1/jobs/${encodeURIComponent(jobId)}`, {
+          method: 'DELETE',
+        });
+      },
+
+      async cleanupQueue(): Promise<ApiResponse> {
+        return fetchJSON<ApiResponse>('/cleanup_queue', { method: 'POST' });
+      },
+
+      async cleanupProcessing(): Promise<ApiResponse> {
+        return fetchJSON<ApiResponse>('/cleanup_processing', { method: 'POST' });
+      },
+
+      async cleanupProcessingJob(jobId: string): Promise<ApiResponse> {
+        return fetchJSON<ApiResponse>(`/cleanup_processing/${encodeURIComponent(jobId)}`, {
+          method: 'POST',
+        });
+      },
+    },
+
+    workers: {
+      async list(): Promise<WorkerPayload[]> {
+        const result = await fetchJSON<WorkerPayload[] | { workers: WorkerPayload[] }>('/api/workers');
+        return Array.isArray(result) ? result : (result as { workers: WorkerPayload[] }).workers || [];
+      },
+
+      async logs(workerId: string, lines: number = 200): Promise<{ ok: boolean; logs?: string[]; error?: string }> {
+        return fetchJSON(`/api/v1/workers/${encodeURIComponent(workerId)}/logs?tail=${lines}`);
+      },
+
+      async status(): Promise<Record<string, WorkerPayload>> {
+        return fetchJSON('/api/v1/workers/status');
+      },
+    },
+
+    analytics: {
+      async submissions(limit: number = 200): Promise<{ items: SubmissionPayload[] }> {
+        return fetchJSON(`/api/v1/submissions?limit=${limit}`);
+      },
+    },
+
+    utils: {
+      async fetchJSON<T = unknown>(url: string, _cacheMs?: number): Promise<T> {
+        return fetchJSON<T>(url);
+      },
+
+      async post<T = unknown>(url: string, body: unknown): Promise<T> {
+        return fetchJSON<T>(url, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+      },
+
+      async delete<T = unknown>(url: string): Promise<T> {
+        return fetchJSON<T>(url, { method: 'DELETE' });
+      },
+    },
+
+    errors: {
+      normalize: normalizeError,
+      ApiError,
+    },
+
+    loading: {
+      start: (operation: string) => loadingManager.start(operation),
+      stop: () => loadingManager.stop(),
+      getState: () => loadingManager.getState(),
+      subscribe: (listener: LoadingListener) => loadingManager.subscribe(listener),
+    },
+
+    toast: {
+      show: showToastOrFallback,
+    },
+  };
+}
+
+// ============================================================================
+// REACT CONTEXT / PROVIDER / HOOKS
+// ============================================================================
+
+export interface LegacyApiContextValue {
+  adapter: LegacyApiAdapter;
+  loadingState: LoadingState;
+  setToastHandler: (handler: ToastHandler | null) => void;
+}
+
+const LegacyApiContext = createContext<LegacyApiContextValue | null>(null);
+
+export interface LegacyApiProviderProps {
+  children: React.ReactNode;
+}
+
+export function LegacyApiProvider({ children }: LegacyApiProviderProps): React.ReactElement {
+  const loadingManagerRef = React.useRef(new LoadingManager());
+  const [loadingState, setLoadingState] = useState<LoadingState>({ isLoading: false });
+  const [toastHandler, setToastHandler] = useState<ToastHandler | null>(null);
+
+  React.useEffect(() => {
+    const unsubscribe = loadingManagerRef.current.subscribe((state) => {
+      setLoadingState(state);
+    });
+    return unsubscribe;
+  }, []);
+
+  const adapter = useMemo(
+    () => createLegacyApiAdapter(loadingManagerRef.current, toastHandler),
+    [toastHandler]
+  );
+
+  const value: LegacyApiContextValue = useMemo(
+    () => ({
+      adapter,
+      loadingState,
+      setToastHandler,
+    }),
+    [adapter, loadingState, setToastHandler]
+  );
+
+  return <LegacyApiContext.Provider value={value}>{children}</LegacyApiContext.Provider>;
+}
+
+export function useLegacyApi(): LegacyApiAdapter {
+  const context = useContext(LegacyApiContext);
+  if (!context) {
+    throw new Error('useLegacyApi must be used within a LegacyApiProvider');
   }
-};
+  return context.adapter;
+}
+
+export function useLegacyLoadingState(): LoadingState {
+  const context = useContext(LegacyApiContext);
+  if (!context) {
+    throw new Error('useLegacyLoadingState must be used within a LegacyApiProvider');
+  }
+  return context.loadingState;
+}
+
+export function useLegacyToast(): { show: ToastHandler; setHandler: (handler: ToastHandler | null) => void } {
+  const context = useContext(LegacyApiContext);
+  if (!context) {
+    throw new Error('useLegacyToast must be used within a LegacyApiProvider');
+  }
+  return { show: context.adapter.toast.show, setHandler: context.setToastHandler };
+}
 
 // ============================================================================
-// TYPE EXPORTS
+// BACKWARD COMPATIBILITY
 // ============================================================================
 
-export type LegacyApiAdapter = typeof legacyApiAdapter;
+export function useVeloxAPI(): LegacyApiAdapter {
+  return useLegacyApi();
+}
 
-export default legacyApiAdapter;
+export const VeloxAPIProvider = LegacyApiProvider;
