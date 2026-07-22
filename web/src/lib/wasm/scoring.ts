@@ -18,32 +18,47 @@ type ScoringWasmModule = {
     batch_calculate_keyword_scores: (titles: string[], tags: string[]) => number[];
 };
 
-let wasmModule: ScoringWasmModule | null = null;
-let initPromise: Promise<ScoringWasmModule> | null = null;
+// Encapsulate the mutable loader state so it cannot be observed or written
+// by multiple call sites in an inconsistent order.
+class ScoringWasmLoader {
+    private wasmModule: ScoringWasmModule | null = null;
+    private initPromise: Promise<ScoringWasmModule> | null = null;
+
+    /**
+     * Initialize the WASM scoring module.
+     * The promise is cached so concurrent calls share a single initialization.
+     */
+    async init(): Promise<ScoringWasmModule> {
+        if (this.wasmModule) return this.wasmModule;
+        this.initPromise ??= (async () => {
+            try {
+                // Dynamic import of the WASM module (produced by wasm-pack or wasm-bindgen)
+                const wasm = await import('wasm_scoring');
+                this.wasmModule = wasm as ScoringWasmModule;
+                return this.wasmModule;
+            } catch {
+                // WASM not available - return a JS fallback implementation
+                console.warn('[ScoringWasm] WASM module not available, using JS fallback');
+                this.wasmModule = createJsFallback();
+                return this.wasmModule;
+            }
+        })();
+        return this.initPromise;
+    }
+
+    getModuleIfReady(): ScoringWasmModule | null {
+        return this.wasmModule;
+    }
+}
+
+const loader = new ScoringWasmLoader();
 
 /**
  * Initialize the WASM scoring module.
  * Call this once at app startup.
  */
 export async function initScoringWasm(): Promise<ScoringWasmModule> {
-    if (wasmModule) return wasmModule;
-    if (initPromise) return initPromise;
-
-    initPromise = (async () => {
-        try {
-            // Dynamic import of the WASM module (produced by wasm-pack or wasm-bindgen)
-            const wasm = await import('wasm_scoring');
-            wasmModule = wasm as ScoringWasmModule;
-            return wasmModule!;
-        } catch {
-            // WASM not available - return a JS fallback implementation
-            console.warn('[ScoringWasm] WASM module not available, using JS fallback');
-            wasmModule = createJsFallback();
-            return wasmModule;
-        }
-    })();
-
-    return initPromise;
+    return loader.init();
 }
 
 /**
@@ -54,6 +69,7 @@ export async function initScoringWasm(): Promise<ScoringWasmModule> {
  * @returns Score from 0-100
  */
 export function calculateKeywordScore(title: string, tags: string[]): number {
+    const wasmModule = loader.getModuleIfReady();
     if (!wasmModule) {
         return jsCalculateKeywordScore(title, tags);
     }
@@ -75,6 +91,7 @@ export function calculateVideoRelevance(
     tags: string[],
     viewCount?: number,
 ): { score: number; matched_tags: string[] } {
+    const wasmModule = loader.getModuleIfReady();
     if (!wasmModule) {
         return jsCalculateVideoRelevance(title, channelTitle, tags, viewCount);
     }
@@ -90,6 +107,7 @@ export function calculateVideoRelevance(
  * @returns Array of scores (same order as titles)
  */
 export function batchCalculateKeywordScores(titles: string[], tags: string[]): number[] {
+    const wasmModule = loader.getModuleIfReady();
     if (!wasmModule) {
         return titles.map(t => jsCalculateKeywordScore(t, tags));
     }
