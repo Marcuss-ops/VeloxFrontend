@@ -180,7 +180,7 @@ export interface LoadingState {
 
 type LoadingListener = (state: LoadingState) => void;
 
-class LoadingManager {
+export class LoadingManager {
   private state: LoadingState = { isLoading: false };
   private listeners: Set<LoadingListener> = new Set();
   private loadingCount: number = 0;
@@ -217,7 +217,7 @@ class LoadingManager {
   }
 }
 
-export const loadingManager = new LoadingManager();
+const internalLoadingManager = new LoadingManager();
 
 // ============================================================================
 // ERROR NORMALIZER - Normalizza errori da backend diversi
@@ -556,10 +556,10 @@ export const legacyApiAdapter = {
   // LOADING STATE
   // ------------------------------------------------------------------
   loading: {
-    start: (operation: string) => loadingManager.start(operation),
-    stop: () => loadingManager.stop(),
-    getState: () => loadingManager.getState(),
-    subscribe: (listener: LoadingListener) => loadingManager.subscribe(listener)
+    start: (operation: string) => internalLoadingManager.start(operation),
+    stop: () => internalLoadingManager.stop(),
+    getState: () => internalLoadingManager.getState(),
+    subscribe: (listener: LoadingListener) => internalLoadingManager.subscribe(listener)
   },
 
   // ------------------------------------------------------------------

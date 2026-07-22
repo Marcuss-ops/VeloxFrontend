@@ -24,7 +24,7 @@ export { deliveriesApi } from './deliveriesApi';
 export type { Delivery } from './deliveriesApi';
 
 // Legacy Bridge for backward compatibility with old JS modules
-export { legacyApiAdapter, loadingManager, normalizeError, showToast, setToastHandler } from './legacyBridge';
+export { legacyApiAdapter, LoadingManager, normalizeError, showToast, setToastHandler } from './legacyBridge';
 export type {
   ApiResponse,
   JobPayload,
@@ -47,8 +47,7 @@ export type { Job, JobsResponse, JobStatus } from './jobsApi';
 export { workersApi } from './workersApi';
 export type { Worker } from './workersApi';
 
-export { youtubeApi } from './youtubeApi';
-export type { YouTubeChannel } from './youtubeApi';
+// YouTube API modules removed: publishing now flows through Velox/InstaEdit destinations
 
 export { analyticsApi } from './analyticsApi';
 export { driveApi, driveApiExtended } from './driveApi';
@@ -70,8 +69,7 @@ export type { Livestream, LivestreamConfig, LivestreamStatus, LivestreamHealth, 
 export { driveLinksApi } from './driveLinksApi';
 export type { DriveLink } from './driveLinksApi';
 
-export { youtubeAccountsApi } from './youtubeAccountsApi';
-export type { YouTubeAccountToken, YouTubeChannelGroup } from './youtubeAccountsApi';
+// YouTube accounts API removed along with the YouTube Manager module
 
 export { calendarApi, PROJECT_STATUSES } from './calendarApi';
 export type { CalendarEvent, VideoClip, CalendarEventFilter, CalendarEventsResponse, ProjectStatus, StatusConfig } from './calendarApi';
@@ -80,7 +78,7 @@ export type { CalendarEvent, VideoClip, CalendarEventFilter, CalendarEventsRespo
 import { fetchJSON, fetchVoid, ApiError } from './core';
 import { jobsApi } from './jobsApi';
 import { workersApi } from './workersApi';
-import { youtubeApi } from './youtubeApi';
+
 import { analyticsApi } from './analyticsApi';
 import { driveApi } from './driveApi';
 import { ansibleApi } from './ansibleApi';
@@ -91,7 +89,7 @@ import { utilApi } from './utilApi';
 import { queueApi } from './queueApi';
 import { livestreamApi } from './livestreamApi';
 import { driveLinksApi } from './driveLinksApi';
-import { youtubeAccountsApi } from './youtubeAccountsApi';
+
 
 const apiClient = {
   fetchJSON,
@@ -99,7 +97,7 @@ const apiClient = {
   ApiError,
   jobs: jobsApi,
   workers: workersApi,
-  youtube: youtubeApi,
+
   analytics: analyticsApi,
   drive: driveApi,
   ansible: ansibleApi,
@@ -110,7 +108,7 @@ const apiClient = {
   queue: queueApi,
   livestream: livestreamApi,
   driveLinks: driveLinksApi,
-  youtubeAccounts: youtubeAccountsApi
+
 };
 
 export default apiClient;

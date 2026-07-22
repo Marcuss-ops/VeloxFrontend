@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { normalizeError, loadingManager, showToast, setToastHandler } from './legacyBridge';
+import { normalizeError, LoadingManager, showToast, setToastHandler } from './legacyBridge';
 
 describe('normalizeError', () => {
     it('should normalize network errors', () => {
@@ -36,12 +36,11 @@ describe('normalizeError', () => {
 
 });
 
-describe('loadingManager', () => {
+describe('LoadingManager', () => {
+    let loadingManager: LoadingManager;
+
     beforeEach(() => {
-        // Reset loading state
-        while (loadingManager.getState().isLoading) {
-            loadingManager.stop();
-        }
+        loadingManager = new LoadingManager();
     });
 
     it('should track loading state', () => {
