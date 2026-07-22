@@ -1,7 +1,7 @@
 import React from 'react';
 import { DriveImporter } from './DriveImporter/DriveImporter';
 import type { Livestream } from '../../lib/api';
-import type { StreamConfig } from './YouTubeLivestreamApp';
+import type { StreamConfig } from './types';
 
 interface LivestreamConfigPanelProps {
     config: StreamConfig;

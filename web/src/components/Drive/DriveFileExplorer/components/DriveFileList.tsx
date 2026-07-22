@@ -1,7 +1,7 @@
 "use client"
 
 import { Loader2 } from "lucide-react"
-import { DriveNode } from "../DriveFileExplorer"
+import type { DriveNode } from "../types"
 import { FolderTreeNode } from "../../components/FolderNode"
 
 interface DriveFileListProps {

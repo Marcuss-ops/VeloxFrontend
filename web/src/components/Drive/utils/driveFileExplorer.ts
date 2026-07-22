@@ -1,4 +1,4 @@
-import { DriveNode } from '../DriveFileExplorer';
+import type { DriveNode } from '../DriveFileExplorer/types';
 
 export const isVideoFile = (f: DriveNode) => {
     const mime = (f.mimeType || '').toLowerCase();

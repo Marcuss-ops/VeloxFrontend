@@ -1,16 +1,5 @@
 import React from 'react';
-import { DriveFolder } from './VoiceoverTabApp';
-
-interface VoiceoverProject {
-    id: string;
-    projectName: string;
-    text: string;
-    selectedLanguages: string[];
-    selectedGroup: string;
-    selectedFolder: string;
-    customSubfolder: string;
-    createdAt: number;
-}
+import type { DriveFolder, VoiceoverProject } from './voiceoverTypes';
 
 interface VoiceoverOptionsPanelProps {
     project: VoiceoverProject;

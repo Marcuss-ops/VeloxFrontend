@@ -2,26 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { VoiceoverConfigPanel, LANGUAGES } from './VoiceoverConfigPanel';
 import { VoiceoverOptionsPanel } from './VoiceoverOptionsPanel';
 
-export interface DriveFolder {
-    id: string;
-    name: string;
-    link?: string;
-    parentId?: string;
-    language?: string;
-    createdAt?: number;
-    updatedAt?: number;
-}
-
-interface VoiceoverProject {
-    id: string;
-    projectName: string; // Nome/titolo del progetto (usato per nome cartella)
-    text: string;
-    selectedLanguages: string[];
-    selectedGroup: string; // Gruppo selezionato
-    selectedFolder: string; // Cartella di destinazione
-    customSubfolder: string; // Nome sottocartella (dal titolo progetto)
-    createdAt: number;
-}
+import type { DriveFolder, VoiceoverProject } from './voiceoverTypes';
 
 const DEFAULT_PROJECT: VoiceoverProject = {
     id: 'default',

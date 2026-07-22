@@ -10,30 +10,7 @@ import { BeamsBackground } from '../ui/beams-background';
 import { LivestreamConfigPanel } from './LivestreamConfigPanel';
 import { LivestreamStatusPanel } from './LivestreamStatusPanel';
 
-// Types - using API types
-export type LatencyPreference = 'normal' | 'low' | 'ultraLow';
-export type StreamProtocol = 'rtmp' | 'hls';
-
-// Local config type for the form
-export interface StreamConfig {
-    name: string;
-    platform: 'youtube' | 'twitch' | 'facebook' | 'custom';
-    streamKey: string;
-    streamUrl: string;
-    description: string;
-    isForKids: boolean;
-    videoBitrate: number;
-    audioBitrate: number;
-    streamType: 'video';
-    videoOrder: 'loop' | 'shuffle';
-    scheduleStart: boolean;
-    scheduleEnd: boolean;
-    protocol: StreamProtocol;
-    autoStart: boolean;
-    autoStop: boolean;
-    scheduledStartTime?: string;
-    scheduledEndTime?: string;
-}
+import type { StreamConfig, LoadingState, TabType } from './types';
 
 const defaultConfig: StreamConfig = {
     name: '',
@@ -52,14 +29,6 @@ const defaultConfig: StreamConfig = {
     autoStart: false,
     autoStop: true,
 };
-
-type TabType = 'all_streams' | 'stream_designer';
-
-// Loading state
-interface LoadingState {
-    isLoading: boolean;
-    error?: string;
-}
 
 export const YouTubeLivestreamApp: React.FC = () => {
     const [activeTab, setActiveTab] = useState<TabType>('all_streams');

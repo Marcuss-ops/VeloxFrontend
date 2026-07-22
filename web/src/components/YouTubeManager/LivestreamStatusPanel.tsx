@@ -1,5 +1,5 @@
 import React from 'react';
-import type { StreamConfig } from './YouTubeLivestreamApp';
+import type { StreamConfig } from './types';
 
 interface LivestreamStatusPanelProps {
     config: StreamConfig;

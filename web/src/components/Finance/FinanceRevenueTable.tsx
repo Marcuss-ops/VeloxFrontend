@@ -1,5 +1,5 @@
 import React from 'react';
-import { FinanceData } from './FinanceDashboardApp';
+import type { FinanceData } from './types';
 
 interface FinanceRevenueTableProps {
     data: FinanceData;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { TopVideo } from './PanoramaApp';
+import type { TopVideo } from './types';
 
 interface PanoramaTopVideosProps {
     videos: TopVideo[];

@@ -41,3 +41,34 @@ export interface DialogState {
     message: string;
     onConfirm: () => void;
 }
+
+// Types for Livestream feature
+export type LatencyPreference = 'normal' | 'low' | 'ultraLow';
+export type StreamProtocol = 'rtmp' | 'hls';
+
+export interface StreamConfig {
+    name: string;
+    platform: 'youtube' | 'twitch' | 'facebook' | 'custom';
+    streamKey: string;
+    streamUrl: string;
+    description: string;
+    isForKids: boolean;
+    videoBitrate: number;
+    audioBitrate: number;
+    streamType: 'video';
+    videoOrder: 'loop' | 'shuffle';
+    scheduleStart: boolean;
+    scheduleEnd: boolean;
+    protocol: StreamProtocol;
+    autoStart: boolean;
+    autoStop: boolean;
+    scheduledStartTime?: string;
+    scheduledEndTime?: string;
+}
+
+export interface LoadingState {
+    isLoading: boolean;
+    error?: string;
+}
+
+export type TabType = 'all_streams' | 'stream_designer';

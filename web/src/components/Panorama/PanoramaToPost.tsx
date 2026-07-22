@@ -1,5 +1,5 @@
 import React from 'react';
-import { CompletedJob } from './PanoramaApp';
+import type { CompletedJob } from './types';
 
 interface PanoramaToPostProps {
     jobs: CompletedJob[];

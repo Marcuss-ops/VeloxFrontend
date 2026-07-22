@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { DriveNode, SelectedItem } from "../DriveFileExplorer"
+import type { DriveNode, SelectedItem } from "../types"
 
 // Helper inline functions (also available in utils/driveFileExplorer.ts)
 const isVideoFile = (f: DriveNode) => {
