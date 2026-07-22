@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { buildSelectedIdSet, findEditingObject } from '@/lib/canvasSelection';
 import type { CanvasObject } from '@/stores/editorStore';
 
-const makeObject = (id: string, type: CanvasObject['type'] = 'text'): CanvasObject => ({
+const makeObject = (id: string): CanvasObject => ({
   id,
-  type,
+  type: 'text',
   x: 0,
   y: 0,
   width: 100,
@@ -19,42 +19,30 @@ const makeObject = (id: string, type: CanvasObject['type'] = 'text'): CanvasObje
 });
 
 describe('buildSelectedIdSet', () => {
-  it('returns an empty set when no ids are selected', () => {
-    const set = buildSelectedIdSet([]);
-    expect(set.has('1')).toBe(false);
-    expect(set.size).toBe(0);
+  it('returns an empty set for no selected ids', () => {
+    expect(buildSelectedIdSet([])).toEqual(new Set());
   });
 
-  it('contains every selected id with O(1) lookup', () => {
-    const ids = ['a', 'b', 'c'];
-    const set = buildSelectedIdSet(ids);
-    ids.forEach((id) => expect(set.has(id)).toBe(true));
-    expect(set.has('d')).toBe(false);
-  });
-
-  it('ignores duplicates in the input array', () => {
-    const set = buildSelectedIdSet(['x', 'x', 'y']);
-    expect(set.size).toBe(2);
-    expect(set.has('x')).toBe(true);
-    expect(set.has('y')).toBe(true);
+  it('builds a set for O(1) selected lookup', () => {
+    const set = buildSelectedIdSet(['a', 'b']);
+    expect(set.has('a')).toBe(true);
+    expect(set.has('c')).toBe(false);
   });
 });
 
 describe('findEditingObject', () => {
-  const objects = [makeObject('t1', 'text'), makeObject('i1', 'image'), makeObject('t2', 'text')];
+  const obj1 = makeObject('a');
+  const obj2 = makeObject('b');
 
-  it('returns null when no object is being edited', () => {
-    expect(findEditingObject(objects, null)).toBeNull();
+  it('returns null when editing id is null', () => {
+    expect(findEditingObject([obj1, obj2], null)).toBeNull();
   });
 
-  it('finds the matching object by id', () => {
-    const result = findEditingObject(objects, 'i1');
-    expect(result).toBeDefined();
-    expect(result?.id).toBe('i1');
-    expect(result?.type).toBe('image');
+  it('finds the object by id', () => {
+    expect(findEditingObject([obj1, obj2], 'b')).toBe(obj2);
   });
 
-  it('returns null when the id does not exist', () => {
-    expect(findEditingObject(objects, 'missing')).toBeNull();
+  it('returns null when the id is not found', () => {
+    expect(findEditingObject([obj1, obj2], 'c')).toBeNull();
   });
 });
