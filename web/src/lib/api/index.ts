@@ -49,7 +49,7 @@ export type {
   LegacyApiProviderProps,
   LegacyApiContextValue,
 } from './legacyBridge';
-export { VeloxAPIProvider, useVeloxAPI } from './VeloxAPIProvider';
+
 
 export { jobsApi } from './jobsApi';
 export type { Job, JobsResponse, JobStatus } from './jobsApi';

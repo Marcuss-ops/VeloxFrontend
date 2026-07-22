@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Smartphone, Monitor, Eye, MoreVertical, Heart, Share2, Compass, Home, Clock } from 'lucide-react';
+import { Smartphone, Monitor, Eye, MoreVertical, Compass, Home, Clock } from 'lucide-react';
 import Image from 'next/image';
 
 interface FeedPreviewDialogProps {
