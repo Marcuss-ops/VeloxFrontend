@@ -250,17 +250,12 @@ export const useScriptEditorState = () => {
         preloadDriveFoldersForGroup(group);
     }, [updateProject, preloadDriveFoldersForGroup]);
 
-    // Sincronizza con window per interazioni legacy
+    // Synchronise editor state with the ScriptProvider context
     useEffect(() => {
         syncCurrentProject(project);
         syncProjects(projects);
         syncCurrentIndex(currentIndex);
     }, [project, projects, currentIndex, syncCurrentProject, syncProjects, syncCurrentIndex]);
-
-    useEffect(() => {
-        (window as any).currentProject = project;
-        (window as any).allProjects = projects;
-    }, [project, projects]);
 
     // Pre-carica cartelle quando cambia il gruppo
     useEffect(() => {

@@ -121,46 +121,6 @@ export interface AnalyticsQuery {
 }
 
 // ============================================================================
-// YouTube API Types
-// ============================================================================
-
-export interface YouTubeVideo {
-  id: string;
-  title: string;
-  description: string;
-  thumbnailUrl: string;
-  publishedAt: string;
-  viewCount: number;
-  likeCount: number;
-  commentCount: number;
-}
-
-export interface YouTubeChannel {
-  id: string;
-  title: string;
-  description: string;
-  thumbnailUrl: string;
-  subscriberCount: number;
-  videoCount: number;
-  viewCount: number;
-}
-
-export interface YouTubeUploadRequest {
-  title: string;
-  description: string;
-  tags?: string[];
-  categoryId?: string;
-  privacyStatus?: 'public' | 'private' | 'unlisted';
-  filePath: string;
-}
-
-export interface YouTubeUploadResponse {
-  videoId: string;
-  uploadUrl?: string;
-  status: 'initiated' | 'uploading' | 'processing' | 'completed' | 'failed';
-}
-
-// ============================================================================
 // Drive API Types
 // ============================================================================
 

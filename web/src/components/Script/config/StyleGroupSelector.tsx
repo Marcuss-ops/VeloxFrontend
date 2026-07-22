@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { youtubeApi } from '@/lib/api';
+
 import { VideoStyle, type GroupChannel } from '../types';
 import { useScript } from '../../../app/providers/ScriptProvider';
 
@@ -179,54 +179,8 @@ const writeCachedGroups = (groups: UiGroup[]) => {
     }
 };
 
-const fetchYouTubeGroups = async (): Promise<UiGroup[]> => {
-    const cached = readCachedGroups();
-    if (cached && cached.length > 0) return cached;
-
-    try {
-        const data: any = await youtubeApi.managerGroups();
-        const rawGroups = data?.groups;
-        const groupsArray = Array.isArray(rawGroups)
-            ? rawGroups
-            : Object.entries(rawGroups || {}).map(([name, group]) => ({ name, ...(group as Record<string, unknown>) }));
-        const normalized = groupsArray
-            .map((g: any, idx: number): UiGroup | null => {
-                const name = String(g?.name || '').trim();
-                if (!name) return null;
-                const channelsRaw = Array.isArray(g?.channels) ? g.channels : [];
-                const channels: GroupChannel[] = channelsRaw
-                    .map((entry: any): GroupChannel | null => {
-                        if (typeof entry === 'string') {
-                            return { id: entry, channel: entry, lang: undefined, title: entry };
-                        }
-                        const id = String(entry?.id || entry?.channelId || entry?.channel_id || '').trim();
-                        const channel = String(entry?.title || entry?.channel || entry?.name || id).trim();
-                        if (!id && !channel) return null;
-                        return {
-                            id: id || channel,
-                            channel: channel || id,
-                            title: channel || id,
-                            lang: String(entry?.language || entry?.lang || '').trim() || undefined,
-                        };
-                    })
-                    .filter((x: GroupChannel | null): x is GroupChannel => !!x);
-                return {
-                    id: name,
-                    label: name.toUpperCase(),
-                    icon: iconByGroupName(name),
-                    color: GROUP_COLORS[idx % GROUP_COLORS.length],
-                    channels,
-                };
-            })
-            .filter((x: UiGroup | null): x is UiGroup => !!x);
-        if (normalized.length > 0) {
-            writeCachedGroups(normalized);
-            return normalized;
-        }
-    } catch {
-        // fallback to static groups
-    }
-
+const getStaticGroups = async (): Promise<UiGroup[]> => {
+    // YouTube Manager has been removed; static fallback groups remain available.
     return FALLBACK_GROUPS;
 };
 
@@ -250,7 +204,7 @@ export const StyleGroupSelector: React.FC<StyleGroupSelectorProps> = ({
     useEffect(() => {
         let alive = true;
         setIsLoadingGroups(true);
-        fetchYouTubeGroups()
+        getStaticGroups()
             .then((loaded) => {
                 if (!alive) return;
                 const activeGroups = loaded.length > 0 ? loaded : FALLBACK_GROUPS;

@@ -4,8 +4,8 @@ import {
   selectFolderCount,
   selectVideoCount,
   selectSelectedFiles,
+  type FileItem,
 } from '@/lib/selectors';
-import type { FileItem } from '@/components/YouTubeManager/hooks/useDriveFolderBrowser';
 
 describe('Drive File Selectors', () => {
   const mockFiles: FileItem[] = [

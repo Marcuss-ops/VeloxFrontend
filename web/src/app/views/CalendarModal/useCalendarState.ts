@@ -6,12 +6,11 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { driveLinksApi, youtubeApi, type ProjectStatus } from '@/lib/api';
+import { driveLinksApi, type ProjectStatus } from '@/lib/api';
 import type { DriveLink } from '@/lib/api';
 import { loadCategories } from '@/components/Script/data/titleCategoriesData';
 import type { VideoClip, YouTubeGroup, DriveGroup, DriveFolderLite, DriveFile, ClipType } from './types';
 import { parseDriveFoldersResponse, parseDriveFilesAsFolders, fetchDriveFiles, groupDriveLinksIntoDriveGroups } from './types';
-import { normalizeManagerGroups } from '@/components/YouTubeManager/utils/managerGroups';
 
 interface UseCalendarStateProps {
     selectedDay: number;
@@ -168,32 +167,14 @@ export function useCalendarState({ selectedDay, selectedMonth, selectedYear, ini
         return () => window.clearTimeout(timer);
     }, [initialEvent, title, titles, youtubeGroup, scriptText, youtubeLinks, voiceoverPaths, selectedCategory, projectStatus, stockFootage, initialClips, intermediateClips, finalClips, saveDraft]);
 
-    // Load YouTube and Drive groups
+    // Load Drive groups (YouTube Manager removed)
     useEffect(() => {
         const loadGroups = async () => {
             setLoadingGroups(true);
             try {
-                const [ytResult, driveLinksResult] = await Promise.allSettled([
-                    youtubeApi.managerGroups(),
-                    driveLinksApi.list(),
-                ]);
-
-                if (ytResult.status === 'fulfilled') {
-                    const ytData = ytResult.value as { ok?: boolean; groups?: Record<string, { name?: string; channels?: Array<{ id: string; title?: string; name?: string; thumbnail?: string }> }> | Array<{ name?: string; channels?: Array<{ id: string; title?: string; name?: string; thumbnail?: string }> }> };
-                    const normalized = normalizeManagerGroups(ytData?.groups).map((group) => ({
-                        name: String(group.name || '').trim(),
-                        channels: (group.channels || []).map(ch => ({
-                            id: ch.id,
-                            name: ch.name || ch.title || ch.id,
-                            title: ch.title || ch.name || ch.id,
-                            thumbnail: ch.thumbnail || '',
-                        })),
-                    }));
-                    if (normalized.length > 0) setYoutubeGroups(normalized);
-                }
-
-                if (driveLinksResult.status === 'fulfilled' && driveLinksResult.value?.links) {
-                    const links = driveLinksResult.value.links as DriveLink[];
+                const driveLinksResult = await driveLinksApi.list();
+                if (driveLinksResult?.links) {
+                    const links = driveLinksResult.links as DriveLink[];
                     setDriveLinks(links);
                     setDriveGroups(groupDriveLinksIntoDriveGroups(links));
                 }

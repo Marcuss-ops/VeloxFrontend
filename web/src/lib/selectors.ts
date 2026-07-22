@@ -1,4 +1,8 @@
-import type { FileItem } from '@/components/YouTubeManager/hooks/useDriveFolderBrowser';
+export interface FileItem {
+  id: string;
+  name: string;
+  type: 'file' | 'folder';
+}
 
 /**
  * Minimal set of drive-file selectors used by the upload flows.

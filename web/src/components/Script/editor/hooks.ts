@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { VideoProject } from '../types';
-import { normalizeTitle, normalizeLink, extractFirstYouTubeUrl } from './utils';
-import { CLIP_MASTER_ID, STOCK_MASTER_ID, VOICEOVER_MASTER_ID } from './constants';
+
 import { ProjectHistoryItem } from '../modals/ProjectHistoryModal';
 
 export interface TitleSourceHistoryItem {
@@ -233,27 +232,4 @@ export function useClipEvents(
     }, [drivePicker.type, project, onProjectUpdate, onPushSelectionHistory, onClose]);
 
     return { handleSelectFolder, handleSelectClip, handleSelectClips };
-}
-
-export function useTitleLinkListeners(
-    handleUpsertTitleLink: (title: string, link: string) => void
-) {
-    useEffect(() => {
-        const onPayload = (event: Event) => {
-            const detail = (event as CustomEvent)?.detail || {};
-            const payload = detail?.payload || {};
-            const title = String(detail?.title || payload?.video_name || '');
-            const sourceCandidate = String(payload?.source_context || payload?.source || '');
-
-            const normalizedTitle = normalizeTitle(title);
-            const payloadYoutube = normalizeLink(payload?.youtube_url || '');
-            const sourceLink = payloadYoutube || extractFirstYouTubeUrl(sourceCandidate);
-
-            if (normalizedTitle || sourceLink) {
-                handleUpsertTitleLink(normalizedTitle, sourceLink);
-            }
-        };
-        window.addEventListener('velox:create-master-payload', onPayload as EventListener);
-        return () => window.removeEventListener('velox:create-master-payload', onPayload as EventListener);
-    }, [handleUpsertTitleLink]);
 }

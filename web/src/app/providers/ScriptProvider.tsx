@@ -1,18 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { youtubeApi } from '@/lib/api';
 import { createDefaultVideoProject, type GroupChannel, type VideoProject } from '../../components/Script/types';
-import { normalizeManagerGroups } from '@/components/YouTubeManager/utils/managerGroups';
-
-// Extend Window interface for legacy properties
-declare global {
-    interface Window {
-        currentProject: VideoProject;
-        allProjects: VideoProject[];
-        groupChannels: Record<string, GroupChannel[]>;
-        selectedGroup: string | null;
-        selectedVoiceoverLangs: string[];
-    }
-}
 
 export interface GenerationProgress {
     percent: number;
@@ -87,27 +74,11 @@ export const ScriptProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     
     // Fetch group channels from API
     const fetchGroupChannels = useCallback(async () => {
-        try {
-            const data: any = await youtubeApi.managerGroups();
-            const groups = normalizeManagerGroups(data?.groups);
-            const channelsByGroup: Record<string, GroupChannel[]> = {};
-            for (const group of groups) {
-                const groupName = String(group.name || '').trim();
-                if (!groupName) continue;
-                channelsByGroup[groupName] = (group.channels || []).map((ch: { id: string; title?: string; name?: string; language?: string }) => ({
-                    id: ch.id,
-                    channel: ch.title || ch.name || ch.id,
-                    title: ch.title || ch.name || ch.id,
-                    lang: ch.language,
-                }));
-            }
-            setGroupChannels(channelsByGroup);
-        } catch (e) {
-            console.warn('[ScriptProvider] Failed to fetch group channels:', e);
-        }
+        // YouTube Manager has been removed; group channels are no longer fetched.
+        setGroupChannels({});
     }, []);
     
-    // Event emitters
+    // Event emitters (delivered via context callbacks only)
     const emitCreateMasterPayload = useCallback((payload: unknown) => {
         payloadCallbacksRef.current.forEach(cb => {
             try {
@@ -116,15 +87,6 @@ export const ScriptProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 console.error('[ScriptProvider] Payload callback error:', e);
             }
         });
-        
-        // Also dispatch global event for backward compatibility
-        try {
-            window.dispatchEvent(new CustomEvent('velox:create-master-payload', {
-                detail: { payload }
-            }));
-        } catch (e) {
-            console.warn('[ScriptProvider] Failed to dispatch legacy event:', e);
-        }
     }, []);
     
     const emitCreateMasterResponse = useCallback((response: unknown) => {
@@ -135,15 +97,6 @@ export const ScriptProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 console.error('[ScriptProvider] Response callback error:', e);
             }
         });
-        
-        // Also dispatch global event for backward compatibility
-        try {
-            window.dispatchEvent(new CustomEvent('velox:create-master-response', {
-                detail: { response }
-            }));
-        } catch (e) {
-            console.warn('[ScriptProvider] Failed to dispatch legacy event:', e);
-        }
     }, []);
     
     // Event listeners registration
@@ -160,15 +113,6 @@ export const ScriptProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             responseCallbacksRef.current.delete(callback);
         };
     }, []);
-    
-    // Sync with legacy window object for backward compatibility
-    useEffect(() => {
-        window.currentProject = currentProject;
-        window.allProjects = projects;
-        window.groupChannels = groupChannels;
-        window.selectedGroup = currentProject.youtubeGroup;
-        window.selectedVoiceoverLangs = currentProject.voiceoverLangs;
-    }, [currentProject, projects, groupChannels]);
     
     // Initial fetch of group channels
     useEffect(() => {

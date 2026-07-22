@@ -12,7 +12,7 @@
  * @example
  * ```tsx
  * // In a hook or component
- * const channels = useCache('channels', () => youtubeApi.channels(), { ttl: 5 * 60 * 1000 });
+ * const jobs = useCache('jobs', () => jobsApi.list(), { ttl: 5 * 60 * 1000 });
  * ```
  */
 

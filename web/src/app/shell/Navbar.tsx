@@ -13,7 +13,6 @@ import { APP_ROUTES } from '../routes';
 const NAV_ITEMS = [
     { href: APP_ROUTES.dashboard, icon: 'grid_view', label: 'Panoramica' },
     { href: APP_ROUTES.calendar, icon: 'calendar_month', label: 'Calendario' },
-    { href: APP_ROUTES.youtubeSuite, icon: 'smart_display', label: 'YouTube' },
     { href: APP_ROUTES.workersAnsible, icon: 'engineering', label: 'Workers' },
 ];
 

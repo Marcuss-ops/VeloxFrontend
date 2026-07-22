@@ -108,7 +108,7 @@ export function useScriptCanvas(params: UseScriptCanvasParams): UseScriptCanvasR
         onClearProjectHistory,
     } = params;
 
-    const { groupChannels } = useScript();
+    const { groupChannels, onCreateMasterPayload } = useScript();
 
     // Use controlled modal state from props, or fallback to internal state
     const [internalTitleModalOpen, setInternalTitleModalOpen] = useState(false);
@@ -124,7 +124,6 @@ export function useScriptCanvas(params: UseScriptCanvasParams): UseScriptCanvasR
         open: false,
         type: null,
     });
-    const [groupChannelsTick, setGroupChannelsTick] = useState(0);
 
     // Save title link history to localStorage
     useEffect(() => {
@@ -144,12 +143,7 @@ export function useScriptCanvas(params: UseScriptCanvasParams): UseScriptCanvasR
         }
     }, [projectHistory]);
 
-    // Listen for group channels updates
-    useEffect(() => {
-        const onGroupChannelsUpdated = () => setGroupChannelsTick((v) => v + 1);
-        window.addEventListener('velox-group-channels-updated', onGroupChannelsUpdated);
-        return () => window.removeEventListener('velox-group-channels-updated', onGroupChannelsUpdated);
-    }, []);
+
 
     // Auto-select channels based on languages
     useEffect(() => {
@@ -196,7 +190,7 @@ export function useScriptCanvas(params: UseScriptCanvasParams): UseScriptCanvasR
 
         if (!changed) return;
         onProjectUpdate({ youtubeChannelByLang: next });
-    }, [project.youtubeGroup, project.voiceoverLangs, project.youtubeChannelByLang, groupChannelsTick, groupChannels, onProjectUpdate]);
+    }, [project.youtubeGroup, project.voiceoverLangs, project.youtubeChannelByLang, groupChannels, onProjectUpdate]);
 
     // Handle drive click
     const handleDriveClick = useCallback((type: string, payload?: any) => {
@@ -313,26 +307,23 @@ export function useScriptCanvas(params: UseScriptCanvasParams): UseScriptCanvasR
         }
     }, [onUpsertTitleLink]);
 
-    // Listen for payload events
+    // Listen for payload events via ScriptContext (explicit subscription)
     useEffect(() => {
-        const onPayload = (event: Event) => {
-            const detail = (event as CustomEvent)?.detail || {};
-            const payload = detail?.payload || {};
-            const title = String(detail?.title || payload?.video_name || '');
-            const sourceCandidate = String(payload?.source_context || payload?.source || '');
+        const onPayload = (payload: unknown) => {
+            const detail = (payload as any) || {};
+            const title = String(detail?.title || detail?.payload?.video_name || '');
+            const sourceCandidate = String(detail?.payload?.source_context || detail?.payload?.source || '');
 
-            // Process the title and link
             const normalizedTitle = normalizeTitle(title);
-            const payloadYoutube = normalizeLink(payload?.youtube_url || '');
+            const payloadYoutube = normalizeLink(detail?.payload?.youtube_url || '');
             const sourceLink = payloadYoutube || extractFirstYouTubeUrl(sourceCandidate);
 
             if (normalizedTitle || sourceLink) {
                 handleUpsertTitleLink(normalizedTitle, sourceLink);
             }
         };
-        window.addEventListener('velox:create-master-payload', onPayload as EventListener);
-        return () => window.removeEventListener('velox:create-master-payload', onPayload as EventListener);
-    }, [handleUpsertTitleLink]);
+        return onCreateMasterPayload(onPayload);
+    }, [onCreateMasterPayload, handleUpsertTitleLink]);
 
     // Append title from history
     const appendTitleFromHistory = useCallback((titleRaw: string) => {

@@ -8,7 +8,6 @@
  * - /api/v1/admin/*  Admin-only API (ansible, etc.) - requires admin token
  * - /api/v2/*        Extended API (queue operations)
  * - /api/drive/*     Google Drive API
- * - /api/youtube/*   YouTube Manager API
  * - /api/bundle/*    Bundle management API
  * - /api/server/*    Server status API
  * - /api/master/*    Master server API
@@ -44,7 +43,6 @@ const LEGACY_ENDPOINT_MAP: Record<string, string> = {
 // and should be kept as-is (different API surface)
 const NON_V1_ENDPOINTS = [
   '/api/drive/',         // Google Drive API
-  '/api/youtube/',       // YouTube Manager API
   '/api/bundle/',        // Bundle management API
   '/api/server/',        // Server status API
   '/api/master/',        // Master server API

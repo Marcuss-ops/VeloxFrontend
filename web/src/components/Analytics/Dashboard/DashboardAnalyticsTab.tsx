@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { AnalyticsTimelinePoint, AnalyticsSummary, TopVideo, TopChannel } from './types';
-import { YouTubeBrandMark } from '../../ui/YouTubeBrandMark';
 
 interface AnalyticsData {
     summary: AnalyticsSummary | null;

@@ -11,15 +11,12 @@
  * 2. Introdurre contract payload minimali per tab legacy critici
  * 3. Normalizzare gestione errori/loading (evitare divergenze lato UX e parsing)
  * 
- * Usage (Legacy JS):
- *   // In dashboard.js o altri moduli legacy
- *   const api = window.veloxAPI;
+ * Usage (React/TS):
+ *   import { legacyApiAdapter, useVeloxAPI } from '@/lib/api';
+ *   // via context: const api = useVeloxAPI();
+ *   // via import:  const api = legacyApiAdapter;
  *   const jobs = await api.jobs.list();
  *   const result = await api.jobs.retry(jobId);
- * 
- * Usage (React TSX):
- *   import { jobsApi } from '@/lib/api';
- *   const jobs = await jobsApi.list();
  */
 
 import { fetchJSON, fetchVoid, ApiError } from './core';
@@ -114,33 +111,6 @@ export interface WorkerPayload {
 }
 
 /**
- * YouTube Channel payload contract
- */
-export interface YouTubeChannelPayload {
-  id: string;
-  title?: string;
-  url: string;
-  thumbnail?: string;
-  notes?: string;
-  added_at?: string;
-  history?: Array<{
-    ts: string;
-    views?: number;
-    subs?: number;
-  }>;
-}
-
-/**
- * YouTube Group payload contract
- */
-export interface YouTubeGroupPayload {
-  name: string;
-  channels: YouTubeChannelPayload[];
-  created_at?: string;
-  updated_at?: string;
-}
-
-/**
  * Analytics submission payload
  */
 export interface SubmissionPayload {
@@ -154,18 +124,6 @@ export interface SubmissionPayload {
   voiceovers_urls_count?: number;
   start_clips_urls_count?: number;
   stock_clips_urls_count?: number;
-}
-
-/**
- * YouTube channels summary for API tab
- */
-export interface YouTubeChannelsSummary {
-  total_channels?: number;
-  channels_ok?: number;
-  channels_token_present?: number;
-  channels_reauth?: number;
-  channels_no_token?: number;
-  channels_error?: number;
 }
 
 // ============================================================================
@@ -311,7 +269,7 @@ export function showToast(message: string, type: ToastType = 'info', detail?: st
 }
 
 // ============================================================================
-// LEGACY API ADAPTER - Esposto come window.veloxAPI
+// LEGACY API ADAPTER
 // ============================================================================
 
 /**
@@ -421,94 +379,6 @@ export const legacyApiAdapter = {
      */
     async submissions(limit: number = 200): Promise<{ items: SubmissionPayload[] }> {
       return fetchJSON(`/api/v1/submissions?limit=${limit}`);
-    },
-
-    /**
-     * YouTube channels summary (fast, cached)
-     */
-    async youtubeChannels(validate: boolean = false): Promise<{ summary: YouTubeChannelsSummary }> {
-      return fetchJSON(`/api/v1/youtube/channels?validate_tokens=${validate}`);
-    }
-  },
-
-  // ------------------------------------------------------------------
-  // YOUTUBE MANAGER API - Per youtube_manager.js
-  // ------------------------------------------------------------------
-  youtubeManager: {
-    /**
-     * Ottieni tutti i gruppi con canali
-     */
-    async getGroups(): Promise<{ ok: boolean; groups: Record<string, YouTubeGroupPayload> }> {
-      return fetchJSON('/api/youtube/manager/groups');
-    },
-
-    /**
-     * Crea nuovo gruppo
-     */
-    async createGroup(name: string): Promise<ApiResponse> {
-      return fetchJSON('/api/youtube/manager/groups', {
-        method: 'POST',
-        body: JSON.stringify({ name })
-      });
-    },
-
-    /**
-     * Elimina gruppo
-     */
-    async deleteGroup(name: string): Promise<ApiResponse> {
-      return fetchJSON(`/api/youtube/manager/groups/${encodeURIComponent(name)}`, {
-        method: 'DELETE'
-      });
-    },
-
-    /**
-     * Aggiungi canale a gruppo
-     */
-    async addChannel(groupName: string, channel: { url: string; title?: string; notes?: string }): Promise<ApiResponse> {
-      return fetchJSON(`/api/youtube/manager/groups/${encodeURIComponent(groupName)}/channels`, {
-        method: 'POST',
-        body: JSON.stringify(channel)
-      });
-    },
-
-    /**
-     * Rimuovi canale da gruppo
-     */
-    async removeChannel(groupName: string, channelId: string): Promise<ApiResponse> {
-      return fetchJSON(`/api/youtube/manager/groups/${encodeURIComponent(groupName)}/channels/${encodeURIComponent(channelId)}`, {
-        method: 'DELETE'
-      });
-    },
-
-    /**
-     * Feed video per gruppo
-     */
-    async getFeed(groupName: string, timeRange: string = 'week'): Promise<{ videos: unknown[] }> {
-      return fetchJSON(`/api/youtube/manager/feed?sort_by=date&time_range=${timeRange}&group_name=${encodeURIComponent(groupName)}`);
-    },
-
-    /**
-     * Discovery/search video
-     */
-    async discovery(query: string, days: number = 30): Promise<{ videos: unknown[]; results?: unknown[] }> {
-      return fetchJSON(`/api/youtube/manager/discovery?query=${encodeURIComponent(query)}&days=${days}`);
-    },
-
-    /**
-     * Similar channels
-     */
-    async similarChannels(url: string): Promise<{ results?: unknown[]; channels?: unknown[] }> {
-      return fetchJSON('/api/youtube/manager/tools/similar', {
-        method: 'POST',
-        body: JSON.stringify({ url })
-      });
-    },
-
-    /**
-     * Trends/News
-     */
-    async trends(query: string): Promise<{ trends: unknown[] }> {
-      return fetchJSON(`/api/youtube/manager/trends?query=${encodeURIComponent(query)}`);
     }
   },
 
@@ -576,22 +446,5 @@ export const legacyApiAdapter = {
 // ============================================================================
 
 export type LegacyApiAdapter = typeof legacyApiAdapter;
-
-// ============================================================================
-// GLOBAL WINDOW INTERFACE - Per legacy JS
-// ============================================================================
-
-declare global {
-  interface Window {
-    veloxAPI?: LegacyApiAdapter;
-    veloxAPIReady?: boolean;
-  }
-}
-
-// Esponi globalmente per legacy JS
-if (typeof window !== 'undefined') {
-  window.veloxAPI = legacyApiAdapter;
-  window.veloxAPIReady = true;
-}
 
 export default legacyApiAdapter;

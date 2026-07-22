@@ -22,8 +22,6 @@ export type {
   WorkerStatus,
   AnalyticsOverview,
   TimeSeriesData,
-  YouTubeVideo,
-  YouTubeChannel,
   DriveFile,
   DriveFolder,
   CalendarEvent,

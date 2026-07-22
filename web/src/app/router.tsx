@@ -31,12 +31,7 @@ const CalendarView = lazy(() => import('./views/CalendarView').then(async m => {
     };
 }));
 const WorkersAnsibleView = lazy(() => import('./views/WorkersAnsibleView'));
-const YouTubeSuiteView = lazy(() => import('./views/YouTubeSuiteView'));
-
 // Lazy-loaded apps (wrapping named exports as default for lazy loading)
-const YouTubeUploadApp = lazy(() => import('../components/YouTubeManager/YouTubeUploadApp').then(m => ({ default: m.YouTubeUploadApp })));
-const YouTubeChannelsApp = lazy(() => import('../components/YouTubeManager/YouTubeChannelsApp').then(m => ({ default: m.YouTubeChannelsApp })));
-const YouTubeLivestreamApp = lazy(() => import('../components/YouTubeManager/YouTubeLivestreamApp').then(m => ({ default: m.YouTubeLivestreamApp })));
 const CreatorStudioApp = lazy(() => import('../components/Script/CreatorStudioApp').then(m => ({ default: m.CreatorStudioApp })));
 const AnalyticsDashboardApp = lazy(() => import('../components/Analytics/Dashboard/DashboardApp').then(m => ({ default: m.DashboardApp })));
 const DriveFileExplorer = lazy(() => import('../components/Drive/DriveFileExplorer').then(m => ({ default: m.DriveFileExplorer })));
@@ -90,10 +85,6 @@ const DashboardShell: React.FC = () => {
  *   /dashboard-channels  → Dashboard (main entry)
  *   /calendar            → Calendar
  *   /workers-ansible     → Workers + Ansible
- *   /youtube-suite       → YouTube suite
- *   /youtube/upload      → YouTube Upload
- *   /youtube/channels    → YouTube Channels
- *   /youtube/livestream  → YouTube Livestream
  *   /creator_studio_app  → Creator Studio
  *   /analytics           → Analytics Dashboard
  *   /drive               → Drive Explorer
@@ -122,25 +113,6 @@ export const router = createBrowserRouter([
             {
                 path: APP_ROUTES.workersAnsible,
                 element: <WorkersAnsibleView />
-            },
-
-            // --- YouTube suite ---
-            {
-                path: APP_ROUTES.youtubeSuite,
-                element: <YouTubeSuiteView />
-            },
-
-            {
-                path: APP_ROUTES.youtubeUpload,
-                element: <YouTubeUploadApp />
-            },
-            {
-                path: APP_ROUTES.youtubeChannels,
-                element: <YouTubeChannelsApp />
-            },
-            {
-                path: APP_ROUTES.youtubeLivestream,
-                element: <YouTubeLivestreamApp />
             },
 
             // --- Creator Studio ---
