@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useCollaborationStore, User, Comment, Task } from '@/stores/collaborationStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -53,7 +53,16 @@ export default function CollaborationPanel() {
   const [taskAssignee, setTaskAssignee] = useState('');
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [showTaskForm, setShowTaskForm] = useState(false);
-  
+
+  // Build an lookup map so repeated author resolution is O(1) instead of O(n)
+  const usersById = useMemo(() => {
+    const map: Record<string, User> = {};
+    for (const user of users) {
+      map[user.id] = user;
+    }
+    return map;
+  }, [users]);
+
   const selectedObjectId = selectedIds[0] || null;
   const objectComments = useCollaborationStore((state) => state.getCommentsForObject(selectedObjectId || ''));
   const userTasks = currentUser ? getTasksForUser(currentUser.id) : [];
@@ -308,14 +317,14 @@ export default function CollaborationPanel() {
                 <div key={comment.id} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div 
+                      <div
                         className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                        style={{ backgroundColor: users.find(u => u.id === comment.authorId)?.color || '#ccc' }}
+                        style={{ backgroundColor: usersById[comment.authorId]?.color || '#ccc' }}
                       >
-                        {users.find(u => u.id === comment.authorId)?.name.charAt(0).toUpperCase()}
+                        {usersById[comment.authorId]?.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div className="font-medium text-sm">{users.find(u => u.id === comment.authorId)?.name}</div>
+                        <div className="font-medium text-sm">{usersById[comment.authorId]?.name}</div>
                         <div className="text-xs text-slate-500">{formatTime(comment.timestamp)}</div>
                       </div>
                     </div>
@@ -333,15 +342,15 @@ export default function CollaborationPanel() {
                     <div className="space-y-2 mt-2 border-t border-slate-200 dark:border-slate-700 pt-2">
                       {comment.replies.map((reply) => (
                         <div key={reply.id} className="flex items-start gap-2 pl-8">
-                          <div 
+                          <div
                             className="w-4 h-4 rounded-full flex items-center justify-center text-white text-xs font-semibold"
-                            style={{ backgroundColor: users.find(u => u.id === reply.authorId)?.color || '#ccc' }}
+                            style={{ backgroundColor: usersById[reply.authorId]?.color || '#ccc' }}
                           >
-                            {users.find(u => u.id === reply.authorId)?.name.charAt(0).toUpperCase()}
+                            {usersById[reply.authorId]?.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 text-xs text-slate-500">
-                              <span>{users.find(u => u.id === reply.authorId)?.name}</span>
+                              <span>{usersById[reply.authorId]?.name}</span>
                               <span>•</span>
                               <span>{formatTime(reply.timestamp)}</span>
                             </div>
@@ -429,7 +438,7 @@ export default function CollaborationPanel() {
                 
                 <div className="space-y-2">
                   {userTasks.map((task) => (
-                    <TaskCard key={task.id} task={task} users={users} onAssign={handleAssignTask} onUpdateStatus={handleUpdateTaskStatus} />
+                    <TaskCard key={task.id} task={task} usersById={usersById} onAssign={handleAssignTask} onUpdateStatus={handleUpdateTaskStatus} />
                   ))}
                 </div>
               </div>
@@ -441,13 +450,13 @@ export default function CollaborationPanel() {
               
               <div className="space-y-2">
                 {getTasksByStatus('pending').map((task) => (
-                  <TaskCard key={task.id} task={task} users={users} onAssign={handleAssignTask} onUpdateStatus={handleUpdateTaskStatus} />
+                  <TaskCard key={task.id} task={task} usersById={usersById} onAssign={handleAssignTask} onUpdateStatus={handleUpdateTaskStatus} />
                 ))}
                 {getTasksByStatus('in_progress').map((task) => (
-                  <TaskCard key={task.id} task={task} users={users} onAssign={handleAssignTask} onUpdateStatus={handleUpdateTaskStatus} />
+                  <TaskCard key={task.id} task={task} usersById={usersById} onAssign={handleAssignTask} onUpdateStatus={handleUpdateTaskStatus} />
                 ))}
                 {getTasksByStatus('completed').map((task) => (
-                  <TaskCard key={task.id} task={task} users={users} onAssign={handleAssignTask} onUpdateStatus={handleUpdateTaskStatus} />
+                  <TaskCard key={task.id} task={task} usersById={usersById} onAssign={handleAssignTask} onUpdateStatus={handleUpdateTaskStatus} />
                 ))}
               </div>
             </div>
@@ -459,18 +468,18 @@ export default function CollaborationPanel() {
 }
 
 // Task Card Component
-function TaskCard({ 
-  task, 
-  users, 
-  onAssign, 
-  onUpdateStatus 
-}: { 
-  task: Task; 
-  users: User[]; 
-  onAssign: (taskId: string, userId: string) => void; 
+function TaskCard({
+  task,
+  usersById,
+  onAssign,
+  onUpdateStatus
+}: {
+  task: Task;
+  usersById: Record<string, User>;
+  onAssign: (taskId: string, userId: string) => void;
   onUpdateStatus: (taskId: string, status: Task['status']) => void;
 }) {
-  const assignee = users.find(u => u.id === task.assigneeId);
+  const assignee = usersById[task.assigneeId || ''];
   
   return (
     <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
@@ -524,7 +533,7 @@ function TaskCard({
             className="text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1 bg-white dark:bg-slate-700"
           >
             <option value="">Assign to...</option>
-            {users.map(user => (
+            {Object.values(usersById).map(user => (
               <option key={user.id} value={user.id}>{user.name}</option>
             ))}
           </select>
