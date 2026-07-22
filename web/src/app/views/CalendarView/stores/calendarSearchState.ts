@@ -12,6 +12,7 @@
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { CalendarEvent } from '@/lib/api';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
 export interface SearchIndex {
     // Inverted index for fast text search
@@ -29,23 +30,6 @@ export interface CalendarSearchState {
 export interface CalendarSearchActions {
     setQuery: (query: string) => void;
     clearSearch: () => void;
-}
-
-// Debounce hook
-function useDebounce<T>(value: T, delay: number): T {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
-
-        return () => {
-            clearTimeout(timer);
-        };
-    }, [value, delay]);
-
-    return debouncedValue;
 }
 
 // Normalize text for search
@@ -226,7 +210,7 @@ export function useCalendarSearchState(events: CalendarEvent[], debounceMs: numb
     const eventsVersionRef = useRef(0);
 
     // Debounce the query
-    const debouncedQuery = useDebounce(query, debounceMs);
+    const debouncedQuery = useDebouncedValue(query, debounceMs);
 
     // Build or update search index incrementally
     const searchIndex = useMemo(() => {

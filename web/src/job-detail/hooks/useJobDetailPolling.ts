@@ -13,8 +13,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { JobDetailData, JobStatus } from '../types';
-import { formatDuration } from '../utils';
 import { useTabVisibility } from '@/hooks/useTabVisibility';
+import { formatDuration } from '@/app/views/utils/jobDetail';
 
 interface UseJobDetailPollingOptions {
   job: JobDetailData | null;
