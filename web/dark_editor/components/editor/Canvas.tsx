@@ -7,6 +7,7 @@ import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import Konva from 'konva';
+import { buildSelectedIdSet, findEditingObject } from '@/lib/canvasSelection';
 import {
   CropSelectionOverlay,
   GridOverlay,
@@ -68,11 +69,11 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
   const [isDrawingLasso, setIsDrawingLasso] = useState(false);
 
   // Build a Set from selectedIds so per-object lookup in the render loop is O(1)
-  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedIdSet = useMemo(() => buildSelectedIdSet(selectedIds), [selectedIds]);
 
   // Memo the object currently being edited to avoid repeated linear scans
   const editingObject = useMemo(
-    () => (editingId ? objects.find((o) => o.id === editingId) ?? null : null),
+    () => findEditingObject(objects, editingId),
     [objects, editingId]
   );
 

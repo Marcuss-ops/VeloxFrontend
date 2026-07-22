@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useCollaborationStore, User, Comment, Task } from '@/stores/collaborationStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
+import { buildUsersById } from '@/lib/collaborationUsers';
 import { 
   Users, 
   MessageSquare, 
@@ -55,13 +56,7 @@ export default function CollaborationPanel() {
   const [showTaskForm, setShowTaskForm] = useState(false);
 
   // Build an lookup map so repeated author resolution is O(1) instead of O(n)
-  const usersById = useMemo(() => {
-    const map: Record<string, User> = {};
-    for (const user of users) {
-      map[user.id] = user;
-    }
-    return map;
-  }, [users]);
+  const usersById = useMemo(() => buildUsersById(users), [users]);
 
   const selectedObjectId = selectedIds[0] || null;
   const objectComments = useCollaborationStore((state) => state.getCommentsForObject(selectedObjectId || ''));
