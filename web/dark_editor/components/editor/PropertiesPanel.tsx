@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
-import { uploadImage, translateText } from '@/lib/api';
+import { uploadImage } from '@/lib/api';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
-import { Settings, Lock, Sparkles, Type, Globe, ShieldAlert, Move, Scaling, Palette, Image as ImageIcon, Upload, X, Languages } from 'lucide-react';
+import { Settings, Lock, Sparkles, Type, Move, Scaling, Palette, Image as ImageIcon, Upload, X } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Section, Field, FieldRow, NumberField, ColorSwatch, Toggle, PropertySlider, RotationDial } from './properties/ui';
 import DropShadowPanel from './properties/DropShadowPanel';
@@ -25,41 +25,14 @@ const FONT_WEIGHTS = [
   { label: 'Black', value: '900' },
 ] as const;
 
-const LANGUAGES = [
-  { code: 'it', label: 'Italian' },
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'fr', label: 'French' },
-  { code: 'de', label: 'German' },
-  { code: 'ru', label: 'Russian' },
-  { code: 'pt', label: 'Portuguese' },
-  { code: 'tr', label: 'Turkish' },
-  { code: 'pl', label: 'Polish' },
-] as const;
 
 export default function PropertiesPanel() {
   const { objects, selectedIds, updateObject } = useEditorStore();
-  const [targetLang, setTargetLang] = React.useState('en');
-  const [isTranslating, setIsTranslating] = React.useState(false);
-
   const selectedObject = selectedIds.length === 1
     ? objects.find((obj) => obj.id === selectedIds[0])
     : null;
 
   const { updateObjectLive, saveToHistory } = useEditorStore();
-
-  const handleTranslate = async () => {
-    if (!selectedObject || selectedObject.type !== 'text' || !selectedObject.text) return;
-    setIsTranslating(true);
-    try {
-      const res = await translateText({ text: selectedObject.text, target_language: targetLang });
-      if (res.translated_text) updateObject(selectedObject.id, { text: res.translated_text });
-    } catch (err) {
-      console.error('Failed to translate:', err);
-    } finally {
-      setIsTranslating(false);
-    }
-  };
 
   const handleImageFillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

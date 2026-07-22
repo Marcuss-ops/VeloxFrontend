@@ -5,7 +5,7 @@ const nextConfig = {
   // Note: API calls go directly to Go backend, not through Next.js rewrites
   // This avoids the Next.js <-> Go proxy loop that causes inconsistent behavior
   images: {
-    domains: ['img.youtube.com', 'i.ytimg.com', 'lh3.googleusercontent.com'],
+    domains: ['lh3.googleusercontent.com'],
     unoptimized: true,
   },
 }

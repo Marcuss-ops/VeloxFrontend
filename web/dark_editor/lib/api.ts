@@ -88,16 +88,6 @@ export interface UpscaleResponse {
   saved_at?: string;
 }
 
-export interface YouTubeGrabRequest {
-  url: string;
-}
-
-export interface YouTubeGrabResponse {
-  filename: string;
-  video_id: string;
-  url: string;
-}
-
 export interface RemoveBgRequest {
   filename: string;
   model?: string;
@@ -224,22 +214,6 @@ export async function upscaleImage(request: UpscaleRequest): Promise<UpscaleResp
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || 'Upscale failed');
-  }
-  
-  return response.json();
-}
-
-// Grab YouTube thumbnail
-export async function grabYouTubeThumbnail(request: YouTubeGrabRequest): Promise<YouTubeGrabResponse> {
-  const response = await fetch(`${API_BASE}/api/tools/youtube_grab`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'YouTube grab failed');
   }
   
   return response.json();
@@ -729,32 +703,3 @@ export async function getCopertineFolders(): Promise<DriveLink[]> {
   );
 }
 
-export interface TranslateRequest {
-  text: string;
-  target_language: string;
-  tone?: string;
-  preserve_hashtags?: boolean;
-}
-
-export interface TranslateResponse {
-  ok: boolean;
-  source_text: string;
-  sanitized_text: string;
-  translated_text: string;
-  target_language: string;
-}
-
-export async function translateText(request: TranslateRequest): Promise<TranslateResponse> {
-  const response = await fetch(`${API_BASE}/api/v1/youtube/ai/translate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
-  });
-  
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Translation failed');
-  }
-  
-  return response.json();
-}

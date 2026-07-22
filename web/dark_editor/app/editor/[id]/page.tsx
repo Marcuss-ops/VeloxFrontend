@@ -16,7 +16,6 @@ import EditorSidebar from '@/components/editor/sidebar/EditorSidebar';
 import ToolbarDock from './components/ToolbarDock';
 import ExportDialog from '@/components/editor/ExportDialog';
 import AIDialog from '@/components/editor/AIDialog';
-import YouTubeDialog from '@/components/editor/YouTubeDialog';
 import FeedPreviewDialog from '@/components/editor/FeedPreviewDialog';
 
 const Canvas = dynamic(() => import('@/components/editor/Canvas'), {
@@ -50,7 +49,7 @@ export default function EditorPage() {
 
   const { currentProject, updateProjectName } = useProjectStore();
   const { addToast } = useUIStore();
-  const { showExportDialog, showAIDialog, showYouTubeDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
+  const { showExportDialog, showAIDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
 
   const handleProjectNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateProjectName(e.target.value);
@@ -149,7 +148,6 @@ export default function EditorPage() {
 
       {showExportDialog && <ExportDialog />}
       {showAIDialog && <AIDialog />}
-      {showYouTubeDialog && <YouTubeDialog />}
       <FeedPreviewDialog isOpen={showFeedPreviewDialog} onClose={() => setFeedPreviewDialog(false)} />
     </div>
   );
