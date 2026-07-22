@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { driveApi, driveLinksApi, veloxApi, socialApi, type DriveFile as ApiDriveFile } from '@/lib/api';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { dataCache } from '@/lib/dataCache';
+import { useDataCache } from '@/hooks/useDataCache';
 import {
     selectFilteredFiles,
     selectFolderCount,
@@ -100,6 +100,8 @@ export function useDriveImporter(props: DriveImporterProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [driveAvailable, setDriveAvailable] = useState(true);
+
+    const dataCache = useDataCache();
 
     // Upload form fields
     const [title, setTitle] = useState('');

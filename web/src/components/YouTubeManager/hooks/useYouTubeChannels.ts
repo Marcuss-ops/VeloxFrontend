@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { youtubeApi } from '@/lib/api';
-import { dataCache } from '@/lib/dataCache';
+import { useDataCache } from '@/hooks/useDataCache';
 import type { Channel, ChannelGroup } from '../types';
 import { getLanguageFromName } from '../utils/languageDetection';
 
@@ -79,6 +79,7 @@ const normalizeGroups = (groups: ManagerGroupsResponse['groups']): ChannelGroup[
 };
 
 export const useYouTubeChannels = (): UseYouTubeChannelsResult => {
+    const dataCache = useDataCache();
     const [groups, setGroups] = useState<ChannelGroup[]>([]);
     const [undefinedChannels, setUndefinedChannels] = useState<Channel[]>([]);
     const [isLoading, setIsLoading] = useState(true);

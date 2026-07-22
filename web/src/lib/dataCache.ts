@@ -37,7 +37,7 @@ export interface CacheOptions {
 
 const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 
-class DataCache {
+export class DataCache {
   private cache = new Map<string, CacheEntry<any>>();
   private pendingRequests = new Map<string, PendingRequest<any>>();
 
@@ -160,7 +160,4 @@ class DataCache {
 
 }
 
-// Singleton instance
-export const dataCache = new DataCache();
 
-export default dataCache;
