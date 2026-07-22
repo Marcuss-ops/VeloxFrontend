@@ -36,7 +36,7 @@ const JobRow: React.FC<{ job: CompletedJob }> = ({ job }) => {
 
             {/* Upload action */}
             <a 
-                href={`/youtube/upload?job_id=${job.job_id}`}
+                href={`/creator_studio_app?job_id=${job.job_id}`}
                 className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium transition-colors"
             >
                 <span className="material-symbols-rounded text-sm">upload</span>

@@ -58,7 +58,7 @@ const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * Rules:
  * 1. Absolute URLs (http:// or https://) → return as-is
  * 2. Already /api/v1/* → keep as-is
- * 3. Non-v1 API endpoints (ansible, drive, youtube, bundle, etc.) → keep as-is
+ * 3. Non-v1 API endpoints (ansible, drive, bundle, etc.) → keep as-is
  * 4. Legacy endpoints (/jobs, /workers, etc.) → map to /api/v1/*
  * 5. Endpoints starting with /api/ but not v1 → upgrade to /api/v1/*
  * 6. Bare endpoints → prefix with /api/v1/

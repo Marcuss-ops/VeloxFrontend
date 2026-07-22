@@ -47,9 +47,13 @@ export interface UpdateSocialDestinationRequest {
   defaults?: Record<string, unknown>;
 }
 
-/** List destinations for the current workspace (resolved server-side from session). */
-export function listSocialDestinations(): Promise<{ destinations: SocialDestination[] }> {
-  return apiGet('/api/v1/integrations/velox/destinations');
+/** List destinations for the given workspace. */
+export function listSocialDestinations(
+  workspaceId: number
+): Promise<{ destinations: SocialDestination[] }> {
+  return apiGet(
+    `/api/v1/integrations/velox/destinations?workspace_id=${encodeURIComponent(workspaceId)}`
+  );
 }
 
 /** Get a single destination by its opaque id. */

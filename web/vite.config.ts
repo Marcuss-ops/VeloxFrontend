@@ -29,13 +29,7 @@ export default defineConfig(({ command }) => ({
                 changeOrigin: true,
                 secure: false,
             },
-            '/api/youtube': {
-                target: 'http://127.0.0.1:8080',
-                changeOrigin: true,
-                secure: false,
-                rewrite: (path) => path.replace(/^\/api\/youtube/, '/api/v1/youtube'),
-            },
-            '/api/drive': {
+'/api/drive': {
                 target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,

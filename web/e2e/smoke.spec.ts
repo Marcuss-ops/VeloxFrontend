@@ -57,36 +57,6 @@ test.describe('Smoke Tests - Creator Studio', () => {
     });
 });
 
-test.describe('Smoke Tests - YouTube', () => {
-    test('should navigate to YouTube manager', async ({ page }) => {
-        await page.goto('/youtube_manager');
-        
-        // YouTube manager should render
-        await expect(page.locator('body')).toBeVisible();
-    });
-
-    test('should navigate to YouTube upload', async ({ page }) => {
-        await page.goto('/youtube/upload');
-        
-        // YouTube upload should render
-        await expect(page.locator('body')).toBeVisible();
-    });
-
-    test('should navigate to YouTube channels', async ({ page }) => {
-        await page.goto('/youtube/channels');
-        
-        // YouTube channels should render
-        await expect(page.locator('body')).toBeVisible();
-    });
-
-    test('should navigate to YouTube livestream', async ({ page }) => {
-        await page.goto('/youtube/livestream');
-        
-        // YouTube livestream should render
-        await expect(page.locator('body')).toBeVisible();
-    });
-});
-
 test.describe('Smoke Tests - Analytics', () => {
     test('should navigate to analytics', async ({ page }) => {
         await page.goto('/analytics');

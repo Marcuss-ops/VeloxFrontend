@@ -7,10 +7,12 @@
  * which returns the aggregated { job, deliveries } shape.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useVeloxJobDetail } from './hooks/useVeloxJobDetail';
 import type { VeloxDelivery } from '@/lib/api/veloxApi';
+import { useSocialDestinations } from '@/hooks/useSocialDestinations';
+import type { SocialDestination } from '@/lib/api/socialDestinationsApi';
 
 const statusBadge = (status: string) => {
   const normalized = (status || 'UNKNOWN').toUpperCase();
@@ -44,15 +46,20 @@ const formatDate = (value: string | undefined) => {
   return isNaN(d.getTime()) ? value : d.toLocaleString();
 };
 
-const DeliveryRow: React.FC<{ delivery: VeloxDelivery; index: number }> = ({ delivery, index }) => {
+const DeliveryRow: React.FC<{ delivery: VeloxDelivery; index: number; destination?: SocialDestination }> = ({ delivery, index, destination }) => {
   const badge = deliveryStatusBadge(delivery.status);
+  const displayLabel = destination?.label || destination?.external_destination_id || delivery.externalDestinationId;
+  const displayProvider = destination?.provider;
   return (
     <div className="flex flex-col gap-2 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-primary/30 transition-colors">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-slate-500 text-xs font-mono">#{index + 1}</span>
           <span className="text-slate-200 font-medium text-sm truncate" title={delivery.externalDestinationId}>
-            {delivery.externalDestinationId}
+            {displayLabel}
+            {displayProvider && (
+              <span className="text-slate-500 text-xs font-normal ml-1">({displayProvider})</span>
+            )}
           </span>
         </div>
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold ${badge.bg} ${badge.color}`}>
@@ -93,6 +100,13 @@ export const VeloxJobDetailView: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { job, deliveries, loading, error, refresh } = useVeloxJobDetail(jobId);
+  const { destinations: socialDestinations } = useSocialDestinations({ enabled: Boolean(jobId) });
+
+  const destinationMap = useMemo(() => {
+    const map = new Map<string, SocialDestination>();
+    socialDestinations.forEach((d) => map.set(d.external_destination_id, d));
+    return map;
+  }, [socialDestinations]);
 
   if (loading) {
     return (
@@ -211,7 +225,12 @@ export const VeloxJobDetailView: React.FC = () => {
           ) : (
             <div className="flex flex-col gap-3">
               {deliveries.map((delivery, idx) => (
-                <DeliveryRow key={delivery.socialDeliveryId || `${delivery.externalDestinationId}-${idx}`} delivery={delivery} index={idx} />
+                <DeliveryRow
+                  key={delivery.socialDeliveryId || `${delivery.externalDestinationId}-${idx}`}
+                  delivery={delivery}
+                  index={idx}
+                  destination={destinationMap.get(delivery.externalDestinationId)}
+                />
               ))}
             </div>
           )}
