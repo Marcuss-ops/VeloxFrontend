@@ -95,12 +95,12 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                 </div>
             )}
 
-            {/* YouTube Group Selector */}
+            {/* Social Group Selector */}
             <section className="p-4 bg-white/5 rounded-xl border border-white/10">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">visibility</span>
-                        YouTube Group
+                        Social Group
                     </h3>
                     {selectedDriveGroup && (
                         <span className="text-[9px] bg-green-500/20 px-2 py-1 rounded text-green-300">
@@ -189,7 +189,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-red-400 flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">visibility</span>
-                        Link YouTube
+                        Source Link
                     </h3>
                     <div className="flex items-center gap-2">
                         {youtubeHistory.length > 0 && (

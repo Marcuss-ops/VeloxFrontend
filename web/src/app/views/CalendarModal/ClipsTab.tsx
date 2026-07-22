@@ -59,7 +59,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
         if (clipSubfolders.length === 0) {
             return (
                 <div className="text-center py-3 text-white/30 text-[10px]">
-                    {selectedDriveGroup?.clip ? 'No clip subfolders found' : 'Select a YouTube group to load clip folders'}
+                    {selectedDriveGroup?.clip ? 'No clip subfolders found' : 'Select a social group to load clip folders'}
                 </div>
             );
         }
@@ -125,7 +125,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                     </div>
                 ) : (
                     <div className="text-center py-4 text-white/30 text-xs">
-                        {selectedDriveGroup?.stock ? 'No subfolders found' : 'Select a YouTube group to load stock folders'}
+                        {selectedDriveGroup?.stock ? 'No subfolders found' : 'Select a social group to load stock folders'}
                     </div>
                 )}
             </section>
