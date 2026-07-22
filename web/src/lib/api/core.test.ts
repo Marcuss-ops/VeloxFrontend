@@ -46,6 +46,7 @@ describe('API Core', () => {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
+        body: null,
       });
     });
 
@@ -74,7 +75,16 @@ describe('API Core', () => {
   });
 
   describe('retry logic', () => {
-    it('should retry on 500 error', async () => {
+    beforeEach(() => {
+      // Neutralize random jitter so delays are deterministic in tests.
+      vi.spyOn(Math, 'random').mockReturnValue(0.5);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('should retry on 500 error for idempotent method', async () => {
       global.fetch = vi.fn()
         .mockResolvedValueOnce({
           ok: false,
@@ -95,7 +105,7 @@ describe('API Core', () => {
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
-    it('should retry on 429 error', async () => {
+    it('should retry on 429 error for idempotent method', async () => {
       global.fetch = vi.fn()
         .mockResolvedValueOnce({
           ok: false,
@@ -114,32 +124,106 @@ describe('API Core', () => {
       await expect(resultPromise).resolves.toEqual({ success: true });
     });
 
-    it('should NOT retry on 400 error', async () => {
+    it('should retry on other retryable statuses (408, 502, 503, 504)', async () => {
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({ ok: false, status: 408, statusText: 'Timeout' })
+        .mockResolvedValueOnce({ ok: false, status: 502, statusText: 'Bad Gateway' })
+        .mockResolvedValueOnce({ ok: false, status: 503, statusText: 'Unavailable' })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+      const resultPromise = fetchJSON('/api/v1/test', { retries: 3, retryDelay: 0 });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(resultPromise).resolves.toEqual({ success: true });
+      expect(global.fetch).toHaveBeenCalledTimes(4);
+    });
+
+    it.each([400, 401, 403, 404])('should NOT retry on %i', async (status) => {
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
-        status: 400,
-        statusText: 'Bad Request',
+        status,
+        statusText: 'Error',
       });
 
       await expect(
         fetchJSON('/api/v1/test', { retries: 3 })
-      ).rejects.toThrow('Bad Request');
+      ).rejects.toThrow('Error');
 
       expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
-    it('should NOT retry on 404 error', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found',
-      });
+    it('should NOT retry POST by default even on 500', async () => {
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
 
       await expect(
-        fetchJSON('/api/v1/test', { retries: 3 })
-      ).rejects.toThrow('Not Found');
+        fetchJSON('/api/v1/test', { method: 'POST', retries: 1, retryDelay: 0 })
+      ).rejects.toThrow('Internal Server Error');
 
       expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry POST when caller marks it idempotent', async () => {
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+      const resultPromise = fetchJSON('/api/v1/test', {
+        method: 'POST',
+        idempotent: true,
+        retries: 1,
+        retryDelay: 0,
+      });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(resultPromise).resolves.toEqual({ success: true });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should NOT retry network errors for non-idempotent methods', async () => {
+      global.fetch = vi.fn().mockRejectedValue(new TypeError('Network error'));
+
+      await expect(
+        fetchJSON('/api/v1/test', { method: 'POST', retries: 3 })
+      ).rejects.toThrow('Network error');
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should retry network errors for idempotent methods', async () => {
+      global.fetch = vi.fn()
+        .mockRejectedValueOnce(new TypeError('Network error'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+      const resultPromise = fetchJSON('/api/v1/test', { retries: 1, retryDelay: 0 });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(resultPromise).resolves.toEqual({ success: true });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
     it('should retry with exponential backoff', async () => {
@@ -168,6 +252,97 @@ describe('API Core', () => {
 
       await expect(resultPromise).resolves.toEqual({ success: true });
       expect(global.fetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('should respect Retry-After header (seconds)', async () => {
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+          headers: {
+            get: (name: string) => (name === 'Retry-After' ? '2' : null),
+          } as any,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+      const resultPromise = fetchJSON('/api/v1/test', { retries: 1, retryDelay: 1000 });
+
+      // Retry-After of 2 seconds, with jitter neutralized => 2s
+      await vi.advanceTimersByTimeAsync(2000);
+
+      await expect(resultPromise).resolves.toEqual({ success: true });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should respect Retry-After header (HTTP date)', async () => {
+      const future = new Date(Date.now() + 5000);
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+          headers: {
+            get: (name: string) => (name === 'Retry-After' ? future.toUTCString() : null),
+          } as any,
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+      const resultPromise = fetchJSON('/api/v1/test', { retries: 1, retryDelay: 1000 });
+
+      // 5 seconds from now, with jitter neutralized
+      await vi.advanceTimersByTimeAsync(5000);
+
+      await expect(resultPromise).resolves.toEqual({ success: true });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('should call body function on each retry with fresh body', async () => {
+      let attempt = 0;
+      const body = vi.fn().mockImplementation(() => {
+        attempt += 1;
+        return JSON.stringify({ attempt });
+      });
+
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+      const resultPromise = fetchJSON('/api/v1/test', {
+        method: 'POST',
+        idempotent: true,
+        body,
+        retries: 1,
+        retryDelay: 0,
+      });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(resultPromise).resolves.toEqual({ success: true });
+      expect(body).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        1,
+        '/api/v1/test',
+        expect.objectContaining({ body: JSON.stringify({ attempt: 1 }) })
+      );
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        '/api/v1/test',
+        expect.objectContaining({ body: JSON.stringify({ attempt: 2 }) })
+      );
     });
   });
 
