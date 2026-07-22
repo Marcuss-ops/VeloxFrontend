@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { defaultStorage, safeJsonParse, safeJsonStringify, type StoragePort } from './storage'
 
 /**
  * Utility function to merge Tailwind CSS classes with conflict resolution.
@@ -101,57 +102,56 @@ export interface SavedNewsItem {
 
 const NEWS_STORAGE_KEY = 'yt_saved_news';
 
-export const getSavedNews = (): Map<string, SavedNewsItem> => {
-    try {
-        const saved = localStorage.getItem(NEWS_STORAGE_KEY);
-        return new Map((saved ? JSON.parse(saved) : []).map((item: SavedNewsItem) => [item.url, item]));
-    } catch {
-        return new Map();
+export const getSavedNews = (storage: StoragePort = defaultStorage): Map<string, SavedNewsItem> => {
+    const saved = storage.getItem(NEWS_STORAGE_KEY);
+    const parsed = safeJsonParse<SavedNewsItem[]>(saved, []);
+    return new Map(parsed.map((item) => [item.url, item]));
+};
+
+export const saveNewsItem = (item: SavedNewsItem, storage: StoragePort = defaultStorage): void => {
+    const saved = getSavedNews(storage);
+    saved.set(item.url, item);
+    const serialized = safeJsonStringify(Array.from(saved.values()));
+    if (serialized) {
+        storage.setItem(NEWS_STORAGE_KEY, serialized);
     }
 };
 
-export const saveNewsItem = (item: SavedNewsItem): void => {
-    try {
-        const saved = getSavedNews();
-        saved.set(item.url, item);
-        localStorage.setItem(NEWS_STORAGE_KEY, JSON.stringify(Array.from(saved.values())));
-    } catch {
-        // localStorage write failed
-    }
+export const clearNewsCache = (storage: StoragePort = defaultStorage): void => {
+    storage.removeItem(NEWS_STORAGE_KEY);
 };
 
-export const clearNewsCache = (): void => {
-    try {
-        localStorage.removeItem(NEWS_STORAGE_KEY);
-    } catch {
-        // localStorage unavailable
+export const addToStudio = (
+    video: { title: string; url?: string },
+    group?: string,
+    storage: StoragePort = defaultStorage
+): void => {
+    const raw = storage.getItem('studio_pending_projects_v1');
+    const pending = safeJsonParse<unknown[]>(raw, []);
+    const newPending = {
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        title: video.title,
+        url: video.url || '',
+        group: group || null,
+        addedAt: Date.now(),
+    };
+    pending.push(newPending);
+    const serialized = safeJsonStringify(pending);
+    if (serialized) {
+        storage.setItem('studio_pending_projects_v1', serialized);
     }
-};
 
-export const addToStudio = (video: { title: string; url?: string }, group?: string): void => {
-    try {
-        const raw = localStorage.getItem('studio_pending_projects_v1') || '[]';
-        const pending = JSON.parse(raw);
-        const newPending = {
-            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-            title: video.title,
-            url: video.url || '',
-            group: group || null,
-            addedAt: Date.now(),
-        };
-        pending.push(newPending);
-        localStorage.setItem('studio_pending_projects_v1', JSON.stringify(pending));
-
-        const addVideoProject = (window as unknown as Record<string, unknown>)?.addVideoProject;
-        if (typeof addVideoProject === 'function') {
+    const addVideoProject = (window as unknown as Record<string, unknown>)?.addVideoProject;
+    if (typeof addVideoProject === 'function') {
+        try {
             addVideoProject({
                 title: video.title,
                 url: video.url || '',
                 group: group || null,
             });
+        } catch (e) {
+            console.error('[YouTube] Failed to add video project', e);
         }
-    } catch (e) {
-        console.error('[YouTube] Failed to save pending project', e);
     }
 };
 
