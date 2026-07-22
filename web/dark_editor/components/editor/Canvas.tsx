@@ -8,6 +8,8 @@ import { useUIStore } from '@/stores/uiStore';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import Konva from 'konva';
 import { buildSelectedIdSet, findEditingObject } from '@/lib/canvasSelection';
+import { selectCropTarget } from '@/lib/editorSelectors';
+import { getCanvasObjectCommonProps, getCanvasObjectShadowProps } from '@/lib/canvasObjectHelpers';
 import {
   CropSelectionOverlay,
   GridOverlay,
@@ -103,11 +105,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     transformerRef.current.getLayer()?.batchDraw();
   }, [selectedIds, cropEditingId]);
 
-  const cropTarget = useEditorStore((state) => {
-    if (!cropEditingId) return null;
-    const obj = state.objects[cropEditingId];
-    return obj?.type === 'image' ? obj : null;
-  });
+  const cropTarget = useEditorStore((state) => selectCropTarget(state, cropEditingId));
 
   // Initialize crop selection to cover 100% of the image size (maintaining aspect ratio)
   useEffect(() => {
@@ -568,60 +566,20 @@ const CanvasObjectNode = React.memo(function CanvasObjectNode({
   stageRef,
 }: CanvasObjectNodeProps) {
   const commonProps = useMemo(
-    () => ({
-      id: obj.id,
-      x: obj.x,
-      y: obj.y,
-      rotation: obj.rotation,
-      scaleX: obj.scaleX,
-      scaleY: obj.scaleY,
-      opacity: obj.opacity,
-      visible: obj.visible,
-      draggable: !obj.locked && activeTool !== 'pan' && !isPanning && !isCropEditingObject,
-      listening: !isCropEditingObject,
-      onClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
-        if (activeTool === 'pan' || isPanning) return;
-        e.cancelBubble = true;
-        selectObject(obj.id, e.evt.shiftKey);
-      },
-      onDragStart: () => {
-        // Clear selection or perform actions on drag start
-      },
-      onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
-        const node = e.target;
-        updateObject(obj.id, {
-          x: Math.round(node.x()),
-          y: Math.round(node.y()),
-        });
-      },
-      onTransformEnd: () => {
-        const node = stageRef.current?.findOne(`#${obj.id}`);
-        if (!node) return;
-
-        updateObject(obj.id, {
-          x: Math.round(node.x()),
-          y: Math.round(node.y()),
-          scaleX: node.scaleX(),
-          scaleY: node.scaleY(),
-          rotation: Math.round(node.rotation()),
-        });
-      },
-    }),
+    () =>
+      getCanvasObjectCommonProps({
+        obj,
+        activeTool,
+        isPanning,
+        isCropEditingObject,
+        selectObject,
+        updateObject,
+        stageRef,
+      }),
     [obj, activeTool, isPanning, isCropEditingObject, selectObject, updateObject, stageRef]
   );
 
-  const shadowProps = useMemo(
-    () =>
-      obj.dropShadow
-        ? {
-            shadowColor: obj.dropShadow.color,
-            shadowBlur: obj.dropShadow.blur,
-            shadowOffset: { x: obj.dropShadow.offsetX, y: obj.dropShadow.offsetY },
-            shadowOpacity: 0.5,
-          }
-        : {},
-    [obj.dropShadow]
-  );
+  const shadowProps = useMemo(() => getCanvasObjectShadowProps(obj), [obj.dropShadow]);
 
   return (
     <ObjectRenderer

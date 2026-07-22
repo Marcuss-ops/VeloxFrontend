@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useVersioningStore, Version } from '@/stores/versioningStore';
+import { buildVersionsByIdMap } from '@/lib/versioningUtils';
 import { useEditorStore } from '@/stores/editorStore';
 import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useProjectStore } from '@/stores/projectStore';
@@ -35,13 +36,7 @@ export default function VersioningPanel() {
   const projectVersions = useVersioningStore((state) => state.getVersionsForProject(projectId));
 
   // O(1) lookup map to avoid repeated .find() when resolving versions
-  const versionsById = React.useMemo(() => {
-    const map: Record<string, Version> = {};
-    for (const v of projectVersions) {
-      map[v.id] = v;
-    }
-    return map;
-  }, [projectVersions]);
+  const versionsById = React.useMemo(() => buildVersionsByIdMap(projectVersions), [projectVersions]);
   
   // Auto-save effect
   useEffect(() => {
