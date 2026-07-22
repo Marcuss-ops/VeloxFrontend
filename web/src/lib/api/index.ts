@@ -24,7 +24,7 @@ export { projectsApi } from './projectsApi';
 export type { Project, CreateProjectRequest } from './projectsApi';
 
 export { deliveriesApi } from './deliveriesApi';
-export type { Delivery } from './deliveriesApi';
+export type { Delivery, DeliveryStatus } from './deliveriesApi';
 
 // Legacy Bridge typed React adapter
 export {
