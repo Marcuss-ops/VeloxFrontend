@@ -227,31 +227,6 @@ export const VoiceoverTabApp: React.FC = () => {
 
         // Feature non implementata: endpoint /api/v1/voiceover/generate non esiste nel backend Go
         alert('Feature non disponibile: Voiceover generation non è ancora implementata nel backend Go.');
-        return;
-        
-        // Codice originale rimosso:
-        // setIsLoading(true);
-        // try {
-        //     const res = await fetch('/api/v1/voiceover/generate', {
-        //         method: 'POST',
-        //         headers: { 'Content-Type': 'application/json' },
-        //         body: JSON.stringify({
-        //             projectName: project.projectName,
-        //             text: project.text,
-        //             languages: project.selectedLanguages,
-        //             folderId: project.selectedFolder,
-        //             groupId: project.selectedGroup,
-        //         }),
-        //     });
-        //     if (res.ok) {
-        //         // Success feedback
-        //         updateProject({ text: '' });
-        //     }
-        // } catch (e) {
-        //     console.error('Failed to generate voiceover:', e);
-        // } finally {
-        //     setIsLoading(false);
-        // }
     };
 
     useEffect(() => {

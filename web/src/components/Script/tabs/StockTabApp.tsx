@@ -247,31 +247,6 @@ export const StockTabApp: React.FC = () => {
 
         // Feature non implementata: endpoint /api/v1/stock/search non esiste nel backend Go
         alert('Feature non disponibile: Stock search non è ancora implementato nel backend Go.');
-        return;
-        
-        // Codice originale rimosso:
-        // setIsLoading(true);
-        // try {
-        //     const res = await fetch('/api/v1/stock/search', {
-        //         method: 'POST',
-        //         headers: { 'Content-Type': 'application/json' },
-        //         body: JSON.stringify({
-        //             projectName: project.projectName,
-        //             searchQuery: project.searchQuery,
-        //             folderId: project.selectedFolder,
-        //             clipLength: project.clipLength,
-        //             segmentLength: project.segmentLength,
-        //         }),
-        //     });
-        //     if (res.ok) {
-        //         // Success feedback
-        //         updateProject({ searchQuery: '' });
-        //     }
-        // } catch (e) {
-        //     console.error('Failed to search:', e);
-        // } finally {
-        //     setIsLoading(false);
-        // }
     };
 
     React.useEffect(() => {

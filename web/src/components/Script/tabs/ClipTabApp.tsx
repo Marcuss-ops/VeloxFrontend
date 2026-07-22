@@ -204,28 +204,6 @@ export const ClipTabApp: React.FC = () => {
 
         // Feature non implementata: endpoint /api/v1/clip/process non esiste nel backend Go
         alert('Feature non disponibile: Clip processing non è ancora implementato nel backend Go.');
-        return;
-        
-        // Codice originale rimosso:
-        // setIsLoading(true);
-        // try {
-        //     const res = await fetch('/api/v1/clip/process', {
-        //         method: 'POST',
-        //         headers: { 'Content-Type': 'application/json' },
-        //         body: JSON.stringify({
-        //             youtubeLink: project.youtubeLink,
-        //             llmNote: project.llmNote,
-        //             folderId: project.selectedFolder,
-        //         }),
-        //     });
-        //     if (res.ok) {
-        //         updateProject({ youtubeLink: '', llmNote: '' });
-        //     }
-        // } catch (e) {
-        //     console.error('Failed to process:', e);
-        // } finally {
-        //     setIsLoading(false);
-        // }
     };
 
     useEffect(() => {
