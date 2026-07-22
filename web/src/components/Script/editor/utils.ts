@@ -1,3 +1,5 @@
+import { YouTubeUrl } from '@/lib/domain';
+
 /**
  * Utility functions for Script Editor History management
  * Consolidated from ScriptTabApp.tsx and ScriptCanvas.tsx
@@ -15,13 +17,10 @@ export const historyItemKey = (title: string, link: string): string => {
 };
 
 // Check if URL is YouTube
-export const isYouTubeUrl = (url: string): boolean => {
-    const s = String(url || '').toLowerCase();
-    return s.includes('youtube.com') || s.includes('youtu.be');
-};
+export const isYouTubeUrl = (url: string): boolean => YouTubeUrl.isValid(url);
 
 // Extract first YouTube URL from text
 export const extractFirstYouTubeUrl = (text: string): string => {
-    const urls = String(text || '').match(/https?:\/\/[^\s]+/g) || [];
-    return urls.find((u: string) => isYouTubeUrl(u)) || '';
+    const url = YouTubeUrl.extractFirst(text);
+    return url || '';
 };

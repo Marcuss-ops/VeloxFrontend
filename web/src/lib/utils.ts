@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { defaultStorage, safeJsonParse, safeJsonStringify, type StoragePort } from './storage'
+import { YouTubeUrl } from './domain'
 
 /**
  * Utility function to merge Tailwind CSS classes with conflict resolution.
@@ -37,25 +38,9 @@ export interface NewsItem {
     finalScore?: number;
 }
 
-export const isLikelyVideoUrl = (url?: string): boolean => {
-    const u = String(url || '').toLowerCase();
-    return u.includes('watch?v=') || u.includes('youtu.be/') || u.includes('/shorts/') || u.includes('/embed/') || /\/live\/[^/?#]+/.test(u);
-};
+export const isLikelyVideoUrl = (url?: string): boolean => YouTubeUrl.isVideoUrl(url || '');
 
-export const extractVideoId = (url?: string): string | null => {
-    if (!url) return null;
-    try {
-        const u = new URL(url);
-        if (u.hostname === 'youtu.be') return u.pathname.slice(1);
-        if (u.searchParams.get('v')) return u.searchParams.get('v');
-        if (u.pathname.includes('/shorts/')) return u.pathname.split('/shorts/')[1]?.split(/[/?]/)[0];
-        if (u.pathname.includes('/embed/')) return u.pathname.split('/embed/')[1]?.split(/[/?]/)[0];
-        if (u.pathname.includes('/live/')) return u.pathname.split('/live/')[1]?.split(/[/?]/)[0];
-    } catch {
-        // URL parsing failed
-    }
-    return null;
-};
+export const extractVideoId = (url?: string): string | null => YouTubeUrl.extractId(url || '');
 
 export const resolveChannelLink = (obj: Record<string, unknown>): string => {
     const direct = String(obj?.channel_url || '').trim();
@@ -154,5 +139,3 @@ export const addToStudio = (
         }
     }
 };
-
-
