@@ -1,23 +1,6 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { createDefaultVideoProject, type VideoProject } from '../types';
 import { useScript } from '../../../app/providers/ScriptProvider';
-import { driveApiExtended } from '../../../lib/api';
-
-// Drive group entry interface
-export interface DriveGroupEntry {
-    group?: string;
-    display?: string;
-    stock?: { id?: string; name?: string };
-    clip?: { id?: string; name?: string };
-    voiceover?: { id?: string; name?: string };
-}
-
-// Drive folder interface
-export interface DriveFolder {
-    id?: string;
-    name?: string;
-    language?: string;
-}
 
 // Selection snapshot interface
 export interface SelectionSnapshot {
@@ -51,11 +34,6 @@ export interface ScriptEditorActions {
     setCurrentIndex: (index: number) => void;
     undoLastSelection: () => void;
 }
-
-// Master folder IDs (drive_links.json)
-const CLIP_MASTER_ID = '1ID_oFJF15Q5nmiZF0d2NaJeKhsOJpQNS';
-const STOCK_MASTER_ID = '1wt4hqmHD5qEsNhpUUBszlRkSHhyFgtGh';
-const VOICEOVER_MASTER_ID = '1wFhLmyyIH5rKSbtQuCuua9a2LKQymA8A';
 
 // Hook per lo stato dell'editor
 export const useScriptEditorState = () => {
@@ -137,109 +115,10 @@ export const useScriptEditorState = () => {
         });
     }, [currentIndex]);
 
-    // Fetch dei gruppi Drive
-    // NOTE: the legacy /api/youtube/manager/groups endpoint has been removed;
-    // Drive folder resolution now falls back to the generic Drive API.
-    const fetchDriveGroups = useCallback(async () => {
-        return null;
-    }, []);
-
-    // Trova un gruppo Drive per nome
-    const findDriveGroup = useCallback((groups: DriveGroupEntry[] | null, groupName: string) => {
-        if (!groups || !groupName) return null;
-        const g = groupName.toLowerCase().trim();
-        return groups.find((item) => {
-            const key = String(item?.group || '').toLowerCase();
-            const display = String(item?.display || '').toLowerCase();
-            return key === g || display === g;
-        });
-    }, []);
-
-    // Log delle cartelle di default per un gruppo
-    const logDefaultFoldersForGroup = useCallback((stockName: string, clipName: string, voiceoverName: string) => {
-            console.warn(
-            '[SCRIPT] Gruppo selezionato — Cartella Stock di default: %s, Cartella Clip: %s, Cartella Voiceover: %s',
-            stockName || '-',
-            clipName || '-',
-            voiceoverName || '-',
-        );
-    }, []);
-
-    // Pre-carica le cartelle Drive per un gruppo
-    const preloadDriveFoldersForGroup = useCallback(async (group: string) => {
-        const g = (group || '').trim();
-        if (!g) return;
-        try {
-            const groups = await fetchDriveGroups();
-            const entry = findDriveGroup(groups, g);
-            if (entry) {
-                const stockName = entry?.stock?.name || entry?.stock?.id || '-';
-                const clipName = entry?.clip?.name || entry?.clip?.id || '-';
-                const voiceoverName = entry?.voiceover?.name || entry?.voiceover?.id || '-';
-                logDefaultFoldersForGroup(stockName, clipName, voiceoverName);
-
-                setProjects((prev) => prev.map((p, i) => {
-                    if (i !== currentIndex) return p;
-                    return {
-                        ...p,
-                        clipMainFolderId: entry?.clip?.id || null,
-                        clipMainFolderName: entry?.clip?.name || null,
-                        stockMainFolderId: entry?.stock?.id || null,
-                        stockMainFolderName: entry?.stock?.name || null,
-                        voiceoverMainFolderId: entry?.voiceover?.id || null,
-                        voiceoverMainFolderName: entry?.voiceover?.name || null,
-                        driveFolderId: entry?.clip?.id || p.driveFolderId || null,
-                        voiceoverFolderId: entry?.voiceover?.id || p.voiceoverFolderId || null,
-                    };
-                }));
-                return;
-            }
-
-            // Fallback: risolvi da drive_links (tre master)
-            const want = g.toLowerCase();
-            const normalize = (s: string) => (s || '').trim().toLowerCase();
-            let stockLabel = '-';
-            let clipLabel = '-';
-            let voiceoverLabel = '-';
-            try {
-                const [stockRes, clipRes, voiceRes] = await Promise.all([
-                    fetch('/api/drive/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent_id: STOCK_MASTER_ID }) }),
-                    fetch('/api/drive/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent_id: CLIP_MASTER_ID }) }),
-                    fetch('/api/drive/folders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ parent_id: VOICEOVER_MASTER_ID }) }),
-                ]);
-                const parse = async (r: Response) => {
-                    const text = await r.text();
-                    try {
-                        const data = JSON.parse(text);
-                        return (data?.folders || []) as { id?: string; name?: string }[];
-                    } catch {
-                        return [];
-                    }
-                };
-                const [stockFolders, clipFolders, voiceFolders] = await Promise.all([parse(stockRes), parse(clipRes), parse(voiceRes)]);
-                const find = (arr: { id?: string; name?: string }[]) =>
-                    arr.find((f) => normalize(String(f.name || '')) === want || normalize(String((f as any).language || '')) === want);
-                const s = find(stockFolders);
-                const c = find(clipFolders);
-                const v = find(voiceFolders);
-                if (s) stockLabel = s.name || s.id || '-';
-                if (c) clipLabel = c.name || c.id || '-';
-                if (v) voiceoverLabel = v.name || v.id || '-';
-            } catch (_) {
-                /* ignore */
-            }
-            logDefaultFoldersForGroup(stockLabel, clipLabel, voiceoverLabel);
-        } catch (e) {
-            console.warn('[DRIVE] preload group folders failed', e);
-        }
-    }, [fetchDriveGroups, findDriveGroup, logDefaultFoldersForGroup, currentIndex]);
-
     // Gestione cambio gruppo
     const handleGroupChange = useCallback((group: string) => {
         updateProject({ youtubeGroup: group });
-        console.warn('[SCRIPT] Gruppo selezionato:', group || '-');
-        preloadDriveFoldersForGroup(group);
-    }, [updateProject, preloadDriveFoldersForGroup]);
+    }, [updateProject]);
 
     // Synchronise editor state with the ScriptProvider context
     useEffect(() => {
@@ -247,13 +126,6 @@ export const useScriptEditorState = () => {
         syncProjects(projects);
         syncCurrentIndex(currentIndex);
     }, [project, projects, currentIndex, syncCurrentProject, syncProjects, syncCurrentIndex]);
-
-    // Pre-carica cartelle quando cambia il gruppo
-    useEffect(() => {
-        if (project.youtubeGroup && !project.clipMainFolderId && !project.stockMainFolderId && !project.voiceoverMainFolderId) {
-            preloadDriveFoldersForGroup(project.youtubeGroup);
-        }
-    }, [project.youtubeGroup, project.clipMainFolderId, project.stockMainFolderId, project.voiceoverMainFolderId, currentIndex, preloadDriveFoldersForGroup]);
 
     // Clear pending projects and reset to single empty project on mount
     useEffect(() => {
@@ -286,7 +158,6 @@ export const useScriptEditorState = () => {
         undoLastSelection,
         pushSelectionHistory,
         handleGroupChange,
-        preloadDriveFoldersForGroup,
     };
 };
 

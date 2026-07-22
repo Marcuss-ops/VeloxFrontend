@@ -1,13 +1,12 @@
 import React from 'react';
-import { ApiSubmission, YouTubeChannelSummary } from './types';
+import { ApiSubmission } from './types';
 
 interface DashboardApiTabProps {
     submissions: ApiSubmission[];
-    ytSummary: YouTubeChannelSummary;
     onRefresh: () => void;
 }
 
-export const DashboardApiTab: React.FC<DashboardApiTabProps> = ({ submissions, ytSummary, onRefresh }) => {
+export const DashboardApiTab: React.FC<DashboardApiTabProps> = ({ submissions, onRefresh }) => {
     const formatDate = (dateStr: string | undefined) => {
         if (!dateStr) return '';
         try {
@@ -24,13 +23,6 @@ export const DashboardApiTab: React.FC<DashboardApiTabProps> = ({ submissions, y
         if (item.stock_clips_urls_count) parts.push(`${item.stock_clips_urls_count} stock`);
         return parts.join(' • ');
     };
-
-    const ytTotal = ytSummary.total_channels ?? 0;
-    const ytTokenPresent = ytSummary.channels_token_present ?? 0;
-    const ytNoToken = ytSummary.channels_no_token ?? 0;
-    const ytReauth = ytSummary.channels_reauth ?? 0;
-    const ytError = ytSummary.channels_error ?? 0;
-    const ytOk = ytSummary.channels_ok ?? 0;
 
     return (
         <div className="space-y-6 animate-fadeIn">
@@ -52,43 +44,12 @@ export const DashboardApiTab: React.FC<DashboardApiTabProps> = ({ submissions, y
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
                 <div className="rounded-xl border border-border-dark bg-card-dark p-5 shadow-card hover:shadow-card-hover transition-all duration-300">
                     <div className="text-text-secondary text-xs font-bold uppercase tracking-widest">API Submissions</div>
                     <div className="mt-2 flex items-baseline gap-3">
                         <div className="text-4xl font-bold text-text-primary tracking-tight">{submissions.length}</div>
                         <div className="text-text-secondary text-sm">ultimi invii</div>
-                    </div>
-                </div>
-                <div className="rounded-xl border border-border-dark bg-card-dark p-5 shadow-card hover:shadow-card-hover transition-all duration-300">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <div className="text-text-secondary text-xs font-bold uppercase tracking-widest">Video Channels</div>
-                            <div className="text-text-secondary text-sm">Stato token (cache)</div>
-                        </div>
-                        <a className="text-primary text-xs font-semibold hover:underline bg-primary/10 px-2 py-1 rounded" href="/api/v1/youtube/channels?validate_tokens=true" title="Verifica reale (più lenta)">
-                            VALIDATE=TRUE
-                        </a>
-                    </div>
-                    <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium">
-                        <span className="px-2.5 py-1 rounded-full bg-[#232f48] border border-border-dark text-text-primary">
-                            Tot: {ytTotal}
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300">
-                            Token: {ytTokenPresent}
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-red-300">
-                            No token: {ytNoToken}
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-300">
-                            Reauth: {ytReauth}
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full bg-red-900/30 border border-red-500/30 text-red-200">
-                            Error: {ytError}
-                        </span>
-                        <span className="px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-300">
-                            OK: {ytOk}
-                        </span>
                     </div>
                 </div>
             </div>

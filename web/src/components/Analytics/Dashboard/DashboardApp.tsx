@@ -27,7 +27,6 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({ initialTab = 'coda',
     const {
         workersMap,
         apiSubmissions,
-        ytSummary,
         loading,
         error,
         activeTab,
@@ -116,7 +115,7 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({ initialTab = 'coda',
                         {activeTab === 'esecuzione' && <DashboardExecutionTab jobs={running} workersMap={workersMap} onRefresh={refresh} />}
                         {activeTab === 'completati' && <DashboardCompletedTab jobs={completed} />}
                         {activeTab === 'errori' && <DashboardErrorsTab jobs={errors} onRefresh={refresh} />}
-                        {activeTab === 'api' && <DashboardApiTab submissions={apiSubmissions} ytSummary={ytSummary} onRefresh={refresh} />}
+                        {activeTab === 'api' && <DashboardApiTab submissions={apiSubmissions} onRefresh={refresh} />}
                         {activeTab === 'analytics' && <DashboardAnalyticsTab />}
                     </>
                 )}

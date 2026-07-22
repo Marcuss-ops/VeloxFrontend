@@ -60,11 +60,3 @@ export interface ApiSubmission {
     stock_clips_urls_count?: number;
 }
 
-export interface YouTubeChannelSummary {
-    total_channels?: number;
-    channels_ok?: number;
-    channels_token_present?: number;
-    channels_reauth?: number;
-    channels_no_token?: number;
-    channels_error?: number;
-}
