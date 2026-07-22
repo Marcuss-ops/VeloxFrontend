@@ -97,7 +97,7 @@ describe('POST /upload', () => {
       const file = createMockFile('test', mimeType);
       const response = await POST(createMockRequest(file) as any);
 
-      expect(response.status).toBe(200, `Expected 200 for ${mimeType}`);
+      expect(response.status).toBe(200);
     }
   });
 
