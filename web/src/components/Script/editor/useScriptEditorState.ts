@@ -115,9 +115,12 @@ export const useScriptEditorState = () => {
         });
     }, [currentIndex]);
 
-    // Gestione cambio gruppo
-    const handleGroupChange = useCallback((group: string) => {
-        updateProject({ youtubeGroup: group });
+    // Gestione cambio gruppo/destinazione
+    const handleGroupChange = useCallback((externalDestinationId: string) => {
+        updateProject({
+            youtubeGroup: externalDestinationId,
+            externalDestinationId,
+        });
     }, [updateProject]);
 
     // Synchronise editor state with the ScriptProvider context

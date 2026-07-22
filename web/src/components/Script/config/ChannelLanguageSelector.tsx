@@ -1,7 +1,9 @@
 /**
- * ChannelLanguageSelector - Component for displaying and editing channel language.
- * Shows a flag emoji with dropdown to change the language.
- * Modern dropdown with framer-motion animations.
+ * ChannelLanguageSelector - Component for displaying and editing the default
+ * language of a connected YouTube destination (formerly "channel").
+ *
+ * The legacy `/api/v1/channels` endpoints have been removed; the language is
+ * now read from and written to the InstaEdit SocialDestination's `defaults`.
  */
 
 "use client";
@@ -13,8 +15,9 @@ import { Button } from '@/components/ui/button';
 import { useChannelLanguages, LANGUAGES } from '../hooks/useChannelLanguages';
 
 interface ChannelLanguageSelectorProps {
-  channelId: string;
-  channelName: string;
+  /** Opaque InstaEdit social destination id. Replaces the old channelId. */
+  externalDestinationId: string;
+  label?: string;
   size?: 'sm' | 'md' | 'lg';
   showName?: boolean;
   editable?: boolean;
@@ -37,7 +40,7 @@ const LanguageDropdownMenu: React.FC<{
 }> = ({ currentLang, isOpen, setIsOpen, onSelect, size, editable, getFlag, getLanguageName }) => {
   const flag = getFlag(currentLang);
   const langName = getLanguageName(currentLang);
-  
+
   const buttonSizeClasses = {
     sm: 'h-7 px-2 py-1 text-xs',
     md: 'h-9 px-3 py-1.5 text-sm',
@@ -51,7 +54,7 @@ const LanguageDropdownMenu: React.FC<{
         variant="outline"
         className={`
           ${buttonSizeClasses[size]}
-          bg-[#11111198] hover:bg-[#111111d1] 
+          bg-[#11111198] hover:bg-[#111111d1]
           border-none rounded-xl backdrop-blur-sm
           shadow-[0_0_20px_rgba(0,0,0,0.2)]
           flex items-center gap-2
@@ -113,7 +116,7 @@ const LanguageDropdownMenu: React.FC<{
                   }}
                   onClick={() => onSelect(lang.code)}
                   className={`
-                    px-3 py-2.5 cursor-pointer text-white text-sm rounded-lg w-full text-left 
+                    px-3 py-2.5 cursor-pointer text-white text-sm rounded-lg w-full text-left
                     flex items-center gap-3 transition-colors
                     ${lang.code === currentLang ? 'bg-primary/20 text-primary' : 'hover:bg-white/5'}
                   `}
@@ -126,10 +129,10 @@ const LanguageDropdownMenu: React.FC<{
                       animate={{ scale: 1 }}
                       transition={{ delay: index * 0.03 + 0.1, type: "spring" }}
                     >
-                      <svg 
-                        className="w-4 h-4 text-primary flex-shrink-0" 
-                        fill="none" 
-                        stroke="currentColor" 
+                      <svg
+                        className="w-4 h-4 text-primary flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
                         viewBox="0 0 24 24"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -147,11 +150,11 @@ const LanguageDropdownMenu: React.FC<{
 };
 
 /**
- * Single channel language selector with flag emoji and dropdown.
+ * Single destination language selector with flag emoji and dropdown.
  */
 export const ChannelLanguageSelector: React.FC<ChannelLanguageSelectorProps> = ({
-  channelId,
-  channelName,
+  externalDestinationId,
+  label = '',
   size = 'md',
   showName = false,
   editable = true,
@@ -161,29 +164,27 @@ export const ChannelLanguageSelector: React.FC<ChannelLanguageSelectorProps> = (
   const [isOpen, setIsOpen] = useState(false);
   const [currentLang, setCurrentLang] = useState<string>(initialLanguage || 'en');
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+
   const { fetchChannelLanguage, setChannelLanguage, autoDetectLanguage, getFlag, getLanguageName } = useChannelLanguages();
 
   // Load or auto-detect language on mount
   useEffect(() => {
     const loadLanguage = async () => {
-      // First try to fetch from server
-      const existing = await fetchChannelLanguage(channelId);
+      const existing = await fetchChannelLanguage(externalDestinationId);
       if (existing) {
         setCurrentLang(existing.language_code);
-      } else if (channelName) {
-        // Auto-detect from name
-        const detected = await autoDetectLanguage(channelId, channelName);
+      } else if (label) {
+        const detected = await autoDetectLanguage(externalDestinationId, label);
         if (detected) {
           setCurrentLang(detected.language_code);
         }
       }
     };
-    
-    if (channelId) {
-      loadLanguage();
+
+    if (externalDestinationId) {
+      void loadLanguage();
     }
-  }, [channelId, channelName, fetchChannelLanguage, autoDetectLanguage]);
+  }, [externalDestinationId, label, fetchChannelLanguage, autoDetectLanguage]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -199,11 +200,11 @@ export const ChannelLanguageSelector: React.FC<ChannelLanguageSelectorProps> = (
   const handleLanguageSelect = async (langCode: string) => {
     setCurrentLang(langCode);
     setIsOpen(false);
-    
+
     if (editable) {
-      await setChannelLanguage(channelId, channelName, langCode);
+      await setChannelLanguage(externalDestinationId, label, langCode);
     }
-    
+
     onLanguageChange?.(langCode);
   };
 
@@ -226,162 +227,6 @@ export const ChannelLanguageSelector: React.FC<ChannelLanguageSelectorProps> = (
           {currentLang}
         </span>
       )}
-    </div>
-  );
-};
-
-/**
- * ChannelLanguageList - Display language flags for multiple channels.
- */
-interface ChannelLanguageListProps {
-  channels: Array<{
-    id?: string;
-    channel_id?: string;
-    channel?: string;
-    name?: string;
-    title?: string;
-  }>;
-  size?: 'sm' | 'md' | 'lg';
-  onLanguageChange?: (channelId: string, languageCode: string) => void;
-}
-
-export const ChannelLanguageList: React.FC<ChannelLanguageListProps> = ({
-  channels,
-  size = 'sm',
-}) => {
-  const { batchProcessChannels, getFlag, getLanguageName } = useChannelLanguages();
-  const [processedChannels, setProcessedChannels] = useState<Record<string, string>>({});
-
-  const sizeClasses = {
-    sm: 'text-[14px]',
-    md: 'text-[16px]',
-    lg: 'text-[18px]',
-  };
-
-  useEffect(() => {
-    if (channels.length > 0) {
-      batchProcessChannels(channels).then((results) => {
-        const map: Record<string, string> = {};
-        results.forEach((ch) => {
-          const id = ch.channel_id;
-          map[id] = ch.language_code;
-        });
-        setProcessedChannels(map);
-      });
-    }
-  }, [channels, batchProcessChannels]);
-
-  return (
-    <div className="flex flex-wrap gap-1">
-      {channels.map((ch, idx) => {
-        const id = ch.id || ch.channel_id || ch.channel || `channel-${idx}`;
-        const name = ch.name || ch.title || ch.channel || id;
-        const langCode = processedChannels[id] || 'en';
-        const flag = getFlag(langCode);
-        
-        return (
-          <div
-            key={id}
-            className={`${sizeClasses[size]} leading-none`}
-            title={`${name}: ${getLanguageName(langCode)}`}
-          >
-            {flag}
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-/**
- * GroupChannelsWithLanguages - Display channels in a group with their languages.
- */
-interface GroupChannelsWithLanguagesProps {
-  groupName: string;
-  channels: Array<{
-    id?: string;
-    channel_id?: string;
-    channel?: string;
-    name?: string;
-    title?: string;
-    thumbnail?: string;
-  }>;
-  editable?: boolean;
-  onLanguageChange?: (channelId: string, languageCode: string) => void;
-}
-
-export const GroupChannelsWithLanguages: React.FC<GroupChannelsWithLanguagesProps> = ({
-  channels,
-  editable = true,
-  onLanguageChange,
-}) => {
-  const { batchProcessChannels, setChannelLanguage } = useChannelLanguages();
-  const [channelLanguages, setChannelLanguages] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (channels.length > 0) {
-      batchProcessChannels(channels).then((results) => {
-        const map: Record<string, string> = {};
-        results.forEach((ch) => {
-          map[ch.channel_id] = ch.language_code;
-        });
-        setChannelLanguages(map);
-      });
-    }
-  }, [channels, batchProcessChannels]);
-
-  const handleLanguageChange = async (channelId: string, langCode: string) => {
-    setChannelLanguages(prev => ({ ...prev, [channelId]: langCode }));
-    const channel = channels.find(ch => 
-      (ch.id || ch.channel_id || ch.channel) === channelId
-    );
-    if (channel) {
-      const name = channel.name || channel.title || channel.channel || channelId;
-      await setChannelLanguage(channelId, name, langCode);
-    }
-    onLanguageChange?.(channelId, langCode);
-  };
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {channels.map((ch, idx) => {
-        const id = ch.id || ch.channel_id || ch.channel || `channel-${idx}`;
-        const name = ch.name || ch.title || ch.channel || id;
-        const langCode = channelLanguages[id] || 'en';
-        
-        return (
-          <div
-            key={id}
-            className="flex items-center gap-2 px-2 py-1.5 bg-slate-800/50 rounded-lg border border-slate-700/50"
-          >
-            {/* Thumbnail or placeholder */}
-            {ch.thumbnail ? (
-              <img 
-                src={ch.thumbnail} 
-                alt={name}
-                className="w-5 h-5 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center">
-                <span className="material-symbols-rounded text-[10px] text-slate-400">visibility</span>
-              </div>
-            )}
-            
-            {/* Channel name */}
-            <span className="text-xs text-slate-300 truncate max-w-[100px]">{name}</span>
-            
-            {/* Language selector */}
-            <ChannelLanguageSelector
-              channelId={id}
-              channelName={name}
-              size="sm"
-              editable={editable}
-              initialLanguage={langCode}
-              onLanguageChange={(lang) => handleLanguageChange(id, lang)}
-            />
-          </div>
-        );
-      })}
     </div>
   );
 };

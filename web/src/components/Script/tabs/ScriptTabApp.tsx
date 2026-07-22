@@ -187,6 +187,7 @@ export const ScriptTabApp: React.FC = () => {
                 updateProject({
                     titles: [data.title, ''],
                     sourceContext: data.url || '',
+                    externalDestinationId: data.group || null,
                     youtubeGroup: data.group || null,
                     videoStyle: 'normal',
                 });
@@ -204,12 +205,8 @@ export const ScriptTabApp: React.FC = () => {
             alert('Inserisci almeno un titolo.');
             return;
         }
-        if (!project.youtubeGroup) {
-            alert('Seleziona un gruppo YouTube.');
-            return;
-        }
         if (!project.externalDestinationId) {
-            alert('Seleziona una destinazione di pubblicazione.');
+            alert('Seleziona una destinazione YouTube di pubblicazione.');
             return;
         }
 

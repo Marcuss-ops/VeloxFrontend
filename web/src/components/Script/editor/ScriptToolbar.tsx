@@ -214,7 +214,7 @@ export const ScriptToolbar: React.FC<ScriptToolbarProps> = ({
             <div className="rounded-2xl overflow-visible border border-slate-700/60 bg-slate-900/70 shadow-xl shadow-black/20 backdrop-blur">
                 <div className="relative">
                     <StyleGroupSelector
-                        selectedGroup={project.youtubeGroup}
+                        selectedGroup={project.externalDestinationId}
                         selectedStyle={project.videoStyle}
                         onGroupChange={onGroupChange}
                         onStyleChange={onStyleChange}

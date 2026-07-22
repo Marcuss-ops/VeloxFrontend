@@ -1,11 +1,17 @@
 /**
- * useChannelLanguages - React hook for managing channel language associations.
- * Provides language detection, fetching, and updating capabilities.
+ * useChannelLanguages - React hook for managing YouTube destination language
+ * associations through the InstaEdit social destinations API.
+ *
+ * The legacy `/api/v1/channels` endpoints have been removed. A "channel"
+ * is now represented by a connected YouTube social destination (managed by
+ * InstaEdit). The destination's default language is stored in the
+ * `defaults.language` field of the SocialDestination record and can be
+ * updated via `socialDestinationsApi.update`.
  */
 
-import { useState, useCallback } from 'react';
-
-const API_BASE = '/api/v1/channels';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { socialDestinationsApi, type SocialDestination } from '@/lib/api/socialDestinationsApi';
+import { authApi } from '@/lib/api/authApi';
 
 // Language definitions
 export const LANGUAGES = [
@@ -35,8 +41,9 @@ export const LANGUAGE_NAMES: Record<string, string> = {
   ar: 'Arabic', hi: 'Hindi',
 };
 
+/** A YouTube destination with its persisted default language. */
 export interface ChannelLanguage {
-  channel_id: string;
+  external_destination_id: string;
   channel_name: string;
   language_code: string;
   language_name: string;
@@ -48,25 +55,29 @@ export interface UseChannelLanguagesResult {
   // State
   loading: boolean;
   error: string | null;
-  
+  youtubeDestinations: SocialDestination[];
+
   // Actions
-  fetchChannelLanguage: (channelId: string) => Promise<ChannelLanguage | null>;
-  setChannelLanguage: (channelId: string, channelName: string, languageCode: string) => Promise<boolean>;
-  autoDetectLanguage: (channelId: string, channelName: string) => Promise<ChannelLanguage | null>;
-  batchProcessChannels: (channels: Array<{id?: string; channel_id?: string; channel?: string; name?: string; title?: string}>) => Promise<ChannelLanguage[]>;
+  fetchChannelLanguage: (externalDestinationId: string) => Promise<ChannelLanguage | null>;
+  setChannelLanguage: (externalDestinationId: string, channelName: string, languageCode: string) => Promise<boolean>;
+  autoDetectLanguage: (externalDestinationId: string, channelName: string) => Promise<ChannelLanguage | null>;
+  batchProcessChannels: (items: Array<{ external_destination_id?: string; label?: string; name?: string }>) => Promise<ChannelLanguage[]>;
   detectFromName: (channelName: string) => Promise<{code: string; name: string; flag: string} | null>;
-  
+  refresh: () => Promise<void>;
+
   // Utilities
   getFlag: (langCode: string) => string;
   getLanguageName: (langCode: string) => string;
 }
 
 /**
- * Hook for managing channel language associations.
+ * Hook for managing YouTube destination language associations.
  */
 export function useChannelLanguages(): UseChannelLanguagesResult {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [youtubeDestinations, setYoutubeDestinations] = useState<SocialDestination[]>([]);
+  const destinationsRef = useRef<SocialDestination[]>([]);
 
   const getFlag = useCallback((langCode: string): string => {
     return LANGUAGE_FLAGS[langCode] || '🌐';
@@ -76,109 +87,68 @@ export function useChannelLanguages(): UseChannelLanguagesResult {
     return LANGUAGE_NAMES[langCode] || 'Unknown';
   }, []);
 
-  const fetchChannelLanguage = useCallback(async (channelId: string): Promise<ChannelLanguage | null> => {
-    try {
-      const res = await fetch(`${API_BASE}/${encodeURIComponent(channelId)}/language`);
-      const data = await res.json();
-      if (data.ok) {
-        const channelLang: ChannelLanguage = {
-          channel_id: data.channel_id,
-          channel_name: data.channel_name,
-          language_code: data.language_code,
-          language_name: data.language_name,
-          flag: data.flag,
-          auto_detected: data.auto_detected,
-        };
-        return channelLang;
-      }
-      return null;
-    } catch (e) {
-      console.error('[ChannelLanguages] Error fetching channel language:', e);
-      return null;
-    }
-  }, []);
-
-  const setChannelLanguage = useCallback(async (
-    channelId: string, 
-    channelName: string, 
-    languageCode: string
-  ): Promise<boolean> => {
-    try {
-      const res = await fetch(`${API_BASE}/${encodeURIComponent(channelId)}/language`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          channel_id: channelId,
-          channel_name: channelName,
-          language_code: languageCode,
-        }),
-      });
-      const data = await res.json();
-      return data.ok;
-    } catch (e) {
-      console.error('[ChannelLanguages] Error setting channel language:', e);
-      return false;
-    }
-  }, []);
-
-  const autoDetectLanguage = useCallback(async (
-    channelId: string, 
-    channelName: string
-  ): Promise<ChannelLanguage | null> => {
-    try {
-      const res = await fetch(
-        `${API_BASE}/${encodeURIComponent(channelId)}/language/auto-detect?channel_name=${encodeURIComponent(channelName)}`,
-        { method: 'POST' }
-      );
-      const data = await res.json();
-      if (data.ok) {
-        return {
-          channel_id: data.channel_id,
-          channel_name: data.channel_name,
-          language_code: data.language_code,
-          language_name: data.language_name,
-          flag: data.flag,
-          auto_detected: data.auto_detected,
-        } as ChannelLanguage;
-      }
-      return null;
-    } catch (e) {
-      console.error('[ChannelLanguages] Error auto-detecting language:', e);
-      return null;
-    }
-  }, []);
-
-  const batchProcessChannels = useCallback(async (
-    channelList: Array<{id?: string; channel_id?: string; channel?: string; name?: string; title?: string}>
-  ): Promise<ChannelLanguage[]> => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/batch/process`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channels: channelList }),
-      });
-      const data = await res.json();
-      if (data.ok && data.channels) {
-        const processed = data.channels.map((ch: any) => ({
-          channel_id: ch.channel_id || ch.id || ch.channel,
-          channel_name: ch.channel_name || ch.name || ch.title || ch.channel_id,
-          language_code: ch.language_code,
-          language_name: ch.language_name,
-          flag: ch.language_flag || LANGUAGE_FLAGS[ch.language_code] || '🌐',
-          auto_detected: ch.auto_detected,
-        }));
-        
-        return processed;
+      const me = await authApi.getMe();
+      if (!me?.workspaceId) {
+        setError('Not authenticated');
+        setYoutubeDestinations([]);
+        return;
       }
-      return [];
+      const response = await socialDestinationsApi.list(me.workspaceId);
+      const youtubeOnly = (response.destinations ?? []).filter((d) => d.provider === 'youtube' || d.source_system === 'youtube');
+      setYoutubeDestinations(youtubeOnly);
+      destinationsRef.current = youtubeOnly;
     } catch (e) {
-      console.error('[ChannelLanguages] Error batch processing:', e);
-      setError('Failed to process channels');
-      return [];
+      const message = e instanceof Error ? e.message : 'Failed to load YouTube destinations';
+      setError(message);
+      setYoutubeDestinations([]);
+      destinationsRef.current = [];
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const fetchChannelLanguage = useCallback(async (externalDestinationId: string): Promise<ChannelLanguage | null> => {
+    try {
+      const destination = destinationsRef.current.find((d) => d.external_destination_id === externalDestinationId)
+        ?? youtubeDestinations.find((d) => d.external_destination_id === externalDestinationId);
+      if (!destination) return null;
+      const langCode = String(destination.defaults?.language || 'en');
+      return {
+        external_destination_id: destination.external_destination_id,
+        channel_name: destination.label || `Destination ${destination.external_destination_id}`,
+        language_code: langCode,
+        language_name: getLanguageName(langCode),
+        flag: getFlag(langCode),
+        auto_detected: false,
+      };
+    } catch (e) {
+      console.error('[ChannelLanguages] Error fetching destination language:', e);
+      return null;
+    }
+  }, [youtubeDestinations, getFlag, getLanguageName]);
+
+  const setChannelLanguage = useCallback(async (
+    externalDestinationId: string,
+    _channelName: string,
+    languageCode: string
+  ): Promise<boolean> => {
+    try {
+      const current = await socialDestinationsApi.get(externalDestinationId);
+      await socialDestinationsApi.update(externalDestinationId, {
+        defaults: { ...current.defaults, language: languageCode },
+      });
+      return true;
+    } catch (e) {
+      console.error('[ChannelLanguages] Error setting destination language:', e);
+      return false;
     }
   }, []);
 
@@ -186,30 +156,87 @@ export function useChannelLanguages(): UseChannelLanguagesResult {
     channelName: string
   ): Promise<{code: string; name: string; flag: string} | null> => {
     try {
-      const res = await fetch(`${API_BASE}/detect?channel_name=${encodeURIComponent(channelName)}`);
-      const data = await res.json();
-      if (data.ok && data.detected_language) {
-        return {
-          code: data.detected_language.code,
-          name: data.detected_language.name,
-          flag: data.detected_language.flag,
-        };
+      // Simple client-side language detection from the destination label.
+      const lower = (channelName || '').toLowerCase();
+      let best: { code: string; name: string; flag: string } | null = null;
+      let bestScore = 0;
+      for (const lang of LANGUAGES) {
+        const matches = lower.match(new RegExp(lang.name.toLowerCase(), 'g'));
+        const score = matches ? matches.length : 0;
+        if (score > bestScore) {
+          bestScore = score;
+          best = { code: lang.code, name: lang.name, flag: lang.flag };
+        }
       }
-      return null;
+      if (best) return best;
+      return { code: 'en', name: 'English', flag: '🇬🇧' };
     } catch (e) {
       console.error('[ChannelLanguages] Error detecting from name:', e);
       return null;
     }
   }, []);
 
+  const autoDetectLanguage = useCallback(async (
+    externalDestinationId: string,
+    channelName: string
+  ): Promise<ChannelLanguage | null> => {
+    const detected = await detectFromName(channelName);
+    if (!detected) return null;
+    const ok = await setChannelLanguage(externalDestinationId, channelName, detected.code);
+    if (!ok) return null;
+    return {
+      external_destination_id: externalDestinationId,
+      channel_name: channelName,
+      language_code: detected.code,
+      language_name: detected.name,
+      flag: detected.flag,
+      auto_detected: true,
+    };
+  }, [detectFromName, setChannelLanguage]);
+
+  const batchProcessChannels = useCallback(async (
+    items: Array<{ external_destination_id?: string; label?: string; name?: string }>
+  ): Promise<ChannelLanguage[]> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result: ChannelLanguage[] = [];
+      for (const item of items) {
+        const externalDestinationId = item.external_destination_id;
+        if (!externalDestinationId) continue;
+        const destination = youtubeDestinations.find((d) => d.external_destination_id === externalDestinationId);
+        const label = item.label || item.name || destination?.label || externalDestinationId;
+        const detected = await detectFromName(label);
+        const langCode = detected?.code || String(destination?.defaults?.language || 'en');
+        result.push({
+          external_destination_id: externalDestinationId,
+          channel_name: label,
+          language_code: langCode,
+          language_name: getLanguageName(langCode),
+          flag: getFlag(langCode),
+          auto_detected: !!detected,
+        });
+      }
+      return result;
+    } catch (e) {
+      console.error('[ChannelLanguages] Error batch processing:', e);
+      setError('Failed to process destinations');
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [youtubeDestinations, getFlag, getLanguageName, detectFromName]);
+
   return {
     loading,
     error,
+    youtubeDestinations,
     fetchChannelLanguage,
     setChannelLanguage,
     autoDetectLanguage,
     batchProcessChannels,
     detectFromName,
+    refresh,
     getFlag,
     getLanguageName,
   };
