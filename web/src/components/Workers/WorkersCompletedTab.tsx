@@ -35,8 +35,8 @@ export const WorkersCompletedTab: React.FC<WorkersCompletedTabProps> = ({ jobs }
                             const ytRes = job.last_upload_result ?? null;
                             const ytSuccess = !!(ytRes?.success === true);
                             const ytError = ytRes ? String(ytRes.error ?? ytRes.message ?? ytRes.detail ?? '') || null : null;
-                            const ytVideoId = ytRes ? (ytRes.youtube_video_id ?? ytRes.video_id ?? ytRes.videoId ?? ytRes.youtubeVideoId ?? null) : null;
-                            const ytUrl = job.slot_data?.youtube_url ?? ytRes?.url ?? ytRes?.link ?? ytRes?.video_url ?? ytRes?.youtube_url ?? (ytVideoId ? `https://www.youtube.com/watch?v=${encodeURIComponent(String(ytVideoId))}` : null);
+                            const ytVideoId = ytRes ? (ytRes.video_id ?? ytRes.videoId ?? ytRes.youtubeVideoId ?? null) : null;
+                            const ytUrl = ytRes?.url ?? ytRes?.link ?? ytRes?.video_url ?? (ytVideoId ? `https://www.youtube.com/watch?v=${encodeURIComponent(String(ytVideoId))}` : null);
                             const driveResult = job.last_drive_upload_result ?? null;
                             const driveSuccess = !!(driveResult?.success === true);
                             const driveLink = driveResult?.link ?? null;

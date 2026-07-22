@@ -49,14 +49,12 @@ export interface JobPayload {
   slot_data?: {
     video_name?: string;
     result_path?: string;
-    youtube_url?: string;
   };
   last_upload_result?: {
     success?: boolean;
     error?: string;
     message?: string;
     detail?: string;
-    youtube_video_id?: string;
     video_id?: string;
     url?: string;
     link?: string;
@@ -93,7 +91,6 @@ export interface WorkerPayload {
 export interface SubmissionPayload {
   job_id?: string;
   project_name?: string;
-  youtube_group?: string;
   video_name?: string;
   video_style?: string;
   client_ip?: string;

@@ -1,6 +1,5 @@
 export interface SlotData {
     video_name?: string;
-    youtube_url?: string;
 }
 
 export interface UploadResult {
@@ -8,14 +7,12 @@ export interface UploadResult {
     error?: string;
     message?: string;
     detail?: string;
-    youtube_video_id?: string;
     video_id?: string;
     videoId?: string;
     youtubeVideoId?: string;
     url?: string;
     link?: string;
     video_url?: string;
-    youtube_url?: string;
 }
 
 export interface DriveResult {

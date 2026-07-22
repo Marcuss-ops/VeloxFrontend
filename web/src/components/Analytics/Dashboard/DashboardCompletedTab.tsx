@@ -36,11 +36,11 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
     const getYouTubeUrl = (job: Job) => {
         const ytRes = job.last_upload_result;
         if (!ytRes) return null;
-        
-        const videoId = ytRes.youtube_video_id || ytRes.video_id || ytRes.videoId || ytRes.youtubeVideoId;
+
+        const videoId = ytRes.video_id || ytRes.videoId || ytRes.youtubeVideoId;
         if (videoId) return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
-        
-        return ytRes.url || ytRes.link || ytRes.video_url || ytRes.youtube_url || null;
+
+        return ytRes.url || ytRes.link || ytRes.video_url || null;
     };
 
     const getDriveLink = (job: Job) => {

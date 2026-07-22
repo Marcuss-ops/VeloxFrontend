@@ -315,8 +315,7 @@ export function useScriptCanvas(params: UseScriptCanvasParams): UseScriptCanvasR
             const sourceCandidate = String(detail?.payload?.source_context || detail?.payload?.source || '');
 
             const normalizedTitle = normalizeTitle(title);
-            const payloadYoutube = normalizeLink(detail?.payload?.youtube_url || '');
-            const sourceLink = payloadYoutube || extractFirstYouTubeUrl(sourceCandidate);
+            const sourceLink = extractFirstYouTubeUrl(sourceCandidate);
 
             if (normalizedTitle || sourceLink) {
                 handleUpsertTitleLink(normalizedTitle, sourceLink);

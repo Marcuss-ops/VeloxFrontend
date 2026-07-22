@@ -62,7 +62,6 @@ export const DashboardApiTab: React.FC<DashboardApiTabProps> = ({ submissions, o
                                 <th className="py-3 pr-4 pl-2 text-left font-semibold">Quando</th>
                                 <th className="py-3 pr-4 text-left font-semibold">Job</th>
                                 <th className="py-3 pr-4 text-left font-semibold">Progetto</th>
-                                <th className="py-3 pr-4 text-left font-semibold">Gruppo</th>
                                 <th className="py-3 pr-4 text-left font-semibold">Video</th>
                                 <th className="py-3 pr-4 text-left font-semibold">Stile</th>
                                 <th className="py-3 pr-4 text-left font-semibold">Input</th>
@@ -70,12 +69,11 @@ export const DashboardApiTab: React.FC<DashboardApiTabProps> = ({ submissions, o
                             </tr>
                         </thead>
                         <tbody>
-                            {submissions.length === 0 ? (
-                                <tr>
-                                    <td colSpan={8} className="py-8 text-center text-text-secondary italic">
-                                        Nessun invio registrato
-                                    </td>
-                                </tr>
+                            {submissions.length === 0 ? (                                    <tr>
+                                <td colSpan={7} className="py-8 text-center text-text-secondary italic">
+                                    Nessun invio registrato
+                                </td>
+                            </tr>
                             ) : (
                                 submissions.map((item, idx) => (
                                     <tr key={item.job_id || idx} className="border-b border-border-dark group hover:bg-surface">
@@ -90,7 +88,6 @@ export const DashboardApiTab: React.FC<DashboardApiTabProps> = ({ submissions, o
                                             ) : ''}
                                         </td>
                                         <td className="py-3 pr-4 text-sm text-text-secondary">{item.project_name || ''}</td>
-                                        <td className="py-3 pr-4 text-sm text-text-secondary">{item.youtube_group || ''}</td>
                                         <td className="py-3 pr-4 text-sm font-medium text-text-primary">{item.video_name || ''}</td>
                                         <td className="py-3 pr-4 text-text-secondary text-xs uppercase tracking-wider">{item.video_style || ''}</td>
                                         <td className="py-3 pr-4 text-text-secondary text-xs">{getInputSummary(item)}</td>

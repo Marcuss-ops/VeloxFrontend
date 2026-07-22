@@ -51,7 +51,6 @@ export interface ApiSubmission {
     job_id?: string;
     created_at?: string;
     project_name?: string;
-    youtube_group?: string;
     video_name?: string;
     video_style?: string;
     client_ip?: string;

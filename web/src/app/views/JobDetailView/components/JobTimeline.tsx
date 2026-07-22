@@ -79,20 +79,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
                         Upload Results
                     </h4>
                     <div className="flex flex-col gap-2">
-                        {asString(job.last_upload_result.youtube_video_id) && (
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="material-symbols-outlined text-green-400 text-[16px]">check_circle</span>
-                                <span>YouTube ID:</span>
-                                <a
-                                    href={`https://youtube.com/watch?v=${asString(job.last_upload_result.youtube_video_id)}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary hover:underline"
-                                >
-                                    {asString(job.last_upload_result.youtube_video_id)}
-                                </a>
-                            </div>
-                        )}
+
                         {asString(job.last_upload_result.video_url) && (
                             <div className="flex items-center gap-2 text-sm">
                                 <span className="material-symbols-outlined text-green-400 text-[16px]">link</span>

@@ -84,7 +84,7 @@ export function getYouTubeFailureLabel(errorMsg: string | undefined): string {
     if (err.includes('quota') || err.includes('rate') || err.includes('limit')) return 'Quota Exceeded';
     if (err.includes('pending') && err.includes('missing')) return 'Pending Missing';
     if (err.includes('module') && err.includes('unavailable')) return 'Module Missing';
-    if (err.includes('youtube_group') || err.includes('group missing')) return 'Group Missing';
+    if (err.includes('group missing')) return 'Group Missing';
     if (err.includes('input') && err.includes('incomplete')) return 'Input Incomplete';
     return 'Upload Failed';
 }
