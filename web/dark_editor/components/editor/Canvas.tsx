@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { Stage, Layer, Rect, Transformer, Circle, Line } from 'react-konva';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -64,6 +64,15 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
   const [cropDraft, setCropDraft] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [lassoPoints, setLassoPoints] = useState<{ x: number; y: number }[]>([]);
   const [isDrawingLasso, setIsDrawingLasso] = useState(false);
+
+  // Build a Set from selectedIds so per-object lookup in the render loop is O(1)
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  // Memo the object currently being edited to avoid repeated linear scans
+  const editingObject = useMemo(
+    () => (editingId ? objects.find((o) => o.id === editingId) ?? null : null),
+    [objects, editingId]
+  );
 
   useEffect(() => {
     setLassoPoints([]);
@@ -377,7 +386,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
   }, [cropEditingId, cropEditingMode, commitCrop, commitLassoCrop, discardCrop]);
 
   const renderObject = (obj: CanvasObject) => {
-    const isSelected = selectedIds.includes(obj.id);
+    const isSelected = selectedIdSet.has(obj.id);
     const isEditing = editingId === obj.id;
     const isCropTarget = cropEditingId === obj.id && obj.type === 'image' && cropDraft;
     
@@ -564,15 +573,15 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
       </Stage>
 
       {/* Inline Text Editor Overlay */}
-      {editingId && objects.find(o => o.id === editingId) && (
+      {editingObject && (
         <TextEditorOverlay
-          obj={objects.find(o => o.id === editingId)!}
+          obj={editingObject}
           stage={stageRef.current!}
           zoom={zoom}
           offsetX={offsetX}
           offsetY={offsetY}
           onSave={(text) => {
-            updateObject(editingId, { text });
+            updateObject(editingObject.id, { text });
             setEditingId(null);
           }}
           onClose={() => setEditingId(null)}
