@@ -51,6 +51,11 @@ export async function saveToTemp(file: File): Promise<string> {
   return filename;
 }
 
+// Build a public URL for a temp file
+export function getTempFileUrl(filename: string): string {
+  return `/dark_editor_v2/temp/${filename}`;
+}
+
 // Get file from temp
 export function getTempFile(filename: string): Buffer | null {
   const filepath = path.join(TEMP_DIR, filename);
