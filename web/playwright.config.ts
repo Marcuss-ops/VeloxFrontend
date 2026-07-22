@@ -1,9 +1,13 @@
 /**
  * Playwright Configuration
- * 
- * AGENT 13E - Legacy Decommission & Quality Gates
- * 
- * E2E testing configuration for smoke tests.
+ *
+ * Two webServer entries:
+ *   - Vite SPA on http://localhost:3000  (VeloxJobDetailView lives here)
+ *   - Next.js dark_editor on http://localhost:3001  (the editor lives here)
+ *
+ * The dual webServer is required so the cross-repo smoke spec can navigate
+ * from /editor/{id} (dark editor on :3001) into /velox/jobs/{id} (Vite on :3000)
+ * with both backends mocked via page.route().
  */
 
 import { defineConfig, devices } from '@playwright/test';
@@ -26,10 +30,19 @@ export default defineConfig({
             use: { ...devices['Desktop Chrome'] },
         },
     ],
-    webServer: {
-        command: 'npm run dev',
-        url: 'http://localhost:3000/creator_studio_app/dist/',
-        reuseExistingServer: !process.env.CI,
-        timeout: 120 * 1000,
-    },
+    webServer: [
+        {
+            command: 'npm run dev',
+            url: 'http://localhost:3000/creator_studio_app/dist/',
+            reuseExistingServer: !process.env.CI,
+            timeout: 180 * 1000,
+        },
+        {
+            command: 'npm run dev',
+            cwd: './dark_editor',
+            url: 'http://localhost:3001/',
+            reuseExistingServer: !process.env.CI,
+            timeout: 180 * 1000,
+        },
+    ],
 });
