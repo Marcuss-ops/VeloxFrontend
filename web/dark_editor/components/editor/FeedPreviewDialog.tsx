@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Smartphone, Monitor, Eye, MoreVertical, Compass, Home, Clock } from 'lucide-react';
-import Image from 'next/image';
+
 
 interface FeedPreviewDialogProps {
   isOpen: boolean;

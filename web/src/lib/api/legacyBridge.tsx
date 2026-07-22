@@ -395,7 +395,7 @@ export interface LegacyApiProviderProps {
 export function LegacyApiProvider({ children }: LegacyApiProviderProps): React.ReactElement {
   const loadingManagerRef = useRef(new LoadingManager());
   const [loadingState, setLoadingState] = useState<LoadingState>({ isLoading: false });
-  const [toastHandler, setToastHandler] = useState<ToastHandler | null>(null);
+  const toastHandlerRef = useRef<ToastHandler | null>(null);
 
   React.useEffect(() => {
     const unsubscribe = loadingManagerRef.current.subscribe((state) => {
@@ -404,9 +404,23 @@ export function LegacyApiProvider({ children }: LegacyApiProviderProps): React.R
     return unsubscribe;
   }, []);
 
+  const setToastHandler = useCallback((handler: ToastHandler | null) => {
+    toastHandlerRef.current = handler;
+  }, []);
+
   const adapter = useMemo(
-    () => createLegacyApiAdapter(loadingManagerRef.current, toastHandler),
-    [toastHandler]
+    () =>
+      createLegacyApiAdapter(loadingManagerRef.current, (options) => {
+        const handler = toastHandlerRef.current;
+        if (handler) {
+          handler(options);
+        } else {
+          console.warn(
+            `[${options.type.toUpperCase()}] ${options.message}${options.detail ? `: ${options.detail}` : ''}`
+          );
+        }
+      }),
+    []
   );
 
   const value: LegacyApiContextValue = useMemo(
