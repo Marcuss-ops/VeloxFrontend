@@ -11,4 +11,5 @@ export const APP_ROUTES = {
     analytics: '/analytics',
     drive: '/drive',
     jobDetail: '/jobs/detail',
+    veloxJobDetail: '/velox/jobs',
 } as const;

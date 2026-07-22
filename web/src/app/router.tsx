@@ -19,6 +19,7 @@ import { APP_ROUTES } from './routes';
 // Lazy-loaded views
 const DashboardView = lazy(() => import('./views/DashboardView'));
 const JobDetailView = lazy(() => import('./views/JobDetailView'));
+const VeloxJobDetailView = lazy(() => import('./views/VeloxJobDetailView'));
 const CalendarView = lazy(() => import('./views/CalendarView').then(async m => {
     const { CalendarErrorBoundary } = await import('./views/CalendarView/CalendarErrorBoundary');
     return {
@@ -168,6 +169,12 @@ export const router = createBrowserRouter([
             {
                 path: `${APP_ROUTES.jobDetail}/:jobId`,
                 element: <JobDetailView />
+            },
+
+            // --- Velox Job Detail ---
+            {
+                path: `${APP_ROUTES.veloxJobDetail}/:jobId`,
+                element: <VeloxJobDetailView />
             },
 
             // --- Default redirect ---

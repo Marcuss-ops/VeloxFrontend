@@ -5,7 +5,8 @@
  */
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { APP_ROUTES } from '../../routes';
 import { statusConfig } from '../utils/jobDetail';
 import { useJobDetail } from './hooks/useJobDetail';
 import { JobInfoPanel } from './components/JobInfoPanel';
@@ -110,6 +111,13 @@ export const JobDetailView: React.FC = () => {
                                 {statusInfo.label}
                             </div>
                         </div>
+                        <Link
+                            to={`${APP_ROUTES.veloxJobDetail}/${jobId}`}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">movie</span>
+                            Stato Velox
+                        </Link>
                     </div>
                 </div>
 
