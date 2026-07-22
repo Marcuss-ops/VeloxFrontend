@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Smartphone, Monitor, Eye, Play, MoreVertical, Heart, Share2, Compass, Home, Clock } from 'lucide-react';
+import { Smartphone, Monitor, Eye, MoreVertical, Heart, Share2, Compass, Home, Clock } from 'lucide-react';
 import Image from 'next/image';
 
 interface FeedPreviewDialogProps {
@@ -123,9 +123,7 @@ export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialog
                 {/* Simulated Search Bar */}
                 <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-800/60 opacity-60">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-200 font-bold tracking-tighter text-xl flex items-center gap-1">
-                      <Play className="w-6 h-6 fill-slate-200" /> Video
-                    </span>
+                    <span className="text-slate-200 font-bold tracking-tighter text-xl">Social</span>
                   </div>
                   <div className="w-96 h-9 bg-[#222222] border border-[#303030] rounded-full flex items-center px-4 text-sm text-slate-400">
                     Search
@@ -216,9 +214,7 @@ export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialog
 
                 {/* Simulated App Header */}
                 <div className="h-12 border-b border-slate-900 bg-[#0f0f0f] px-4 flex items-center justify-between shrink-0">
-                  <span className="text-slate-200 font-black tracking-tighter text-lg flex items-center gap-0.5">
-                    <Play className="w-5 h-5 fill-slate-200" /> Video
-                  </span>
+                  <span className="text-slate-200 font-black tracking-tighter text-lg">Social</span>
                   <div className="flex items-center gap-4 text-white">
                     <span className="text-[11px] font-bold bg-slate-800 px-2 py-0.5 rounded-full">Pro</span>
                   </div>

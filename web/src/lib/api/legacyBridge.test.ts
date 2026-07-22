@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import React from 'react';
 import {
   normalizeError,
   LoadingManager,
@@ -87,7 +88,7 @@ describe('LoadingManager', () => {
 describe('LegacyApiProvider', () => {
   it('provides api adapter', () => {
     const { result } = renderHook(() => useLegacyApi(), {
-      wrapper: ({ children }) => LegacyApiProvider({ children }),
+      wrapper: ({ children }) => React.createElement(LegacyApiProvider, null, children),
     });
 
     expect(result.current).toBeDefined();
@@ -98,7 +99,7 @@ describe('LegacyApiProvider', () => {
   it('invokes registered toast handler', () => {
     const handler = vi.fn();
     const { result } = renderHook(() => useLegacyToast(), {
-      wrapper: ({ children }) => LegacyApiProvider({ children }),
+      wrapper: ({ children }) => React.createElement(LegacyApiProvider, null, children),
     });
 
     result.current.setHandler(handler);
@@ -114,7 +115,7 @@ describe('LegacyApiProvider', () => {
   it('falls back to console when no toast handler', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { result } = renderHook(() => useLegacyToast(), {
-      wrapper: ({ children }) => LegacyApiProvider({ children }),
+      wrapper: ({ children }) => React.createElement(LegacyApiProvider, null, children),
     });
 
     result.current.setHandler(null);

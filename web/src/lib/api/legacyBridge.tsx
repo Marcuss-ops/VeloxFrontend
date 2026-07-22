@@ -13,7 +13,7 @@
  *   const jobs = await api.jobs.list();
  */
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { fetchJSON, fetchVoid, ApiError } from './core';
 
 // ============================================================================
@@ -393,7 +393,7 @@ export interface LegacyApiProviderProps {
 }
 
 export function LegacyApiProvider({ children }: LegacyApiProviderProps): React.ReactElement {
-  const loadingManagerRef = React.useRef(new LoadingManager());
+  const loadingManagerRef = useRef(new LoadingManager());
   const [loadingState, setLoadingState] = useState<LoadingState>({ isLoading: false });
   const [toastHandler, setToastHandler] = useState<ToastHandler | null>(null);
 
@@ -442,7 +442,10 @@ export function useLegacyToast(): { show: ToastHandler; setHandler: (handler: To
   if (!context) {
     throw new Error('useLegacyToast must be used within a LegacyApiProvider');
   }
-  return { show: context.adapter.toast.show, setHandler: context.setToastHandler };
+  return useMemo(
+    () => ({ show: context.adapter.toast.show, setHandler: context.setToastHandler }),
+    [context.adapter.toast.show, context.setToastHandler]
+  );
 }
 
 // ============================================================================
