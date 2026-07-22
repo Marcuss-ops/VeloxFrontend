@@ -8,6 +8,10 @@ export interface UseExportOperationProps {
   projectName: string;
   uploadToDriveEnabled: boolean;
   handleDriveUpload: (blob: Blob, filename: string) => Promise<{ success: boolean; fileId?: string; fileUrl?: string }>;
+  /** Optional opaque InstaEdit destination id. When set, the export flow passes only this id to Velox. */
+  externalDestinationId?: string;
+  /** Callback invoked when a Velox submission is requested. Returns the created Velox job id. */
+  onSubmitToVelox?: (blob: Blob, filename: string, externalDestinationId: string) => Promise<{ jobId: string }>;
 }
 
 export interface UseExportOperationReturn {
@@ -26,6 +30,8 @@ export function useExportOperation({
   projectName,
   uploadToDriveEnabled,
   handleDriveUpload,
+  externalDestinationId,
+  onSubmitToVelox,
 }: UseExportOperationProps): UseExportOperationReturn {
   const { addToast } = useUIStore();
 
@@ -69,6 +75,16 @@ export function useExportOperation({
       setExportedBlob(result.blob);
       setExportedFilename(filename);
 
+      if (externalDestinationId && onSubmitToVelox) {
+        const { jobId } = await onSubmitToVelox(result.blob, filename, externalDestinationId);
+        addToast({
+          type: 'success',
+          message: `Queued as Velox artifact (job ${jobId})`,
+        });
+        setExportComplete(true);
+        return;
+      }
+
       if (!uploadToDriveEnabled) {
         triggerDownload(result.blob, filename);
         addToast({ type: 'success', message: 'Image exported successfully' });
@@ -95,6 +111,8 @@ export function useExportOperation({
     uploadToDriveEnabled,
     handleDriveUpload,
     triggerDownload,
+    externalDestinationId,
+    onSubmitToVelox,
   ]);
 
   return {
