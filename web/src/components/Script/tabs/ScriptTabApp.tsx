@@ -208,6 +208,10 @@ export const ScriptTabApp: React.FC = () => {
             alert('Seleziona un gruppo YouTube.');
             return;
         }
+        if (!project.externalDestinationId) {
+            alert('Seleziona una destinazione di pubblicazione.');
+            return;
+        }
 
         setIsGenerating(true);
         console.warn('Starting generation for project:', project);

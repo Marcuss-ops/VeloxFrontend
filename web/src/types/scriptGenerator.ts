@@ -44,38 +44,14 @@ export interface ProjectRef {
   };
   stockTimestamps?: StockTimestampInput[];
   youtubeGroup?: string;
+  /** Opaque InstaEdit social destination id used for the Velox delivery plan. */
+  externalDestinationId?: string | null;
   voiceoverFolderId?: string;
   videoStyle?: string;
   sourceContext?: string;
   background?: string;
   music?: string;
   driveFolderId?: string;
-}
-
-export interface CreateMasterPayload {
-  job_spec_version: string;
-  project_name: string;
-  youtube_group: string | null;
-  video_style: string;
-  video_name: string;
-  source: string;
-  source_context: string;
-  youtube_url: string;
-  language: string;
-  duration: string;
-  voiceover_drive_folder: string | null;
-  script_text: string;
-  start_clips: string[];
-  middle_clips: string[];
-  end_clips: string[];
-  stock_clips_timestamps: StockTimestamp[];
-  voiceover_items: unknown[];
-  voiceover_languages: string[];
-  assets: {
-    background: string;
-    music: string;
-  };
-  drive_folder_id: string | null;
 }
 
 export interface GenerationProgress {

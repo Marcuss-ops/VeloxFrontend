@@ -50,6 +50,8 @@ export interface VideoProject {
     voiceoverMainFolderName?: string | null;
     youtubeChannelByLang: Record<string, string>;
     titleOverrides: Record<number, TitleOverride>;
+    /** Opaque InstaEdit social destination id used for Velox delivery plan. */
+    externalDestinationId: string | null;
     // Stock settings
     stockClipLength: number; // Lunghezza singola clip stock in secondi (default 5)
     stockSegmentLength: number; // Lunghezza segmento totale in secondi (default 25)
@@ -79,6 +81,7 @@ export const createDefaultVideoProject = (): VideoProject => ({
     voiceoverMainFolderName: null,
     youtubeChannelByLang: {},
     titleOverrides: {},
+    externalDestinationId: null,
     // Stock settings
     stockClipLength: 5, // Lunghezza singola clip stock in secondi
     stockSegmentLength: 25, // Lunghezza segmento totale in secondi

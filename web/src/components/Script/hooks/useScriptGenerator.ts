@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useScript } from '../../../app/providers/ScriptProvider';
 import type { VideoProject } from '../types';
+import { veloxApi } from '@/lib/api/veloxApi';
+import { apiPost } from '@/lib/api/client';
 import type {
     BackendResponse,
     ApiResponse,
@@ -20,16 +22,6 @@ const VOICEOVER_LANG_MAP: Record<string, string> = {
     id: 'id-ID',
     pl: 'pl-PL',
     de: 'de-DE',
-};
-
-const UI_GROUP_TO_API_MAP: Record<string, string> = {
-    WWE: 'Wwe',
-    HipHop: 'Pop',
-    Music: 'Music',
-    Crime: 'Crime',
-    Discovery: 'discovery',
-    Pop: 'Pop',
-    Boxe: 'boxe',
 };
 
 // Helper functions
@@ -52,17 +44,7 @@ const normalizeVoiceoverLangs = (langs: string[]): string[] => {
     return out;
 };
 
-const mapUiGroupToApiGroup = (groupName: string | null): string | null => {
-    if (!groupName) return null;
-    return UI_GROUP_TO_API_MAP[groupName] || groupName;
-};
 
-const extractYouTubeUrl = (text: string): string => {
-    const ytPattern = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = String(text || '').match(ytPattern);
-    if (!match || !match[0]) return '';
-    return match[0].includes('http') ? match[0] : `https://www.youtube.com/watch?v=${match[1]}`;
-};
 
 const sanitizeTitlesArray = (titles: string[]): string[] => {
     return titles.map(t => String(t || '').trim()).filter(Boolean);
@@ -127,16 +109,13 @@ export const useScriptGenerator = (projectOverride?: VideoProject): UseScriptGen
             return { ok: false, error: 'Inserisci almeno un titolo video' };
         }
         
-        const youtubeGroup = mapUiGroupToApiGroup(activeProject.youtubeGroup);
-        
-        if (!youtubeGroup) {
+        if (!activeProject.externalDestinationId) {
             setLocalGenerating(false);
             setIsGenerating(false);
-            return { ok: false, error: 'Seleziona un gruppo YouTube' };
+            return { ok: false, error: 'Seleziona una destinazione di pubblicazione' };
         }
-        
+
         const sourceContext = activeProject.sourceContext || '';
-        const youtubeUrl = extractYouTubeUrl(sourceContext);
         const selectedLangs = normalizeVoiceoverLangs(activeProject.voiceoverLangs);
         
         setProgress({
@@ -158,27 +137,14 @@ export const useScriptGenerator = (projectOverride?: VideoProject): UseScriptGen
             // Validate drive folders if needed
             if (activeProject.voiceoverFolderId) {
                 try {
-                    const resp = await fetch('/api/drive/folder-info', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ folder_id: activeProject.voiceoverFolderId }),
+                    await apiPost('/api/drive/folder-info', {
+                        folder_id: activeProject.voiceoverFolderId,
                     });
-                    
-                    if (!resp.ok) {
-                        const text = await resp.text();
-                        let data: BackendResponse | null = null;
-                        try { data = JSON.parse(text); } catch { /* JSON parse failed */ }
-                        
-                        const error = getBackendErrorMessage(data, text || `HTTP ${resp.status}`);
-                        setLocalGenerating(false);
-                        setIsGenerating(false);
-                        return { ok: false, error: `Cartella voiceover non valida: ${error}` };
-                    }
                 } catch (e: unknown) {
                     const message = e instanceof Error ? e.message : 'Errore sconosciuto';
                     setLocalGenerating(false);
                     setIsGenerating(false);
-                    return { ok: false, error: `Errore validazione cartella: ${message}` };
+                    return { ok: false, error: `Cartella voiceover non valida: ${message}` };
                 }
             }
             
@@ -198,30 +164,43 @@ export const useScriptGenerator = (projectOverride?: VideoProject): UseScriptGen
                 const title = titles[titleIndex];
                 const titleLanguage = selectedLangs[0]?.split('-')[0]?.toLowerCase() || 'it';
                 
+                const projectId = activeProject.id || `project-${Date.now()}`;
                 const payload = {
-                    job_spec_version: '1',
-                    project_name: youtubeGroup || 'default',
-                    youtube_group: youtubeGroup,
-                    video_style: activeProject.videoStyle || 'normal',
-                    video_name: title,
-                    source: sourceContext,
-                    source_context: sourceContext,
-                    youtube_url: youtubeUrl,
-                    language: titleLanguage,
-                    duration: '5',
-                    voiceover_drive_folder: activeProject.voiceoverFolderId || null,
-                    script_text: SCRIPT_PLACEHOLDER,
-                    start_clips: activeProject.clipFolders.initial || [],
-                    middle_clips: activeProject.clipFolders.inter || [],
-                    end_clips: activeProject.clipFolders.final || [],
-                    stock_clips_timestamps: activeProject.stockTimestamps || [],
-                    voiceover_items: [],
-                    voiceover_languages: selectedLangs,
-                    assets: {
-                        background: activeProject.background || 'Nessuno',
-                        music: activeProject.music || 'Nessuno',
+                    projectId,
+                    renderSpec: {
+                        job_spec_version: '1',
+                        video_style: activeProject.videoStyle || 'normal',
+                        video_name: title,
+                        source: sourceContext,
+                        source_context: sourceContext,
+                        language: titleLanguage,
+                        duration: '5',
+                        script_text: SCRIPT_PLACEHOLDER,
+                        start_clips: activeProject.clipFolders.initial || [],
+                        middle_clips: activeProject.clipFolders.inter || [],
+                        end_clips: activeProject.clipFolders.final || [],
+                        stock_clips_timestamps: activeProject.stockTimestamps || [],
+                        voiceover_items: [],
+                        voiceover_languages: selectedLangs,
+                        assets: {
+                            background: activeProject.background || 'Nessuno',
+                            music: activeProject.music || 'Nessuno',
+                        },
+                        voiceover_drive_folder: activeProject.voiceoverFolderId || null,
+                        drive_folder_id: activeProject.driveFolderId || null,
+                    } as Record<string, unknown>,
+                    deliveryPlan: {
+                        destinations: [
+                            {
+                                externalDestinationId: activeProject.externalDestinationId as string,
+                                metadata: {
+                                    title,
+                                    language: titleLanguage,
+                                    privacy_status: 'private',
+                                },
+                            },
+                        ],
                     },
-                    drive_folder_id: activeProject.driveFolderId || null,
                 };
                 
                 // Emit payload event
@@ -234,9 +213,9 @@ export const useScriptGenerator = (projectOverride?: VideoProject): UseScriptGen
                 });
                 
                 // Check for deduplication
-                const dedupeKey = `create-master:${JSON.stringify(payload)}`;
+                const dedupeKey = `velox-job:${JSON.stringify(payload)}`;
                 let response: ApiResponse;
-                
+
                 const existingPromise = inFlightRef.current.get(dedupeKey);
                 if (existingPromise) {
                     setProgress({
@@ -246,52 +225,34 @@ export const useScriptGenerator = (projectOverride?: VideoProject): UseScriptGen
                     response = await existingPromise;
                 } else {
                     const requestPromise = (async (): Promise<ApiResponse> => {
-                        const endpoints = [
-                            `${window.location.origin}/api/video/create-master`,
-                            '/api/video/create-master',
-                        ];
-                        
-                        let lastError: Error | null = null;
-                        for (const endpoint of endpoints) {
-                            try {
-                                const resp = await fetch(endpoint, {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(payload),
-                                });
-                                
-                                const text = await resp.text();
-                                let data: BackendResponse | null = null;
-                                try { data = JSON.parse(text); } catch { /* JSON parse failed */ }
-                                
-                                return { status: resp.status, body: data, text };
-                            } catch (e: unknown) {
-                                lastError = e instanceof Error ? e : new Error('Errore sconosciuto');
-                            }
+                        try {
+                            const job = await veloxApi.createJob(payload);
+                            return { status: 200, body: { ok: true, job_id: job.id }, text: '' };
+                        } catch (e: unknown) {
+                            const message = e instanceof Error ? e.message : 'Errore durante la creazione del job Velox';
+                            return { status: 500, body: { ok: false, error: message }, text: message };
                         }
-                        
-                        throw lastError || new Error('Nessun endpoint raggiungibile');
                     })();
-                    
+
                     inFlightRef.current.set(dedupeKey, requestPromise);
-                    
+
                     try {
                         response = await requestPromise;
                     } finally {
                         inFlightRef.current.delete(dedupeKey);
                     }
                 }
-                
+
                 const { status, body, text } = response;
                 const queueConfirmed = hasQueueConfirmation(body);
-                
+
                 // Emit response event
                 emitCreateMasterResponse({
                     titleIndex,
                     title,
                     response: { status, ok: !!(body?.ok && queueConfirmed), queueConfirmed, text, json: body },
                 });
-                
+
                 results.push({ titleIndex, title, result: body, status });
             }
             

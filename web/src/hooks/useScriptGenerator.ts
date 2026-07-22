@@ -16,18 +16,16 @@ import type {
     ClipRefInput,
     StockTimestamp,
     ProjectRef,
-    CreateMasterPayload,
     GenerationProgress,
     GenerationResult,
     GenerationResultItem,
 } from '../types/scriptGenerator';
+import { veloxApi } from '@/lib/api/veloxApi';
 
 // Import shared utilities from scriptGenerator.ts (Agent 1A)
 import {
     normalizeVoiceoverLangs,
-    mapUiGroupToApiGroup,
     shortLangFromNormalized,
-    extractYouTubeUrl,
     toClipRef,
     toStockTimestamp,
     sanitizeTitlesArray,
@@ -241,11 +239,11 @@ export function useScriptGenerator(
         if (sanitizedTitles.length === 0) {
             return { ok: false, error: 'Nessun titolo inserito' };
         }
-        
-        const youtubeUrl = extractYouTubeUrl(sourceContext);
-        const selectedGroup = projectRef?.youtubeGroup || null;
-        const youtubeGroup = mapUiGroupToApiGroup(selectedGroup);
-        
+
+        if (!projectRef?.externalDestinationId) {
+            return { ok: false, error: 'Seleziona una destinazione di pubblicazione' };
+        }
+
         const clipsRef = projectRef?.clipFolders || {};
         const stockRef = projectRef?.stockTimestamps || [];
         
@@ -266,8 +264,7 @@ export function useScriptGenerator(
         }
         
         const results: GenerationResultItem[] = [];
-        const createMasterCandidates = getApiCandidates('/api/video/create-master', apiBaseUrl);
-        
+
         for (let titleIndex = 0; titleIndex < sanitizedTitles.length; titleIndex++) {
             if (abortRef.current) {
                 return { ok: false, error: 'Generazione annullata' };
@@ -282,86 +279,73 @@ export function useScriptGenerator(
             const langsForTitle = normalizeVoiceoverLangs(langsForTitleRaw);
             const titleLanguage = shortLangFromNormalized(langsForTitle[0]) || 'it';
             
-            const payload: CreateMasterPayload = {
-                job_spec_version: '1',
-                project_name: youtubeGroup || 'default',
-                youtube_group: youtubeGroup,
-                video_style: projectRef?.videoStyle || 'normal',
-                video_name: title,
-                source: sourceContext,
-                source_context: sourceContext,
-                youtube_url: youtubeUrl,
-                language: titleLanguage,
-                duration: videoData.duration || '5',
-                voiceover_drive_folder: projectRef?.voiceoverFolderId || null,
-                script_text: forceRemoteGeneration ? '[SCRIPT WILL BE GENERATED]' : scriptText,
-                start_clips: startClips,
-                middle_clips: middleClips,
-                end_clips: endClips,
-                stock_clips_timestamps: stockClips,
-                voiceover_items: [],
-                voiceover_languages: langsForTitle,
-                assets: {
-                    background: videoData.background || 'Nessuno',
-                    music: videoData.music || 'Nessuno',
+            const projectId = `project-${Date.now()}-${titleIndex}`;
+            const payload = {
+                projectId,
+                renderSpec: {
+                    job_spec_version: '1',
+                    video_style: projectRef?.videoStyle || 'normal',
+                    video_name: title,
+                    source: sourceContext,
+                    source_context: sourceContext,
+                    language: titleLanguage,
+                    duration: videoData.duration || '5',
+                    script_text: forceRemoteGeneration ? '[SCRIPT WILL BE GENERATED]' : scriptText,
+                    start_clips: startClips,
+                    middle_clips: middleClips,
+                    end_clips: endClips,
+                    stock_clips_timestamps: stockClips,
+                    voiceover_items: [],
+                    voiceover_languages: langsForTitle,
+                    assets: {
+                        background: videoData.background || 'Nessuno',
+                        music: videoData.music || 'Nessuno',
+                    },
+                    voiceover_drive_folder: projectRef?.voiceoverFolderId || null,
+                    drive_folder_id: projectRef?.driveFolderId || null,
+                } as Record<string, unknown>,
+                deliveryPlan: {
+                    destinations: [
+                        {
+                            externalDestinationId: projectRef?.externalDestinationId as string,
+                            metadata: {
+                                title,
+                                language: titleLanguage,
+                                privacy_status: 'private',
+                            },
+                        },
+                    ],
                 },
-                drive_folder_id: projectRef?.driveFolderId || null,
             };
-            
+
             appendLog(`📤 Payload titolo ${titleIndex + 1}/${sanitizedTitles.length}: ${title}`);
-            
-            const dedupeKey = `create-master:${JSON.stringify(payload)}`;
-            
+
+            const dedupeKey = `velox-job:${JSON.stringify(payload)}`;
+
             let status: number;
             let body: unknown;
-            
+
             const existingPromise = inFlightRef.current.get(dedupeKey);
             if (existingPromise) {
-                appendLog('♻️ Richiesta duplicata rilevata: riuso risposta in-flight');
+                appendLog('️ Richiesta duplicata rilevata: riuso risposta in-flight');
                 const sharedResult = await existingPromise;
                 status = sharedResult.status;
                 body = sharedResult.body;
             } else {
                 const requestPromise = (async () => {
-                    let response: Response | null = null;
-                    let lastFetchError: Error | null = null;
-                    
-                    for (const endpoint of createMasterCandidates) {
-                        try {
-                            response = await fetch(endpoint, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(payload),
-                            });
-                            
-                            if (response) {
-                                appendLog(`🌐 Endpoint: ${endpoint} (HTTP ${response.status})`);
-                                break;
-                            }
-                        } catch (e: unknown) {
-                            lastFetchError = e instanceof Error ? e : new Error(String(e));
-                            appendLog(`⚠️ Endpoint KO: ${endpoint} (${lastFetchError.message})`);
-                        }
-                    }
-                    
-                    if (!response) {
-                        throw new Error(lastFetchError?.message || 'Nessun endpoint raggiungibile');
-                    }
-                    
-                    let parsed: unknown;
-                    let text = '';
                     try {
-                        text = await response.text();
-                        parsed = text ? JSON.parse(text) : null;
-                    } catch {
-                        parsed = null;
+                        const job = await veloxApi.createJob(payload);
+                        appendLog(`🌐 Job Velox creato: ${job.id}`);
+                        return { status: 200, body: { ok: true, job_id: job.id }, rawText: '' };
+                    } catch (e: unknown) {
+                        const message = e instanceof Error ? e.message : 'Errore durante la creazione del job Velox';
+                        appendLog(`⚠️ Creazione job Velox fallita: ${message}`);
+                        return { status: 500, body: { ok: false, error: message }, rawText: message };
                     }
-                    
-                    return { status: response.status, body: parsed, rawText: text };
                 })();
-                
+
                 inFlightRef.current.set(dedupeKey, requestPromise);
-                
+
                 try {
                     const uniqueResult = await requestPromise;
                     status = uniqueResult.status;
@@ -370,7 +354,7 @@ export function useScriptGenerator(
                     inFlightRef.current.delete(dedupeKey);
                 }
             }
-            
+
             results.push({
                 titleIndex,
                 title,
