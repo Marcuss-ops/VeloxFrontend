@@ -25,8 +25,8 @@ export interface SocialDestination {
   status: 'active' | 'disabled' | 'reauth_required';
   /** Underlying platform account id in InstaEdit. */
   platform_account_id: number;
-  /** Workspace that owns this destination. */
-  workspace_id: number;
+  /** Workspace that owns this destination (returned by the BFF for owner verification). */
+  workspace_id?: number;
   /** Source system tag (always "velox" for the Velox integration). */
   source_system?: string;
   /** Default publish metadata (privacy_status, language, tags, etc.). */
