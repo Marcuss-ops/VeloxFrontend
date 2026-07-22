@@ -29,6 +29,77 @@ export interface VeloxDelivery {
   platformUrl?: string;
 }
 
+/** Synthetic event in the publishing lifecycle of a delivery. */
+export interface VeloxDeliveryEvent {
+  key: string;
+  label: string;
+  completed: boolean;
+  active: boolean;
+  icon: string;
+}
+
+/** Build a synthetic timeline of delivery events from the current status.
+ *
+ * The backend does not yet store per-delivery event history, so we
+ * derive a timeline from the current `status` value. All non-terminal
+ * statuses are mapped to the canonical pipeline:
+ *   artifact_verified → queued → publishing → published
+ */
+export function getDeliveryEventTimeline(status: string): VeloxDeliveryEvent[] {
+  const normalized = (status || 'UNKNOWN').toUpperCase();
+
+  const pipeline: VeloxDeliveryEvent[] = [
+    { key: 'artifact_verified', label: 'Artifact verificato', icon: 'verified', completed: false, active: false },
+    { key: 'queued', label: 'In coda', icon: 'queue', completed: false, active: false },
+    { key: 'publishing', label: 'Pubblicazione in corso', icon: 'publish', completed: false, active: false },
+    { key: 'published', label: 'Pubblicato', icon: 'check_circle', completed: false, active: false },
+  ];
+
+  const markCompleted = (upToIndex: number) => {
+    for (let i = 0; i <= upToIndex; i += 1) {
+      pipeline[i].completed = true;
+    }
+  };
+
+  const statusIndex: Record<string, number> = {
+    ARTIFACT_VERIFIED: 0,
+    QUEUED: 1,
+    PUBLISHING: 2,
+    WAITING_PROVIDER: 2,
+    PUBLISHED: 3,
+  };
+
+  if (normalized === 'PUBLISHED') {
+    markCompleted(3);
+  } else if (normalized in statusIndex) {
+    const idx = statusIndex[normalized];
+    markCompleted(idx);
+    pipeline[idx].active = true;
+  }
+
+  // Terminal failure states: append a synthetic failed event.
+  if (normalized === 'FAILED' || normalized === 'BLOCKED_AUTH' || normalized === 'DEAD_LETTER') {
+    const label =
+      normalized === 'BLOCKED_AUTH'
+        ? 'Autenticazione bloccata'
+        : normalized === 'DEAD_LETTER'
+          ? 'Dead letter'
+          : 'Pubblicazione fallita';
+    return [
+      ...pipeline,
+      {
+        key: 'failed',
+        label,
+        icon: 'error',
+        completed: false,
+        active: true,
+      },
+    ];
+  }
+
+  return pipeline;
+}
+
 /** Aggregated job detail (job + deliveries). */
 export interface VeloxJobDetail {
   job: VeloxJob;

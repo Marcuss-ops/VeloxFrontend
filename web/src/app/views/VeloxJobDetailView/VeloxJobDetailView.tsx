@@ -10,6 +10,7 @@
 import React, { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useVeloxJobDetail } from './hooks/useVeloxJobDetail';
+import { getDeliveryEventTimeline } from '@/lib/api/veloxApi';
 import type { VeloxDelivery } from '@/lib/api/veloxApi';
 import { useSocialDestinations } from '@/hooks/useSocialDestinations';
 import type { SocialDestination } from '@/lib/api/socialDestinationsApi';
@@ -92,6 +93,40 @@ const DeliveryRow: React.FC<{ delivery: VeloxDelivery; index: number; destinatio
           Visualizza sul social
         </a>
       )}
+
+      {/* Delivery event timeline */}
+      <div className="mt-2 pt-3 border-t border-slate-700/50">
+        <DeliveryEventTimeline status={delivery.status} />
+      </div>
+    </div>
+  );
+};
+
+const DeliveryEventTimeline: React.FC<{ status: string }> = ({ status }) => {
+  const events = getDeliveryEventTimeline(status);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {events.map((event, idx) => (
+        <React.Fragment key={event.key}>
+          <div
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-medium transition-colors ${
+              event.active
+                ? 'bg-primary/10 border-primary/30 text-primary'
+                : event.completed
+                  ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                  : 'bg-slate-700/30 border-slate-700/50 text-slate-500'
+            }`}
+            title={event.completed ? 'Completato' : event.active ? 'In corso' : 'In attesa'}
+          >
+            <span className="material-symbols-outlined text-[14px]">{event.icon}</span>
+            <span>{event.label}</span>
+          </div>
+          {idx < events.length - 1 && events[idx + 1]?.key !== 'failed' && (
+            <span className="text-slate-600 material-symbols-outlined text-[14px]">chevron_right</span>
+          )}
+        </React.Fragment>
+      ))}
     </div>
   );
 };
