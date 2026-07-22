@@ -115,8 +115,8 @@ export const useScriptEditorState = () => {
         });
     }, [currentIndex]);
 
-    // Gestione cambio gruppo/destinazione
-    const handleGroupChange = useCallback((externalDestinationId: string) => {
+    // Gestione cambio destinazione pubblicazione
+    const handleDestinationChange = useCallback((externalDestinationId: string) => {
         updateProject({
             youtubeGroup: externalDestinationId,
             externalDestinationId,
@@ -160,7 +160,7 @@ export const useScriptEditorState = () => {
         setCurrentIndex,
         undoLastSelection,
         pushSelectionHistory,
-        handleGroupChange,
+        handleDestinationChange,
     };
 };
 

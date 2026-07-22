@@ -13,7 +13,7 @@ export interface ScriptToolbarProps {
     // Actions
     onProjectSelect: (index: number) => void;
     onAddProject: () => void;
-    onGroupChange: (group: string) => void;
+    onDestinationChange: (destinationId: string) => void;
     onStyleChange: (style: VideoStyle) => void;
     onHistoryClick: () => void;
     onExecute: () => void;
@@ -194,7 +194,7 @@ export const ScriptToolbar: React.FC<ScriptToolbarProps> = ({
     progress,
     onProjectSelect,
     onAddProject,
-    onGroupChange,
+    onDestinationChange,
     onStyleChange,
     onHistoryClick,
     onExecute,
@@ -214,9 +214,9 @@ export const ScriptToolbar: React.FC<ScriptToolbarProps> = ({
             <div className="rounded-2xl overflow-visible border border-slate-700/60 bg-slate-900/70 shadow-xl shadow-black/20 backdrop-blur">
                 <div className="relative">
                     <StyleGroupSelector
-                        selectedGroup={project.externalDestinationId}
+                        selectedDestinationId={project.externalDestinationId}
                         selectedStyle={project.videoStyle}
-                        onGroupChange={onGroupChange}
+                        onDestinationChange={onDestinationChange}
                         onStyleChange={onStyleChange}
                         onHistoryClick={onHistoryClick}
                     />

@@ -74,7 +74,7 @@ export const ScriptTabApp: React.FC = () => {
         setCurrentIndex,
         undoLastSelection,
         pushSelectionHistory,
-        handleGroupChange,
+        handleDestinationChange,
     } = useScriptEditorState();
 
     // Generation hook
@@ -250,7 +250,7 @@ export const ScriptTabApp: React.FC = () => {
                     progress={progress}
                     onProjectSelect={setCurrentIndex}
                     onAddProject={addProject}
-                    onGroupChange={handleGroupChange}
+                    onDestinationChange={handleDestinationChange}
                     onStyleChange={(style: VideoStyle) => updateProject({ videoStyle: style })}
                     onHistoryClick={() => setProjectHistoryModalOpen(true)}
                     onExecute={handleExecute}

@@ -3,9 +3,9 @@ import React from 'react';
 import { DestinationSelector } from './DestinationSelector';
 
 interface StyleGroupSelectorProps {
-    selectedGroup: string | null;
+    selectedDestinationId: string | null;
     selectedStyle: import('../types').VideoStyle;
-    onGroupChange: (group: string) => void;
+    onDestinationChange: (destinationId: string) => void;
     onStyleChange: (style: import('../types').VideoStyle) => void;
     onHistoryClick?: () => void;
 }
@@ -19,9 +19,9 @@ const VIDEO_MODES: { value: import('../types').VideoStyle; label: string; icon: 
 
 
 export const StyleGroupSelector: React.FC<StyleGroupSelectorProps> = ({
-    selectedGroup,
+    selectedDestinationId,
     selectedStyle,
-    onGroupChange,
+    onDestinationChange,
     onStyleChange,
     onHistoryClick,
 }) => {
@@ -73,7 +73,7 @@ export const StyleGroupSelector: React.FC<StyleGroupSelectorProps> = ({
                 </div>
             </div>
 
-            <DestinationSelector selectedId={selectedGroup} onChange={onGroupChange} />
+            <DestinationSelector selectedId={selectedDestinationId} onChange={onDestinationChange} />
         </div>
     );
 };
