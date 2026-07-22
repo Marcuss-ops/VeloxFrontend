@@ -1,5 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useDestinationSelector } from '@/hooks/useDestinationSelector';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 export interface DestinationSelectorProps {
   /** Currently selected external_destination_id. */
@@ -32,12 +41,14 @@ export const DestinationSelector: React.FC<DestinationSelectorProps> = ({
     selectOrCreateDestination,
   } = useDestinationSelector();
 
+  const [pendingAccount, setPendingAccount] = useState<{ id: number; name: string } | null>(null);
+
   const activeCount = useMemo(
     () => accounts.filter(({ destination }) => destination?.status === 'active').length,
     [accounts]
   );
 
-  const isBusy = loading || creatingAccountId !== null;
+  const isBusy = loading || creatingAccountId !== null || pendingAccount !== null;
 
   return (
     <div className="space-y-3">
@@ -77,6 +88,38 @@ export const DestinationSelector: React.FC<DestinationSelectorProps> = ({
         </div>
       )}
 
+      <Dialog open={pendingAccount !== null} onOpenChange={(open) => !open && setPendingAccount(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crea destinazione Velox</DialogTitle>
+            <DialogDescription>
+              Stai per creare una nuova destinazione Velox per{' '}
+              <span className="font-semibold text-slate-200">{pendingAccount?.name}</span>. Il video verrà pubblicato su questo account YouTube.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPendingAccount(null)}
+              disabled={creatingAccountId !== null}
+            >
+              Annulla
+            </Button>
+            <Button
+              onClick={() => {
+                if (!pendingAccount) return;
+                const accountId = pendingAccount.id;
+                setPendingAccount(null);
+                void selectOrCreateDestination(accountId, onChange);
+              }}
+              disabled={creatingAccountId !== null}
+            >
+              Crea e seleziona
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-wrap gap-2">
         {accounts.map(({ account, destination }) => {
           const isSelected = destination?.external_destination_id === selectedId;
@@ -88,7 +131,16 @@ export const DestinationSelector: React.FC<DestinationSelectorProps> = ({
                   key={account.id}
                   type="button"
                   aria-pressed={isSelected}
-                  onClick={() => selectOrCreateDestination(account.id, onChange)}
+                  onClick={() => {
+                    if (destination) {
+                      onChange(destination.external_destination_id);
+                    } else {
+                      setPendingAccount({
+                        id: account.id,
+                        name: account.username || `Account ${account.id}`,
+                      });
+                    }
+                  }}
                   disabled={isBusy}
                   title={
                     isActive
