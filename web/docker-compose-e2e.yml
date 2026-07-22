@@ -1,0 +1,126 @@
+# docker-compose-e2e.yml
+#
+# Local-dev / CI companion to web/playwright.config.ts. Boots a real
+# InstaeditLogin BFF + Velox DataServer + Postgres so the cross_repo_smoke
+# spec can run in MOCK=false live mode (vs the default fast-mocks).
+#
+# Service topology (Compose v2, relative build contexts in `web/`):
+#
+#       ┌────────────┐     ┌──────────────────┐     ┌─────────────────┐
+#       │  db        │────►│  instaedit-api   │     │ velox-          │
+#       │ Postgres16 │     │  :8080           │     │ data-server     │
+#       └────────────┘     └──────────────────┘     │ :8000 (master)  │
+#                                                      │
+#                       ◄──────────── SOCIAL_API_URL ──┘
+#
+# Both backend services bind-mount the local Go source tree from sibling
+# directories into /src. They run `go run ./cmd/...` so this works
+# whether or not the repos have Dockerfiles.
+#
+# Operation:
+#   MOCK=true      (default)  → fast mocks via page.route. Use npm run test:e2e
+#   MOCK=false                 → live services.    Use npm run test:e2e:live
+
+networks:
+  e2e:
+    driver: bridge
+
+volumes:
+  e2e_db_data: {}
+
+services:
+  db:
+    # postgres:16 (debian-slim, contrib present) — alpine strips pgcrypto
+    # and uuid-ossp, so we use the debian image to keep init.sql idempotent.
+    image: postgres:16
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: e2e_db
+    networks:
+      - e2e
+    ports:
+      - "5432:5432"
+    volumes:
+      - e2e_db_data:/var/lib/postgresql/data
+      # init.sql is mounted into docker-entrypoint-initdb.d so it runs
+      # ONCE on first boot (when the data volume is empty).
+      - ./e2e/testdata/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d e2e_db"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  instaedit-api:
+    image: golang:1.21
+    working_dir: /src
+    networks:
+      - e2e
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../InstaeditLogin:/src:delegated
+    environment:
+      # Database
+      DATABASE_URL: "postgresql://test_user:test_password@db:5432/e2e_db?sslmode=disable"
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: test_user
+      DB_PASSWORD: test_password
+      DB_NAME: e2e_db
+      # Server
+      PORT: "8080"
+      LISTEN_ADDR: ":8080"
+      # Cross-repo wiring — InstaeditLogin issues a shared secret for Velox JWTs
+      # (canonical name per Velox's velox-server.env.example).
+      VELOX_INTEGRATION_ENABLED: "true"
+      VELOX_API_TOKEN: "e2e-shared-secret"
+      VELOX_WEBHOOK_SECRET: "e2e-webhook-secret"
+      INSTAEDIT_CONTROL_JWT_SECRET: "e2e-jwt-secret-do-not-reuse-in-prod"
+      # Dev-mode CSRF / session bootstrap
+      CSRF_COOKIE_NAME: "csrf_token"
+      CSRF_HEADER_NAME: "X-CSRF-Token"
+      SESSION_COOKIE_NAME: "session"
+    # Build on first up via go build; cache result until source changes.
+    command: ["sh", "-c", "go build -o /tmp/instaedit ./cmd/api && /tmp/instaedit"]
+
+  velox-data-server:
+    image: golang:1.21
+    working_dir: /src
+    networks:
+      - e2e
+    ports:
+      # VELOX_MASTER_PORT=8000 is canonical (per velox-server.env.example).
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      instaedit-api:
+        condition: service_started
+    volumes:
+      - ../VeloxEditiingg:/src:delegated
+    environment:
+      # Same DB; Velox owns its own schema set in migrations.
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USER: test_user
+      DB_PASSWORD: test_password
+      DB_NAME: e2e_db
+      # Velox HTTP master port (canonical default 8000).
+      PORT: "8000"
+      LISTEN_ADDR: ":8000"
+      VELOX_MASTER_PORT: "8000"
+      INSTAEDIT_CONTROL_JWT_SECRET: "e2e-jwt-secret-do-not-reuse-in-prod"
+      # Social side: how Velox → Instaedit forwards deliveries.
+      # SOCIAL_API_URL points at the InstaeditLogin BFF via the docker network.
+      SOCIAL_API_URL: "http://instaedit-api:8080"
+      SOCIAL_API_TOKEN: "e2e-shared-secret"
+      SOCIAL_CALLBACK_BASE_URL: "http://localhost:3000"
+      SOCIAL_WEBHOOK_SECRET: "e2e-webhook-secret"
+      SOCIAL_API_TIMEOUT_MS: "10000"
+      SOCIAL_API_RETRIES: "2"
+    command: ["sh", "-c", "go run ./DataServer/cmd/server"]

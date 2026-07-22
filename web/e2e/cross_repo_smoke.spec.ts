@@ -245,7 +245,51 @@ function registerApiMocks(
 
 test('cross-repo smoke: dark editor \u2192 InstaEdit destinations \u2192 Velox job \u2192 social_delivery_id', async ({ page }) => {
     const capturedJobs: { post: CapturedJobPost } = { post: null };
-    registerApiMocks(page, capturedJobs);
+
+    // Mode gate:
+    //   MOCK !== 'false' (default) -> fast mocks via page.route (CI / every PR)
+    //   MOCK === 'false'           -> live services via docker-compose-e2e.yml
+    // The security-contract deny-list assertion further down is mode-agnostic:
+    // it inspects the captured POST /api/v1/velox/jobs body regardless of
+    // whether the body came from a page.route.fulfill mock or a live
+    // InstaeditLogin response.
+    const isMockMode = process.env.MOCK !== 'false';
+    if (isMockMode) {
+        registerApiMocks(page, capturedJobs);
+    } else {
+        // Live mode fast-fail: confirm InstaeditLogin BFF on :8080 is
+        // reachable before going further. A 401 (no auth) here is healthy.
+        const probe = await request.get(
+            'http://127.0.0.1:8080/api/v1/auth/me',
+            { failOnStatusCode: false },
+        );
+        const probeStatus = probe.status();
+        if (probeStatus !== 200 && probeStatus !== 401) {
+            throw new Error(
+                `live-mode pre-flight: InstaeditLogin BFF on 127.0.0.1:8080 returned ${probeStatus}; expected 200|401. Run \`bash web/scripts/run-e2e-live.sh\` to start live services.`,
+            );
+        }
+
+        // Live mode: register a passthrough route ONLY for POST
+        // /api/v1/velox/jobs so the deny-list assertion in step 6 still
+        // fires. All other endpoints hit the live InstaeditLogin + Velox
+        // backend through Vite's proxy /api/v1 -> 127.0.0.1:8080.
+        await page.route('**/api/v1/velox/jobs/**', async (route) => {
+            if (route.request().method() === 'POST') {
+                try {
+                    capturedJobs.post = {
+                        body: route.request().postDataJSON(),
+                        url: route.request().url(),
+                    };
+                } catch {
+                    // Body isn't valid JSON; skip capture -- the
+                    // deny-list assertion will fail loudly if the body
+                    // is meant to be JSON.
+                }
+            }
+            await route.continue();
+        });
+    }
 
     // Override HTMLCanvasElement.prototype.toBlob so the Konva canvas's toBlob
     // (invoked by exportCanvasToBlob via getCanvasElement \u2192 canvasEl.toBlob)
