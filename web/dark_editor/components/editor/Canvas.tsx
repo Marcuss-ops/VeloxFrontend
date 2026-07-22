@@ -9,7 +9,7 @@ import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import Konva from 'konva';
 import { buildSelectedIdSet, findEditingObject } from '@/lib/canvasSelection';
 import { selectCropTarget } from '@/lib/editorSelectors';
-import { getCanvasObjectCommonProps, getCanvasObjectShadowProps } from '@/lib/canvasObjectHelpers';
+import CanvasObjectNode from './CanvasObjectNode';
 import {
   CropSelectionOverlay,
   GridOverlay,
@@ -540,57 +540,5 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
 });
 
 Canvas.displayName = 'Canvas';
-
-interface CanvasObjectNodeProps {
-  obj: CanvasObject;
-  isSelected: boolean;
-  isEditing: boolean;
-  isCropEditingObject: boolean;
-  activeTool: string;
-  isPanning: boolean;
-  handleTextDblClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
-  selectObject: (id: string | null, addToSelection?: boolean) => void;
-  updateObject: (id: string, updates: Partial<CanvasObject>) => void;
-  stageRef: React.RefObject<Konva.Stage | null>;
-}
-
-const CanvasObjectNode = React.memo(function CanvasObjectNode({
-  obj,
-  isEditing,
-  isCropEditingObject,
-  activeTool,
-  isPanning,
-  handleTextDblClick,
-  selectObject,
-  updateObject,
-  stageRef,
-}: CanvasObjectNodeProps) {
-  const commonProps = useMemo(
-    () =>
-      getCanvasObjectCommonProps({
-        obj,
-        activeTool,
-        isPanning,
-        isCropEditingObject,
-        selectObject,
-        updateObject,
-        stageRef,
-      }),
-    [obj, activeTool, isPanning, isCropEditingObject, selectObject, updateObject, stageRef]
-  );
-
-  const shadowProps = useMemo(() => getCanvasObjectShadowProps(obj), [obj.dropShadow]);
-
-  return (
-    <ObjectRenderer
-      key={obj.id}
-      obj={obj}
-      commonProps={commonProps}
-      shadowProps={shadowProps}
-      editingId={isEditing ? obj.id : null}
-      handleTextDblClick={handleTextDblClick}
-    />
-  );
-});
 
 export default Canvas;
