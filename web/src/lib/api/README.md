@@ -2,7 +2,39 @@
 
 ## Panoramica
 
-Questa cartella contiene i client API per comunicare con il backend. Ogni modulo API è specializzato per un dominio specifico.
+Questa cartella contiene i client API per comunicare con il backend InstaEdit BFF. Ogni modulo API è specializzato per un dominio specifico.
+
+## Architettura session-based
+
+Tutti i nuovi moduli (`authApi`, `socialApi`, `veloxApi`, `projectsApi`, `deliveriesApi`) usano `client.ts`, un client HTTP che:
+
+- Invia automaticamente il cookie di sessione HttpOnly con `credentials: 'include'` su ogni richiesta.
+- Aggiunge l'header `X-CSRF-Token` sulle mutazioni leggendo il cookie `csrf_token` impostato dal BFF.
+- Risolve gli endpoint contro l'URL base configurato in `VITE_API_BASE_URL` (produzione: `https://api.instaedit.org`; sviluppo: stesso origine con proxy Vite su `:8080`).
+- Non contiene token hardcoded, OAuth token né segreti amministrativi.
+
+## Moduli principali
+
+| Modulo | Scopo |
+|--------|-------|
+| `client.ts` | Client base session-aware con CSRF e base URL. |
+| `authApi.ts` | GET `/api/v1/auth/me` per leggere l'utente corrente. |
+| `socialApi.ts` | Destinazioni Velox e account social collegati. |
+| `veloxApi.ts` | Job, worker e asset Velox tramite il BFF. |
+| `projectsApi.ts` | Progetti (contenitori di render job). |
+| `deliveriesApi.ts` | Stato delle pubblicazioni social. |
+
+### Import
+
+```typescript
+import { authApi, socialApi, veloxApi, projectsApi, deliveriesApi } from '@/lib/api';
+
+const { user } = await authApi.getMe();
+const { destinations } = await socialApi.listDestinations();
+const { jobs } = await veloxApi.listJobs({ limit: 10 });
+```
+
+I moduli legacy (`calendarApi.ts`, `driveApi.ts`, `youtubeApi.ts`, ecc.) usano ancora `core.ts`; verranno migrati progressivamente a `client.ts`.
 
 ## Struttura
 
@@ -368,17 +400,16 @@ try {
 
 ## Configurazione
 
-Le API usano fetch nativo con credenziali:
+Le API moderne usano `client.ts`, che si basa su `VITE_API_BASE_URL`:
 
-```typescript
-// Configurazione base in core.ts
-const defaultOptions: RequestInit = {
-    credentials: 'same-origin',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-};
+```env
+# .env.example
+VITE_API_BASE_URL=https://api.instaedit.org
 ```
+
+In sviluppo il valore è vuoto (default) e il proxy Vite inoltra le richieste `/api/*` verso il BFF InstaEdit su `http://localhost:8080`.
+
+Il legacy `core.ts` è stato aggiornato per supportare `VITE_API_BASE_URL` e CSRF ed è mantenuto per retrocompatibilità con i moduli esistenti.
 
 ## Testing
 
