@@ -4,7 +4,7 @@ import { AuthProvider } from './AuthProvider';
 import { I18nProvider } from './I18nProvider';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ScriptProvider } from './ScriptProvider';
-import { VeloxAPIProvider } from './VeloxAPIProvider';
+import { VeloxAPIProvider } from '../../lib/api/VeloxAPIProvider';
 
 // QueryClient centralizzato con configurazione ottimizzata
 const queryClient = new QueryClient({

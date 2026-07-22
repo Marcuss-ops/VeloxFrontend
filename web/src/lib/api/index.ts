@@ -25,6 +25,7 @@ export type { Delivery } from './deliveriesApi';
 
 // Legacy Bridge for backward compatibility with old JS modules
 export { legacyApiAdapter, LoadingManager, normalizeError, showToast, setToastHandler } from './legacyBridge';
+export { VeloxAPIProvider, useVeloxAPI } from './VeloxAPIProvider';
 export type {
   ApiResponse,
   JobPayload,

@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { legacyApiAdapter, type LegacyApiAdapter } from '../../lib/api/legacyBridge';
+import { legacyApiAdapter, type LegacyApiAdapter } from './legacyBridge';
 
 const VeloxAPIContext = createContext<LegacyApiAdapter>(legacyApiAdapter);
 
