@@ -271,15 +271,7 @@ export const YouTubeCoverStudio: React.FC = () => {
     setSelectedVideoIds([]);
   };
 
-  const handleApplyCover = async (targetVideoIds: string[], variant: CoverVariant | null = activeVariant) => {
-    if (!selectedChannelId) {
-      showToast('Seleziona un canale prima di applicare la copertina', 'warning');
-      return;
-    }
-    if (!variant?.image_base64) {
-      showToast('Genera prima una variante con immagine', 'warning');
-      return;
-    }
+  const handleApplyCover = async (targetVideoIds: string[], _variant: CoverVariant | null = activeVariant) => {
     if (targetVideoIds.length === 0) {
       showToast('Seleziona almeno un video privato', 'warning');
       return;
@@ -287,36 +279,12 @@ export const YouTubeCoverStudio: React.FC = () => {
 
     setIsApplying(true);
     try {
-      const response = await youtubeApi.applyBulkCover({
-        channel_id: selectedChannelId,
-        video_ids: targetVideoIds,
-        variant_id: variant.id,
-        cover_base64: variant.image_base64,
-        cover_filename: variant.filename,
-        publish: publishAfterApply && publishPrivacy !== 'private',
-        privacy: publishAfterApply ? publishPrivacy : 'private',
-        max_size_mb: 2,
-      });
-
-      const okCount = response.applied_count || 0;
-      const failCount = response.failed_count || 0;
       showToast(
-        `Applicata copertina a ${okCount} video`,
-        failCount ? 'warning' : 'success',
-        failCount ? `${failCount} video non aggiornati` : undefined,
+        'L\'applicazione diretta delle copertine su YouTube è stata rimossa; usare il flusso InstaEdit destination per pubblicare il video con la copertina.',
+        'warning',
+        undefined,
         7000
       );
-
-      if (selectedChannelId) {
-        const refreshed = await youtubeApi.listVideos(selectedChannelId, 50);
-        const allVideos = Array.isArray((refreshed as any).videos) ? (refreshed as any).videos : [];
-        const privateVideos = allVideos.filter((v: any) => (v.privacy_status || '').toLowerCase() === 'private');
-        setVideos(privateVideos);
-        setSelectedVideoIds([]);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Errore sconosciuto';
-      showToast('Apply cover fallito', 'error', message, 7000);
     } finally {
       setIsApplying(false);
     }

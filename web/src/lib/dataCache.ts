@@ -8,7 +8,6 @@
  * - Time-based expiration (TTL)
  * - Manual invalidation
  * - Request deduplication (prevents concurrent identical requests)
- * - Subscribe to cache updates
  * 
  * @example
  * ```tsx
@@ -25,7 +24,7 @@ type CacheEntry<T> = {
 
 type PendingRequest<T> = Promise<T>;
 
-type Subscriber<T> = (data: T | null) => void;
+
 
 export interface CacheOptions {
   /** Time to live in milliseconds (default: 5 minutes) */
@@ -41,7 +40,7 @@ const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
 class DataCache {
   private cache = new Map<string, CacheEntry<any>>();
   private pendingRequests = new Map<string, PendingRequest<any>>();
-  private subscribers = new Map<string, Set<Subscriber<any>>>();
+
 
   /**
    * Get data from cache or fetch it
@@ -108,7 +107,6 @@ class DataCache {
   invalidate(key: string, options: CacheOptions = {}): void {
     const cacheKey = options.prefix ? `${options.prefix}:${key}` : key;
     this.cache.delete(cacheKey);
-    this.notifySubscribers(cacheKey, null);
   }
 
   /**
@@ -125,7 +123,6 @@ class DataCache {
     
     keysToDelete.forEach(key => {
       this.cache.delete(key);
-      this.notifySubscribers(key, null);
     });
   }
 
@@ -135,44 +132,9 @@ class DataCache {
   clear(): void {
     this.cache.clear();
     this.pendingRequests.clear();
-    this.subscribers.clear();
   }
 
-  /**
-   * Subscribe to cache updates
-   */
-  subscribe<T>(
-    key: string,
-    subscriber: Subscriber<T>,
-    options: CacheOptions = {}
-  ): () => void {
-    const cacheKey = options.prefix ? `${options.prefix}:${key}` : key;
-    
-    if (!this.subscribers.has(cacheKey)) {
-      this.subscribers.set(cacheKey, new Set());
-    }
-    
-    this.subscribers.get(cacheKey)!.add(subscriber);
 
-    // Return unsubscribe function
-    return () => {
-      const subs = this.subscribers.get(cacheKey);
-      if (subs) {
-        subs.delete(subscriber);
-      }
-    };
-  }
-
-  /**
-   * Get cache stats (for debugging)
-   */
-  getStats(): { size: number; pending: number; subscribers: number } {
-    return {
-      size: this.cache.size,
-      pending: this.pendingRequests.size,
-      subscribers: this.subscribers.size,
-    };
-  }
 
   // Private methods
 
@@ -193,50 +155,12 @@ class DataCache {
       ttl,
     });
 
-    this.notifySubscribers(cacheKey, data);
-    
     return data;
   }
 
-  private notifySubscribers<T>(cacheKey: string, data: T | null): void {
-    const subs = this.subscribers.get(cacheKey);
-    if (subs) {
-      subs.forEach(sub => sub(data));
-    }
-  }
 }
 
 // Singleton instance
 export const dataCache = new DataCache();
-
-/**
- * React hook for using cached data
- * 
- * @param key - Cache key
- * @param fetcher - Function to fetch data
- * @param options - Cache options
- * @returns Cached data and loading state
- * 
- * @example
- * ```tsx
- * const { data, loading, error } = useCachedData(
- *   'channels',
- *   () => youtubeApi.channels(false),
- *   { ttl: 5 * 60 * 1000 }
- * );
- * ```
- */
-export function useCachedData<T>(
-  key: string,
-  fetcher: () => Promise<T>,
-  options: CacheOptions = {}
-): { data: T | null; loading: boolean; error: Error | null } {
-  // Note: This is a simplified version
-  // For production, consider using TanStack Query
-  throw new Error(
-    'useCachedData is not yet implemented. ' +
-    'Use dataCache.get() directly or integrate TanStack Query.'
-  );
-}
 
 export default dataCache;
