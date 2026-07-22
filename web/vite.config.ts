@@ -20,45 +20,45 @@ export default defineConfig(({ command }) => ({
         },
         proxy: {
             '/api/v1': {
-                target: 'http://127.0.0.1:8000',
+                target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,
             },
             '/api/v1/calendar': {
-                target: 'http://127.0.0.1:8000',
+                target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,
             },
             '/api/youtube': {
-                target: 'http://127.0.0.1:8000',
+                target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,
                 rewrite: (path) => path.replace(/^\/api\/youtube/, '/api/v1/youtube'),
             },
             '/api/drive': {
-                target: 'http://127.0.0.1:8000',
+                target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,
             },
             '/api/bundle': {
-                target: 'http://127.0.0.1:8000',
+                target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,
                 rewrite: (path) => path.replace(/^\/api\/bundle/, '/api/v1/bundle'),
             },
             '/api/ansible': {
-                target: 'http://127.0.0.1:8000',
+                target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,
                 rewrite: (path) => path.replace(/^\/api\/ansible/, '/api/v1/ansible'),
             },
             '/drive': {
-                target: 'http://127.0.0.1:8000',
+                target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,
             },
             '/dark_editor_v2': {
-                target: 'http://127.0.0.1:8000',
+                target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,
                 ws: true,

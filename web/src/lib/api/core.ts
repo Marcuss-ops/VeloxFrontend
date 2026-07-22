@@ -15,12 +15,14 @@
  *
  * Features:
  * - Automatic endpoint resolution and legacy mapping
- * - No hardcoded hosts/ports (same-origin only)
+ * - Supports configured BFF base URL in production and same-origin Vite proxy in dev
  * - Consistent error handling with ApiError class
  * - Full TypeScript type support
  * - Automatic retry with exponential backoff
  * - Request timeout handling
  */
+
+import { API_BASE_URL, getCookie } from './client';
 
 // API Version prefix - single source of truth
 const API_V1 = '/api/v1';
@@ -49,49 +51,78 @@ const NON_V1_ENDPOINTS = [
   '/install_worker/',    // Install worker endpoints
 ];
 
+/** HTTP methods that require CSRF protection (double-submit cookie). */
+const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
 /**
- * Resolve endpoint URL, applying API versioning
- * 
+ * Resolve endpoint URL, applying API versioning and the configured BFF base URL.
+ *
  * Rules:
- * 1. Already /api/v1/* → keep as-is
- * 2. Non-v1 API endpoints (ansible, drive, youtube, bundle, etc.) → keep as-is
- * 3. Legacy endpoints (/jobs, /workers, etc.) → map to /api/v1/*
- * 4. Endpoints starting with /api/ but not v1 → upgrade to /api/v1/*
- * 5. Bare endpoints → prefix with /api/v1/
+ * 1. Absolute URLs (http:// or https://) → return as-is
+ * 2. Already /api/v1/* → keep as-is
+ * 3. Non-v1 API endpoints (ansible, drive, youtube, bundle, etc.) → keep as-is
+ * 4. Legacy endpoints (/jobs, /workers, etc.) → map to /api/v1/*
+ * 5. Endpoints starting with /api/ but not v1 → upgrade to /api/v1/*
+ * 6. Bare endpoints → prefix with /api/v1/
+ *
+ * Finally, relative paths are prefixed with API_BASE_URL so the same
+ * client works both in dev (same-origin via Vite proxy) and in
+ * production (cross-origin to api.instaedit.org).
  */
 function resolveEndpoint(endpoint: string): string {
-  // Already versioned with v1
-  if (endpoint.startsWith(API_V1)) {
+  // Absolute URLs are passed through unchanged.
+  if (/^https?:\/\//i.test(endpoint)) {
     return endpoint;
   }
 
+  let resolved: string | undefined;
+
+  // Already versioned with v1
+  if (endpoint.startsWith(API_V1)) {
+    resolved = endpoint;
+  }
+
   // Non-v1 API endpoints - keep as-is (different API surface)
-  for (const nonV1 of NON_V1_ENDPOINTS) {
-    if (endpoint.startsWith(nonV1)) {
-      return endpoint;
+  if (!resolved) {
+    for (const nonV1 of NON_V1_ENDPOINTS) {
+      if (endpoint.startsWith(nonV1)) {
+        resolved = endpoint;
+        break;
+      }
     }
   }
 
-  // Check explicit legacy mapping first
-  for (const [legacy, mapped] of Object.entries(LEGACY_ENDPOINT_MAP)) {
-    if (endpoint === legacy || endpoint.startsWith(legacy)) {
-      return endpoint.replace(legacy, mapped);
-    }
-    // Also check if endpoint with /api/ prefix matches legacy
-    const apiLegacy = `/api${legacy}`;
-    if (endpoint === apiLegacy || endpoint.startsWith(apiLegacy)) {
-      return endpoint.replace(apiLegacy, mapped);
+  // Check explicit legacy mapping
+  if (!resolved) {
+    for (const [legacy, mapped] of Object.entries(LEGACY_ENDPOINT_MAP)) {
+      if (endpoint === legacy || endpoint.startsWith(legacy)) {
+        resolved = endpoint.replace(legacy, mapped);
+        break;
+      }
+      // Also check if endpoint with /api/ prefix matches legacy
+      const apiLegacy = `/api${legacy}`;
+      if (endpoint === apiLegacy || endpoint.startsWith(apiLegacy)) {
+        resolved = endpoint.replace(apiLegacy, mapped);
+        break;
+      }
     }
   }
 
   // Endpoints with /api/ prefix but not v1 → upgrade to v1
   // e.g., /api/jobs → /api/v1/jobs
-  if (endpoint.startsWith('/api/')) {
-    return endpoint.replace('/api/', `${API_V1}/`);
+  if (!resolved) {
+    if (endpoint.startsWith('/api/')) {
+      resolved = endpoint.replace('/api/', `${API_V1}/`);
+    } else {
+      // Bare endpoint → prefix with /api/v1/
+      resolved = `${API_V1}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+    }
   }
 
-  // Bare endpoint → prefix with /api/v1/
-  return `${API_V1}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+  // Prefix with the configured BFF base URL. In production this is
+  // https://api.instaedit.org; in dev it is '' so the Vite proxy handles
+  // same-origin requests.
+  return API_BASE_URL + resolved;
 }
 
 /**
@@ -217,15 +248,29 @@ export async function fetchJSON<T>(
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      const method = (fetchOptions.method ?? 'GET').toUpperCase();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+      if (MUTATION_METHODS.has(method)) {
+        const csrf = getCookie('csrf_token');
+        if (csrf) {
+          headers['X-CSRF-Token'] = csrf;
+        }
+      }
+      if (fetchOptions.headers) {
+        const extra = fetchOptions.headers instanceof Headers
+          ? Object.fromEntries(fetchOptions.headers.entries())
+          : (fetchOptions.headers as Record<string, string>);
+        Object.assign(headers, extra);
+      }
+
       const response = await fetch(url, {
         ...fetchOptions,
         signal: controller.signal,
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          ...fetchOptions.headers,
-        },
+        headers,
       });
 
       if (!response.ok) {
@@ -290,10 +335,26 @@ export async function fetchVoid(
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
+      const method = (fetchOptions.method ?? 'GET').toUpperCase();
+      const headers: Record<string, string> = {};
+      if (MUTATION_METHODS.has(method)) {
+        const csrf = getCookie('csrf_token');
+        if (csrf) {
+          headers['X-CSRF-Token'] = csrf;
+        }
+      }
+      if (fetchOptions.headers) {
+        const extra = fetchOptions.headers instanceof Headers
+          ? Object.fromEntries(fetchOptions.headers.entries())
+          : (fetchOptions.headers as Record<string, string>);
+        Object.assign(headers, extra);
+      }
+
       const response = await fetch(url, {
         ...fetchOptions,
         signal: controller.signal,
         credentials: 'include',
+        headers,
       });
 
       if (!response.ok) {

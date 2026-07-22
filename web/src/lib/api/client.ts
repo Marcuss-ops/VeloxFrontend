@@ -19,7 +19,7 @@
  * Base URL resolution:
  *   - VITE_API_BASE_URL env var (production: https://api.instaedit.org)
  *   - Defaults to '' (same-origin) in dev where the Vite proxy
- *     forwards /api/* to the backend on localhost:8000.
+ *     forwards /api/* to the InstaEdit BFF on localhost:8080.
  */
 
 /** Base URL prefix for all API calls. Empty string = same-origin. */
@@ -30,7 +30,7 @@ export const API_BASE_URL: string =
  * Read a cookie value by name. Returns '' when the cookie is absent.
  * Used to extract the csrf_token cookie for the X-CSRF-Token header.
  */
-function getCookie(name: string): string {
+export function getCookie(name: string): string {
   if (typeof document === 'undefined') return '';
   const prefix = name + '=';
   const entries = document.cookie.split(';');
