@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useVersioningStore, Version } from '@/stores/versioningStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { 
@@ -19,7 +20,7 @@ import {
 
 export default function VersioningPanel() {
   const { versions, isAutoSaving, autoSaveInterval, enableAutoSave, disableAutoSave, saveCurrentState, compareVersions } = useVersioningStore();
-  const { objects } = useEditorStore();
+  const objects = useObjectsArray();
   const { currentProject } = useProjectStore();
   const { addToast } = useUIStore();
   

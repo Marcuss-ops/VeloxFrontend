@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { usePresetStore, Preset } from '@/stores/presetStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { Plus, Search, Filter, Trash2, Download, Edit, Save } from 'lucide-react';
 
 export default function PresetPanel() {
   const { presets, isLoading, createPreset, deletePreset, loadPresets, searchPresets, filterPresets } = usePresetStore();
-  const { objects, loadObjects } = useEditorStore();
+  const objects = useObjectsArray();
+  const { loadObjects } = useEditorStore();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'complete' | 'text'>('all');

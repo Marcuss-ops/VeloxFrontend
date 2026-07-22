@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import PropertiesPanel from '@/components/editor/PropertiesPanel';
 import LayersPanel from '@/components/editor/LayersPanel';
 import { useEditorStore } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorTemplates } from '@/hooks/useEditorTemplates';
 import { uploadImage } from '@/lib/api';
@@ -42,7 +43,8 @@ const PRELOADED_ASSETS = [
 ];
 
 export default function EditorSidebar() {
-  const { selectedIds, objects, addObject } = useEditorStore();
+  const { selectedIds, addObject } = useEditorStore();
+  const objects = useObjectsArray();
   const { addToast, setUploading } = useUIStore();
 
   const [sidebarTab, setSidebarTab] = useState<'design' | 'templates' | 'assets'>('design');

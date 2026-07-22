@@ -46,7 +46,7 @@ export type CanvasObject = {
   blur?: number; // Blur intensity (0 = no effect)
   sharpen?: number; // Sharpen intensity (0 = no effect)
   pixelation?: number; // Pixel size (0 = no effect)
-  
+
   // NEW: Advanced Text Effects
   textShadow?: {
     offsetX: number;
@@ -68,7 +68,7 @@ export type CanvasObject = {
     radius: number;
     direction: 'up' | 'down';
   };
-  
+
   // NEW: Shape & Image Effects
   dropShadow?: {
     offsetX: number;
@@ -108,23 +108,24 @@ export type CanvasObject = {
 
 export interface EditorState {
   // Canvas state
-  objects: CanvasObject[];
+  objects: Record<string, CanvasObject>; // O(1) lookup by id
+  objectIds: string[]; // layer order
   selectedIds: string[];
   canvasWidth: number;
   canvasHeight: number;
   zoom: number;
   offsetX: number;
   offsetY: number;
-  
+
   // History for undo/redo
   pastPatches: { patches: Patch[]; inversePatches: Patch[] }[];
   futurePatches: { patches: Patch[]; inversePatches: Patch[] }[];
   pendingPatches: Patch[];
   pendingInversePatches: Patch[];
-  
+
   // Clipboard
   clipboard: CanvasObject[];
-  
+
   // Actions
   addObject: (obj: CanvasObject) => void;
   updateObject: (id: string, updates: Partial<CanvasObject>) => void;
@@ -136,60 +137,70 @@ export interface EditorState {
   selectObject: (id: string | null, addToSelection?: boolean) => void;
   selectAll: () => void;
   clearSelection: () => void;
-  
+
+
   // Canvas actions
   setCanvasSize: (width: number, height: number) => void;
   setZoom: (zoom: number) => void;
   setOffset: (x: number, y: number) => void;
-  
+
   // History actions
   undo: () => void;
   redo: () => void;
   saveToHistory: () => void;
-  commitMutation: (recipe: (draft: CanvasObject[]) => void) => void;
-  commitLiveMutation: (recipe: (draft: CanvasObject[]) => void) => void;
-  
+  commitMutation: (recipe: (draft: { objects: Record<string, CanvasObject>; objectIds: string[] }) => void) => void;
+  commitLiveMutation: (recipe: (draft: { objects: Record<string, CanvasObject>; objectIds: string[] }) => void) => void;
+
   // Bulk actions
   loadObjects: (objects: CanvasObject[]) => void;
   clearCanvas: () => void;
-  
+
   // Layer actions
   moveLayerUp: (id: string) => void;
   moveLayerDown: (id: string) => void;
   bringToFront: (id: string) => void;
   sendToBack: (id: string) => void;
-  
+
   // Filter actions
   applyBlur: (id: string, intensity: number) => void;
   applySharpen: (id: string, intensity: number) => void;
   applyPixelation: (id: string, pixelSize: number) => void;
   applyAllFilters: (id: string, filters: { blur?: number, sharpen?: number, pixelation?: number }) => void;
   clearFilters: (id: string) => void;
-  
+
   // Advanced text effects actions
   applyTextShadow: (id: string, shadow: CanvasObject['textShadow']) => void;
   applyTextStroke: (id: string, stroke: CanvasObject['textStroke']) => void;
   applyTextGradient: (id: string, gradient: CanvasObject['textGradient']) => void;
   applyTextCurve: (id: string, curve: CanvasObject['textCurve']) => void;
   clearTextEffects: (id: string) => void;
-  
+
   // Shape & image effects actions
   applyDropShadow: (id: string, shadow: CanvasObject['dropShadow']) => void;
   applyBorderRadius: (id: string, radius: number) => void;
   applyShapeGradient: (id: string, gradient: CanvasObject['shapeGradient']) => void;
   applyTexture: (id: string, texture: CanvasObject['texture']) => void;
   clearShapeEffects: (id: string) => void;
-  
+
   // AI Actions
   removeBackground: (id: string) => Promise<void>;
-  
+
   // Custom additions
   updateObjectLive: (id: string, updates: Partial<CanvasObject>) => void;
 }
 
+// Helper to derive an ordered array from the normalized state
+export function getObjectsArrayFromState(
+  objects: Record<string, CanvasObject>,
+  objectIds: string[]
+): CanvasObject[] {
+  return objectIds.map((id) => objects[id]).filter((obj): obj is CanvasObject => !!obj);
+}
+
 export const useEditorStore = create<EditorState>((set, get) => ({
   // Initial state
-  objects: [],
+  objects: {},
+  objectIds: [],
   selectedIds: [],
   canvasWidth: 1920,
   canvasHeight: 1080,
@@ -201,22 +212,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   pendingPatches: [],
   pendingInversePatches: [],
   clipboard: [],
-  
+
   // Helpers
   commitMutation: (recipe) => {
-    const { objects, pastPatches, pendingPatches, pendingInversePatches } = get();
-    const [nextObjects, patches, inversePatches] = produceWithPatches(objects, recipe);
-    
+    const { objects, objectIds, pastPatches, pendingPatches, pendingInversePatches } = get();
+    const [nextState, patches, inversePatches] = produceWithPatches({ objects, objectIds }, recipe);
+
     if (patches.length === 0 && pendingPatches.length === 0) return;
-    
+
     const finalPatches = [...pendingPatches, ...patches];
     const finalInversePatches = [...inversePatches, ...pendingInversePatches];
-    
+
     const newPast = [...pastPatches, { patches: finalPatches, inversePatches: finalInversePatches }];
     if (newPast.length > 50) newPast.shift();
-    
+
     set({
-      objects: nextObjects,
+      objects: nextState.objects,
+      objectIds: nextState.objectIds,
       pastPatches: newPast,
       futurePatches: [],
       pendingPatches: [],
@@ -225,13 +237,14 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 
   commitLiveMutation: (recipe) => {
-    const { objects, pendingPatches, pendingInversePatches } = get();
-    const [nextObjects, patches, inversePatches] = produceWithPatches(objects, recipe);
-    
+    const { objects, objectIds, pendingPatches, pendingInversePatches } = get();
+    const [nextState, patches, inversePatches] = produceWithPatches({ objects, objectIds }, recipe);
+
     if (patches.length === 0) return;
-    
+
     set({
-      objects: nextObjects,
+      objects: nextState.objects,
+      objectIds: nextState.objectIds,
       pendingPatches: [...pendingPatches, ...patches],
       pendingInversePatches: [...inversePatches, ...pendingInversePatches],
     });
@@ -240,45 +253,46 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   // Actions
   addObject: (obj) => {
     get().commitMutation((draft) => {
-      draft.push(obj);
+      draft.objects[obj.id] = obj;
+      draft.objectIds.push(obj.id);
     });
   },
-  
+
   updateObject: (id, updates) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) Object.assign(obj, updates);
     });
   },
 
   updateObjectLive: (id, updates) => {
     get().commitLiveMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) Object.assign(obj, updates);
     });
   },
-  
+
   deleteObject: (id) => {
     get().commitMutation((draft) => {
-      const index = draft.findIndex(o => o.id === id);
-      if (index !== -1) draft.splice(index, 1);
+      delete draft.objects[id];
+      const index = draft.objectIds.indexOf(id);
+      if (index !== -1) draft.objectIds.splice(index, 1);
     });
     const { selectedIds } = get();
     if (selectedIds.includes(id)) {
       set({ selectedIds: selectedIds.filter((sid) => sid !== id) });
     }
   },
-  
+
   deleteSelected: () => {
     const { selectedIds } = get();
     if (selectedIds.length === 0) return;
     get().commitMutation((draft) => {
       const selectedSet = new Set(selectedIds);
-      for (let i = draft.length - 1; i >= 0; i--) {
-        if (selectedSet.has(draft[i].id)) {
-          draft.splice(i, 1);
-        }
+      for (const id of selectedIds) {
+        delete draft.objects[id];
       }
+      draft.objectIds = draft.objectIds.filter((objId) => !selectedSet.has(objId));
     });
     set({ selectedIds: [] });
   },
@@ -287,52 +301,55 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { selectedIds } = get();
     if (selectedIds.length === 0) return;
     const newIds: string[] = [];
-    
+
     get().commitMutation((draft) => {
-      const selectedSet = new Set(selectedIds);
-      const toDuplicate = draft.filter((o) => selectedSet.has(o.id));
-      for (const o of toDuplicate) {
+      for (const id of selectedIds) {
+        const o = draft.objects[id];
+        if (!o) continue;
         const newId = uuidv4();
         newIds.push(newId);
-        draft.push({
+        draft.objects[newId] = {
           ...o,
           id: newId,
           x: o.x + 20,
           y: o.y + 20,
           name: o.name ? `${o.name} Copy` : 'Copy',
-        });
+        };
+        draft.objectIds.push(newId);
       }
     });
     set({ selectedIds: newIds });
   },
-  
+
   copySelected: () => {
     const { objects, selectedIds } = get();
     if (selectedIds.length === 0) return;
-    
+
     // Copy the selected objects, decoupling them from the current state
-    const copiedObjects = objects
-      .filter((obj) => selectedIds.includes(obj.id))
+    const copiedObjects = selectedIds
+      .map((id) => objects[id])
+      .filter((obj): obj is CanvasObject => !!obj)
       .map((obj) => JSON.parse(JSON.stringify(obj)));
-      
+
     set({ clipboard: copiedObjects });
   },
 
   pasteClipboard: () => {
     const { clipboard } = get();
     if (clipboard.length === 0) return;
-    
+
     const newIds: string[] = [];
     get().commitMutation((draft) => {
       for (const obj of clipboard) {
         const newId = uuidv4();
         newIds.push(newId);
-        draft.push({
+        draft.objects[newId] = {
           ...obj,
           id: newId,
           x: obj.x + 20,
           y: obj.y + 20,
-        });
+        };
+        draft.objectIds.push(newId);
       }
     });
 
@@ -353,65 +370,73 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ selectedIds: [id] });
     }
   },
-  
+
   selectAll: () => {
-    const { objects } = get();
-    set({ selectedIds: objects.map((obj) => obj.id) });
+    const { objectIds } = get();
+    set({ selectedIds: [...objectIds] });
   },
-  
+
   clearSelection: () => {
     set({ selectedIds: [] });
   },
-  
+
   setCanvasSize: (width, height) => {
     set({ canvasWidth: width, canvasHeight: height });
   },
-  
+
   setZoom: (zoom) => {
     set({ zoom: Math.max(0.1, Math.min(5, zoom)) });
   },
-  
+
   setOffset: (x, y) => {
     set({ offsetX: x, offsetY: y });
   },
-  
+
   undo: () => {
-    const { pastPatches, futurePatches, objects, pendingPatches, pendingInversePatches } = get();
-    let currentObjects = objects;
+    const { pastPatches, futurePatches, objects, objectIds, pendingPatches, pendingInversePatches } = get();
+    const currentState = { objects, objectIds };
 
     if (pendingPatches.length > 0) {
-       currentObjects = applyPatches(currentObjects, pendingInversePatches);
-       set({ objects: currentObjects, pendingPatches: [], pendingInversePatches: [] });
-       return;
+      const nextState = applyPatches(currentState, pendingInversePatches);
+      set({
+        objects: nextState.objects,
+        objectIds: nextState.objectIds,
+        pendingPatches: [],
+        pendingInversePatches: [],
+      });
+      return;
     }
 
     if (pastPatches.length === 0) return;
-    
+
     const lastEntry = pastPatches[pastPatches.length - 1];
-    const prevObjects = applyPatches(currentObjects, lastEntry.inversePatches);
-    
+    const prevState = applyPatches(currentState, lastEntry.inversePatches);
+
     set({
-      objects: prevObjects,
+      objects: prevState.objects,
+      objectIds: prevState.objectIds,
       pastPatches: pastPatches.slice(0, -1),
       futurePatches: [lastEntry, ...futurePatches],
-      selectedIds: [], 
+      selectedIds: [],
     });
   },
-  
+
   redo: () => {
-    const { futurePatches, pastPatches, objects, pendingPatches } = get();
+    const { futurePatches, pastPatches, objects, objectIds, pendingPatches } = get();
     if (futurePatches.length === 0 || pendingPatches.length > 0) return;
-    
+
     const nextEntry = futurePatches[0];
-    const nextObjects = applyPatches(objects, nextEntry.patches);
-    
+    const currentState = { objects, objectIds };
+    const nextState = applyPatches(currentState, nextEntry.patches);
+
     set({
-      objects: nextObjects,
+      objects: nextState.objects,
+      objectIds: nextState.objectIds,
       pastPatches: [...pastPatches, nextEntry],
       futurePatches: futurePatches.slice(1),
     });
   },
-  
+
   saveToHistory: () => {
     const { pendingPatches, pendingInversePatches, pastPatches } = get();
     if (pendingPatches.length === 0) return;
@@ -424,58 +449,78 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       pendingInversePatches: [],
     });
   },
-  
+
   loadObjects: (objects) => {
-    set({ objects, selectedIds: [], pastPatches: [], futurePatches: [], pendingPatches: [], pendingInversePatches: [] });
+    const nextIds = objects.map((obj) => obj.id);
+    const nextObjects: Record<string, CanvasObject> = {};
+    for (const obj of objects) {
+      nextObjects[obj.id] = obj;
+    }
+    set({
+      objects: nextObjects,
+      objectIds: nextIds,
+      selectedIds: [],
+      pastPatches: [],
+      futurePatches: [],
+      pendingPatches: [],
+      pendingInversePatches: [],
+    });
   },
-  
+
   clearCanvas: () => {
-    set({ objects: [], selectedIds: [], pastPatches: [], futurePatches: [], pendingPatches: [], pendingInversePatches: [] });
+    set({
+      objects: {},
+      objectIds: [],
+      selectedIds: [],
+      pastPatches: [],
+      futurePatches: [],
+      pendingPatches: [],
+      pendingInversePatches: [],
+    });
   },
-  
+
   moveLayerUp: (id) => {
     get().commitMutation((draft) => {
-      const index = draft.findIndex((obj) => obj.id === id);
-      if (index < draft.length - 1 && index !== -1) {
-        [draft[index], draft[index + 1]] = [draft[index + 1], draft[index]];
+      const index = draft.objectIds.indexOf(id);
+      if (index < draft.objectIds.length - 1 && index !== -1) {
+        [draft.objectIds[index], draft.objectIds[index + 1]] = [draft.objectIds[index + 1], draft.objectIds[index]];
       }
     });
   },
-  
+
   moveLayerDown: (id) => {
     get().commitMutation((draft) => {
-      const index = draft.findIndex((obj) => obj.id === id);
+      const index = draft.objectIds.indexOf(id);
       if (index > 0 && index !== -1) {
-        [draft[index], draft[index - 1]] = [draft[index - 1], draft[index]];
+        [draft.objectIds[index], draft.objectIds[index - 1]] = [draft.objectIds[index - 1], draft.objectIds[index]];
       }
     });
   },
-  
+
   bringToFront: (id) => {
     get().commitMutation((draft) => {
-      const index = draft.findIndex((obj) => obj.id === id);
-      if (index < draft.length - 1 && index !== -1) {
-        const [obj] = draft.splice(index, 1);
-        draft.push(obj);
+      const index = draft.objectIds.indexOf(id);
+      if (index < draft.objectIds.length - 1 && index !== -1) {
+        const [objId] = draft.objectIds.splice(index, 1);
+        draft.objectIds.push(objId);
       }
     });
   },
-  
+
   sendToBack: (id) => {
     get().commitMutation((draft) => {
-      const index = draft.findIndex((obj) => obj.id === id);
+      const index = draft.objectIds.indexOf(id);
       if (index > 0 && index !== -1) {
-        const [obj] = draft.splice(index, 1);
-        draft.unshift(obj);
+        const [objId] = draft.objectIds.splice(index, 1);
+        draft.objectIds.unshift(objId);
       }
     });
   },
-  
-  // Filter actions
+
   // Filter actions
   applyBlur: (id, intensity) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.blur = Math.max(0, Math.min(20, intensity));
         obj.sharpen = 0;
@@ -483,10 +528,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     });
   },
-  
+
   applySharpen: (id, intensity) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.sharpen = Math.max(0, Math.min(20, intensity));
         obj.blur = 0;
@@ -494,10 +539,10 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     });
   },
-  
+
   applyPixelation: (id, pixelSize) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.pixelation = Math.max(0, Math.min(50, pixelSize));
         obj.blur = 0;
@@ -505,7 +550,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     });
   },
-  
+
   applyAllFilters: (id, filters) => {
     const { updateObjectLive } = get();
     updateObjectLive(id, { ...filters });
@@ -513,7 +558,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   clearFilters: (id) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.blur = 0;
         obj.sharpen = 0;
@@ -521,39 +566,39 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     });
   },
-  
+
   // Advanced text effects actions
   applyTextShadow: (id, shadow) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.textShadow = shadow;
     });
   },
-  
+
   applyTextStroke: (id, stroke) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.textStroke = stroke;
     });
   },
-  
+
   applyTextGradient: (id, gradient) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.textGradient = gradient;
     });
   },
-  
+
   applyTextCurve: (id, curve) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.textCurve = curve;
     });
   },
-  
+
   clearTextEffects: (id) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.textShadow = undefined;
         obj.textStroke = undefined;
@@ -562,39 +607,39 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     });
   },
-  
+
   // Shape & image effects actions
   applyDropShadow: (id, shadow) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.dropShadow = shadow;
     });
   },
-  
+
   applyBorderRadius: (id, radius) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.borderRadius = Math.max(0, radius);
     });
   },
-  
+
   applyShapeGradient: (id, gradient) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.shapeGradient = gradient;
     });
   },
-  
+
   applyTexture: (id, texture) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.texture = texture;
     });
   },
-  
+
   clearShapeEffects: (id) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.dropShadow = undefined;
         obj.borderRadius = undefined;
@@ -603,21 +648,21 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       }
     });
   },
-  
+
   removeBackground: async (id) => {
     const { objects, updateObject } = get();
-    const obj = objects.find((o) => o.id === id);
+    const obj = objects[id];
     if (!obj || obj.type !== 'image' || !obj.src) return;
-    
+
     // Set processing state
     updateObject(id, { processing: true });
-    
+
     try {
       const { removeBackground, extractFilenameFromPath } = await import('@/lib/api');
       const filename = extractFilenameFromPath(obj.src);
-      
+
       const response = await removeBackground({ filename, async: false });
-      
+
       if (response.filename) {
         updateObject(id, { src: response.filename, processing: false });
       } else {
@@ -630,4 +675,5 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       // You could show a toast here if you had a toast store
     }
   },
+
 }));

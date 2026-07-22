@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import {
   Type,
@@ -83,9 +84,9 @@ export default function ToolbarDock() {
     setZoom,
     addObject,
     updateObject,
-    objects,
     selectedIds,
   } = useEditorStore();
+  const objects = useObjectsArray();
   const { upscale } = useImageProcessor();
   
   const canUndo = pastPatches.length > 0;

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
 import { onEditorSaveRequest } from '@/lib/editorEvents';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
@@ -8,7 +9,8 @@ import { uploadImage } from '@/lib/api';
 
 export function useProjectSave(canvasRef: React.RefObject<any>) {
   const { currentProject, isSaving, isDirty, saveProject, setDirty } = useProjectStore();
-  const { objects, canvasWidth, canvasHeight } = useEditorStore();
+  const objects = useObjectsArray();
+  const { canvasWidth, canvasHeight } = useEditorStore();
   const { addToast } = useUIStore();
 
   const lastPreviewAtRef = useRef<number>(0);

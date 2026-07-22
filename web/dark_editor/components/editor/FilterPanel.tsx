@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { Slider } from '@/components/ui/Slider';
 import { Button } from '@/components/ui/Button';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { extractFilenameFromPath } from '@/lib/api';
 import {
@@ -44,7 +45,8 @@ const PRESETS: { name: string; values: Record<string, number> }[] = [
 ];
 
 export default function FilterPanel() {
-  const { objects, selectedIds, updateObject } = useEditorStore();
+  const { selectedIds, updateObject } = useEditorStore();
+  const objects = useObjectsArray();
   const { applyFilter } = useImageProcessor();
   const [values, setValues] = useState<Record<string, number>>({});
   const [isApplying, setIsApplying] = useState(false);

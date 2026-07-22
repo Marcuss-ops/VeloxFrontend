@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import { Stage, Layer, Rect, Transformer, Circle, Line } from 'react-konva';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import Konva from 'konva';
@@ -32,7 +33,6 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
   const transformerRef = useRef<Konva.Transformer>(null);
   
   const {
-    objects,
     selectedIds,
     canvasWidth,
     canvasHeight,
@@ -44,6 +44,8 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     setZoom,
     setOffset,
   } = useEditorStore();
+
+  const objects = useObjectsArray();
   
   const {
     activeTool,

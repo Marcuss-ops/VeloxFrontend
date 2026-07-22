@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useEditorStore } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { addTemplate, deleteTemplate, loadTemplates, type EditorTemplate } from '@/lib/templates';
@@ -15,7 +16,8 @@ export interface UseEditorTemplatesReturn {
 }
 
 export function useEditorTemplates(): UseEditorTemplatesReturn {
-  const { objects, canvasWidth, canvasHeight, loadObjects, setCanvasSize } = useEditorStore();
+  const objects = useObjectsArray();
+  const { canvasWidth, canvasHeight, loadObjects, setCanvasSize } = useEditorStore();
   const { currentProject, setDirty } = useProjectStore();
   const { addToast } = useUIStore();
 
