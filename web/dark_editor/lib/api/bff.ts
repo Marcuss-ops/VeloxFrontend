@@ -159,6 +159,69 @@ export function createVeloxJob(body: CreateVeloxJobRequest): Promise<VeloxJob> {
 }
 
 // ------------------------------------------------------------------
+// Media upload (used by the dark editor to store thumbnails in
+// InstaEdit before publishing them to YouTube)
+// ------------------------------------------------------------------
+
+async function sha256Hex(blob: Blob): Promise<string> {
+  const buffer = await blob.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+export interface PresignMediaResponse {
+  asset_id: string;
+  upload_url: string;
+  upload_method: string;
+  upload_headers: Record<string, string>;
+}
+
+export async function uploadMediaAsset(blob: Blob, filename: string): Promise<string> {
+  if (!['image/jpeg', 'image/png'].includes(blob.type)) {
+    throw new Error('Unsupported thumbnail format. Only JPEG and PNG are allowed.');
+  }
+  if (blob.size > 2 * 1024 * 1024) {
+    throw new Error('Thumbnail exceeds 2 MB limit.');
+  }
+
+  const presign = await bffFetch<PresignMediaResponse>('/api/v1/media/presign', {
+    method: 'POST',
+    body: JSON.stringify({
+      filename,
+      content_type: blob.type,
+      size_bytes: blob.size,
+      sha256: await sha256Hex(blob),
+    }),
+  });
+
+  const putRes = await fetch(presign.upload_url, {
+    method: presign.upload_method || 'PUT',
+    headers: { 'Content-Type': blob.type, ...(presign.upload_headers || {}) },
+    body: blob,
+  });
+  if (!putRes.ok) {
+    throw new Error(`Storage upload failed: ${putRes.status} ${putRes.statusText}`);
+  }
+
+  const completed = await bffFetch<{ id: string }>(`/api/v1/media/${presign.asset_id}/complete`, {
+    method: 'POST',
+  });
+  return completed.id;
+}
+
+export async function updateEditorSessionThumbnail(
+  veloxProjectId: string,
+  thumbnailMediaId: string
+): Promise<void> {
+  await bffFetch(`/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(veloxProjectId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ thumbnail_media_id: thumbnailMediaId }),
+  });
+}
+
+// ------------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------------
 

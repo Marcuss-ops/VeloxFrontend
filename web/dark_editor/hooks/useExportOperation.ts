@@ -12,6 +12,8 @@ export interface UseExportOperationProps {
   externalDestinationId?: string;
   /** Callback invoked when a Velox submission is requested. Returns the created Velox job id. */
   onSubmitToVelox?: (blob: Blob, filename: string, externalDestinationId: string) => Promise<{ jobId: string }>;
+  /** Callback invoked when the exported image should be published as a YouTube thumbnail. */
+  onPublishThumbnail?: (blob: Blob, filename: string) => Promise<void>;
 }
 
 export interface UseExportOperationReturn {
@@ -32,6 +34,7 @@ export function useExportOperation({
   handleDriveUpload,
   externalDestinationId,
   onSubmitToVelox,
+  onPublishThumbnail,
 }: UseExportOperationProps): UseExportOperationReturn {
   const { addToast } = useUIStore();
 
@@ -85,6 +88,13 @@ export function useExportOperation({
         return;
       }
 
+      if (onPublishThumbnail) {
+        await onPublishThumbnail(result.blob, filename);
+        addToast({ type: 'success', message: 'Thumbnail saved to InstaEdit' });
+        setExportComplete(true);
+        return;
+      }
+
       if (!uploadToDriveEnabled) {
         triggerDownload(result.blob, filename);
         addToast({ type: 'success', message: 'Image exported successfully' });
@@ -113,6 +123,7 @@ export function useExportOperation({
     triggerDownload,
     externalDestinationId,
     onSubmitToVelox,
+    onPublishThumbnail,
   ]);
 
   return {
