@@ -1,8 +1,10 @@
 // API client for Dark Editor V2
-// All endpoints point to Go backend at /dark_editor_v2
-// Single source of truth: Go backend owns all APIs
+// All endpoints route through the InstaEdit BFF at /api/v1/editor
+// which proxies to the Velox master. The browser stays on the same
+// origin so the InstaEdit session cookie + CSRF double-submit are
+// preserved.
 
-const API_BASE = '/dark_editor_v2';
+const API_BASE = '/api/v1/editor';
 const FOLDERS_API_BASE = `${API_BASE}/api/folders`;
 
 function buildUrl(path: string): string {
@@ -10,8 +12,37 @@ function buildUrl(path: string): string {
   return path.startsWith(API_BASE) ? path : `${API_BASE}${path}`;
 }
 
-async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(buildUrl(path), options);
+/** Read a cookie by name. */
+function getCookie(name: string): string {
+  if (typeof document === 'undefined') return '';
+  const prefix = name + '=';
+  const entries = document.cookie.split(';');
+  for (const entry of entries) {
+    const trimmed = entry.trim();
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
+    }
+  }
+  return '';
+}
+
+async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = (options.method ?? 'GET').toUpperCase();
+  const csrfHeaders: Record<string, string> = {};
+  if (method !== 'GET' && method !== 'HEAD') {
+    const csrf = getCookie('csrf_token');
+    if (csrf) csrfHeaders['X-CSRF-Token'] = csrf;
+  }
+
+  const response = await fetch(buildUrl(path), {
+    ...options,
+    method,
+    headers: {
+      ...csrfHeaders,
+      ...options.headers,
+    },
+    credentials: 'include',
+  });
 
   if (!response.ok) {
     let message = 'Request failed';
