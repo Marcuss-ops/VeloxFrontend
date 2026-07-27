@@ -282,6 +282,66 @@ export async function publishEditorSession(
 }
 
 // ------------------------------------------------------------------
+// Publish draft auto-save (P2). Mirrors the publish endpoint shape,
+// minus the strict validation + side-effects. The Dark Editor calls
+// this on debounce + on-blur so an operator who closes the tab
+// mid-edit can resume the same form state on reload. The server
+// returns the echoed draft + draft_updated_at; the SPA renders the
+// timestamp next to a "Bozza salvata" indicator without a follow-up
+// GET round-trip.
+//
+// Field contract (all fields optional; an empty body clears the draft):
+//   - title:                   string (≤100 chars — not enforced here)
+//   - description:             string (≤5000 — not enforced here)
+//   - tags:                    string[] (≤30 — not enforced here)
+//   - default_language:        string (BCP-47)
+//   - default_audio_language:  string (BCP-47)
+//   - translations:            map[lang] -> {title, description}
+//   - desired_privacy:         "public" | "unlisted" | "private"
+//
+// Bounds-validation lives at the publish endpoint so a keystroke
+// mid-edit (e.g. a temporarily over-long title) doesn't bounce a 400
+// every auto-save. The server-side CAS predicate (status IN
+// ('editing','failed')) refuses the row while the publish
+// orchestrator owns it — surfaced as 409 to the SPA.
+// ------------------------------------------------------------------
+
+export interface YouTubeEditorSessionDraftRequest {
+  title?: string;
+  description?: string;
+  tags?: string[];
+  default_language?: string;
+  default_audio_language?: string;
+  translations?: Record<string, YouTubeTranslation>;
+  desired_privacy?: 'public' | 'unlisted' | 'private';
+}
+
+export interface YouTubeEditorSessionDraftResponse {
+  velox_project_id: string;
+  draft_title: string;
+  draft_description: string;
+  draft_tags: string[];
+  draft_default_language: string;
+  draft_default_audio_language: string;
+  draft_translations: Record<string, YouTubeTranslation>;
+  draft_desired_privacy: string;
+  draft_updated_at: string;
+}
+
+export async function saveEditorSessionDraft(
+  veloxProjectId: string,
+  body: YouTubeEditorSessionDraftRequest
+): Promise<YouTubeEditorSessionDraftResponse> {
+  return bffFetch<YouTubeEditorSessionDraftResponse>(
+    `/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(veloxProjectId)}/draft`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+// ------------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------------
 

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useDriveIntegration } from '@/hooks/useDriveIntegration';
 import { useExportOperation } from '@/hooks/useExportOperation';
+import { useAutoSaveDraft } from '@/hooks/useAutoSaveDraft';
 import { useToast } from '@/components/ui/Toast';
 import FormatQualitySection from './export/FormatQualitySection';
 import CanvasInfoSection from './export/CanvasInfoSection';
@@ -146,6 +147,39 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
   // -------- Form state + localStorage hydration --------
   const [form, setForm] = useState<FormState>(() => EMPTY_FORM);
   const [draftLoaded, setDraftLoaded] = useState(false);
+
+  // P2 — Dark Editor auto-save: debounced (1.5s) fan-out + indicator.
+  // The localStorage Salva bozza path below stays; this hook fans the
+  // same form out to PUT /by-project/{id}/draft on the server so an
+  // operator who closes the tab mid-edit can resume the same form
+  // state in a different browser/device. The hook auto-pauses when
+  // the form is identical to the previous render (no-op for unchanged
+  // state) and swallows the 409 'publish already running' branch
+  // internally so the indicator doesn't flash red during a normal
+  // publish flow.
+  // P2 — Dark Editor auto-save hook call. The orphan `const params`
+  // is removed; this block reuses the route-scoped `projectId` (and
+  // the params/useParams pair) declared at the top of the
+  // component. TranslationRow uses `lang` (not `language`).
+  const autoSave = useAutoSaveDraft({
+    veloxProjectId: projectId,
+    form: {
+      title: form.title,
+      description: form.description,
+      tags: form.tagsInput.split(',').map((t) => t.trim()).filter(Boolean),
+      default_language: form.defaultLanguage,
+      default_audio_language: form.defaultAudioLanguage,
+      translations: Object.fromEntries(
+        form.translations
+          .filter((row) => row.lang.trim() !== '')
+          .map((row) => [
+            row.lang.trim(),
+            { title: row.title, description: row.description },
+          ])
+      ),
+      desired_privacy: form.privacyStatus,
+    },
+  });
 
   // On mount (and whenever projectId changes) hydrate from localStorage.
   // We deliberately do NOT re-hydrate after a save-draft → the React
