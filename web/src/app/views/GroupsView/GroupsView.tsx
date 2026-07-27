@@ -27,7 +27,7 @@ import type { GroupYouTubeVideoEntry } from '@/types/youtubeGroups';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { useGroupYouTubeVideos } from './useGroupYouTubeVideos';
+import { useGroupYouTubeVideos, groupYouTubeVideosQueryKey } from './useGroupYouTubeVideos';
 import { GroupVideoCard } from './components/GroupVideoCard';
 import { GroupVideosSkeleton } from './components/GroupVideosSkeleton';
 import { GroupVideosEmptyState } from './components/GroupVideosEmptyState';

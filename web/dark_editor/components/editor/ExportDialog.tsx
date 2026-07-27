@@ -35,6 +35,7 @@ import {
   uploadMediaAsset,
   updateEditorSessionThumbnail,
   publishEditorSession,
+  publishBroadcast,
   type PublishYouTubeEditorSessionRequest,
   type YouTubeTranslation,
 } from '@/lib/api/bff';
@@ -476,9 +477,23 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
           Object.keys(translations).length > 0 ? translations : undefined,
       };
 
-      await publishEditorSession(projectId, payload);
+      const publishResult = await publishEditorSession(projectId, payload);
 
-      // Step 5: success → clear local draft + toast + stay on
+      // Step 5a: cross-SPA optimistic update. Broadcast the new
+      // status + actual_privacy + youtube_sync_status + video_id to
+      // the main Vite app's Groups card via BroadcastChannel. The
+      // listener (useEditorSessionLiveUpdate) applies the patch to
+      // its react-query cache synchronously and kicks off a 5s/30s
+      // short-poll to track the eventual drift reconciler stamp.
+      publishBroadcast({
+        status: publishResult.status,
+        actual_privacy: publishResult.actual_privacy,
+        youtube_sync_status: publishResult.youtube_sync_status,
+        youtube_video_id: publishResult.video_id,
+        velox_project_id: projectId,
+      });
+
+      // Step 5b: success → clear local draft + toast + stay on
       // /editor/{id}. We deliberately do NOT redirect the operator to
       // a dashboard: the panel closes, the editor URL stays the same,
       // and a confirmation toast appears.

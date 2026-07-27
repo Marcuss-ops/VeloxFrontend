@@ -62,3 +62,39 @@ export const youtubeGroupsApi = {
     listGroupYouTubeVideos,
     createYouTubeEditorSession,
 } as const;
+
+// ------------------------------------------------------------------
+// Editor session read (live-update extension) — P1#6 surface for the
+// post-publish short-poll + the BroadcastChannel listener.
+// Mirrors the dark_editor's BFF wrapper so the two halves of the
+// SPA share the same shape (and the same InstaeditLogin DTO).
+// ------------------------------------------------------------------
+
+export interface EditorSessionDetail {
+    id: string;
+    workspace_id: number;
+    platform_account_id: number;
+    youtube_video_id: string;
+    velox_project_id: string;
+    source_thumbnail_url?: string;
+    thumbnail_media_id?: string | null;
+    desired_privacy: string;
+    publish_at?: string | null;
+    status: string;
+    last_error?: string;
+    actual_privacy?: string | null;
+    youtube_sync_status?: string | null;
+    youtube_updated_at?: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export async function getEditorSessionByProject(
+    veloxProjectId: string,
+    options: { signal?: AbortSignal } = {},
+): Promise<EditorSessionDetail> {
+    return apiGet<EditorSessionDetail>(
+        `/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(veloxProjectId)}`,
+        { signal: options.signal },
+    );
+}

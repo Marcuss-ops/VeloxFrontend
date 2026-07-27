@@ -4,6 +4,37 @@
  * The web/src/lib/api/client.ts is Vite-specific (import.meta.env),
  * so the dark editor keeps its own thin wrapper. Calls rely on the
  * same session cookie + CSRF double-submit used by the main Vite app.
+ *
+ * LIVE-UPDATE EXTENSION (this commit):
+ *
+ * The Groups card in the main Vite app (web/src/app/views/GroupsView)
+ * needs to reflect the publish outcome the instant the POST resolves,
+ * plus the eventual drift reconciler's actual_privacy update. The
+ * following surface additions ship in this file:
+ *
+ *  1. PublishYouTubeEditorSessionResponse gains three fields so the
+ *     optimistic update target is satisfied without a follow-up GET:
+ *       - status                  (the editor_session.status field)
+ *       - actual_privacy          (what YouTube confirms)
+ *       - youtube_sync_status     (confirmed/drift/pending/failed)
+ *     These three are exactly the user-spec'd "payload di ritorno".
+ *     The InstaeditLogin backend's executePublishYouTubeEditorSession
+ *     already stamps them; the BFF just forwards them to the SPA.
+ *
+ *  2. getEditorSessionByProject(veloxProjectId) — GET wrapper for
+ *     InstaeditLogin's GET /by-project/{id} endpoint. Used by the
+ *     short-poll fallback + the BroadcastChannel listener.
+ *
+ *  3. pollEditorSessionUntilConfirmed(veloxProjectId, opts) — short
+ *     polling helper (5s cadence, 30s cap, stops early when
+ *     status=published + youtube_sync_status=confirmed). The
+ *     publish-success path uses this immediately to track the
+ *     drift reconciler without an SSE endpoint.
+ *
+ *  4. publishBroadcast() — fires a `BroadcastChannel('instaedit-publish')`
+ *     event so the main Vite app's Groups card can apply the
+ *     optimistic update synchronously without polling. Same-origin
+ *     same-browser only; cross-tab within the same InstaEdit domain.
  */
 
 const BFF_BASE = ''; // same-origin; production deployments should host the editor under the BFF domain
@@ -222,9 +253,17 @@ export async function updateEditorSessionThumbnail(
 }
 
 // ------------------------------------------------------------------
+// YouTubeTranslation
+// ------------------------------------------------------------------
+
+export interface YouTubeTranslation {
+  title: string;
+  description: string;
+}
+
+// ------------------------------------------------------------------
 // Publish — P0#5 + P1 metadata. Mirrors the OpenAPI contract landed
 // in commit 250a3ea on InstaeditLogin:
-//   POST /api/v1/youtube/editor-sessions/by-project/{veloxProjectId}/publish
 //
 // Field contract (all fields optional; orchestrator on the backend
 // resolves defaults + runs YouTubePublishOptions.Validate() BEFORE any
@@ -243,12 +282,21 @@ export async function updateEditorSessionThumbnail(
 // backend returns 400 (validation) the toast surfaces the original
 // `data.error` string so the operator sees a friendly message instead
 // of a paid-for 4xx.
+//
+// LIVE-UPDATE EXTENSION:
+// The response now ALSO ships the three optimistic-update targets the
+// Groups card consumes (see publishBroadcast + the main SPA's
+// useEditorSessionLiveUpdate hook):
+//   - status                  'published' after the orchestrator
+//     stamps the row
+//   - actual_privacy          YouTube's videos.list read-back value
+//   - youtube_sync_status     'confirmed' once YouTube confirms, or
+//     'drift' if YouTube diverges from desired_privacy
+//
+// Backwards-compat: callers that only read the original 4 fields
+// keep working because the new 3 fields are added with concrete
+// types (no optional indirection) and the backend always fills them.
 // ------------------------------------------------------------------
-
-export interface YouTubeTranslation {
-  title: string;
-  description: string;
-}
 
 export interface PublishYouTubeEditorSessionRequest {
   title?: string;
@@ -266,6 +314,14 @@ export interface PublishYouTubeEditorSessionResponse {
   video_id: string;
   privacy_status: string;
   published_at?: string | null;
+  // Live-update additions (this commit):
+  /** Editor session status at the moment the publish orchestrator
+   *  stamps the row. Always 'published' on a successful POST. */
+  status: string;
+  /** YouTube-confirmed privacy after the videos.list read-back. */
+  actual_privacy: string;
+  /** Lifecycle marker for the drift reconciler (confirmed/drift/pending/failed). */
+  youtube_sync_status: string;
 }
 
 export async function publishEditorSession(
@@ -279,6 +335,175 @@ export async function publishEditorSession(
       body: JSON.stringify(body),
     }
   );
+}
+
+// ------------------------------------------------------------------
+// Editor session read — P1#6 refresh of the publish-state read path.
+// GET /api/v1/youtube/editor-sessions/by-project/{veloxProjectId}
+// Returns the full session DTO (status + actual_privacy +
+// youtube_sync_status + youtube_updated_at + desired_privacy + ...).
+// Used by the short-poll fallback to detect the drift-reconciler's
+// eventual update of actual_privacy after the publish row stamped.
+// ------------------------------------------------------------------
+
+export interface EditorSessionDetail {
+  id: string;
+  workspace_id: number;
+  platform_account_id: number;
+  youtube_video_id: string;
+  velox_project_id: string;
+  source_thumbnail_url?: string;
+  thumbnail_media_id?: string | null;
+  desired_privacy: string;
+  publish_at?: string | null;
+  status: string;
+  last_error?: string;
+  actual_privacy?: string | null;
+  youtube_sync_status?: string | null;
+  youtube_updated_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getEditorSessionByProject(
+  veloxProjectId: string
+): Promise<EditorSessionDetail> {
+  return bffFetch<EditorSessionDetail>(
+    `/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(veloxProjectId)}`
+  );
+}
+
+// ------------------------------------------------------------------
+// Short-poll helper — designed for the post-publish window where the
+// drift reconciler may take a few seconds to stamp actual_privacy.
+// We poll GET /by-project/{id} every POLL_INTERVAL_MS until either:
+//
+//   (a) status === 'published' AND youtube_sync_status === 'confirmed'
+//       — the orchestrator + YouTube both confirmed; we're done.
+//   (b) POLL_MAX_ATTEMPTS exhausted — surface a 'timeout' result so
+//       the caller can decide whether to keep polling or give up
+//       gracefully (the next refetchOnWindowFocus will catch up).
+//
+// Returns the LAST observed state (or the first observed state on
+// no-progress) so the caller can read whatever the reconciler
+// ultimately left on the row.
+// ------------------------------------------------------------------
+
+const POLL_INTERVAL_MS = 5_000;
+const POLL_MAX_ATTEMPTS = 6; // 6 × 5s = 30s total cap.
+
+export type PollResultStatus = 'confirmed' | 'timeout';
+
+export interface PollResult {
+  /** Final status of the polling loop. */
+  status: PollResultStatus;
+  /** Number of attempts performed (1..POLL_MAX_ATTEMPTS). */
+  attempts: number;
+  /** The last observed EditorSessionDetail. May differ from the
+   *  initial optimistic POST response if the reconciler fired. */
+  detail: EditorSessionDetail;
+  /** Resolves with detail + 'confirmed' when the early-stop condition
+   *  hit; resolves with detail + 'timeout' after POLL_MAX_ATTEMPTS. */
+}
+
+export async function pollEditorSessionUntilConfirmed(
+  veloxProjectId: string,
+  options: {
+    intervalMs?: number;
+    maxAttempts?: number;
+    signal?: AbortSignal;
+  } = {}
+): Promise<PollResult> {
+  const intervalMs = options.intervalMs ?? POLL_INTERVAL_MS;
+  const maxAttempts = options.maxAttempts ?? POLL_MAX_ATTEMPTS;
+  let lastDetail = await getEditorSessionByProject(veloxProjectId);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    if (lastDetail.status === 'published' && lastDetail.youtube_sync_status === 'confirmed') {
+      return { status: 'confirmed', attempts: attempt, detail: lastDetail };
+    }
+    // Short-circuit on abort signal.
+    if (options.signal?.aborted) {
+      return { status: 'timeout', attempts: attempt, detail: lastDetail };
+    }
+    // Wait the interval (skip on the final attempt so we don't sleep
+    // needlessly before returning 'timeout').
+    if (attempt < maxAttempts) {
+      await new Promise<void>((resolve) => {
+        const handle = setTimeout(resolve, intervalMs);
+        // Allow the caller to abort the wait.
+        options.signal?.addEventListener('abort', () => clearTimeout(handle), { once: true });
+      });
+      if (options.signal?.aborted) {
+        return { status: 'timeout', attempts: attempt, detail: lastDetail };
+      }
+    }
+    lastDetail = await getEditorSessionByProject(veloxProjectId);
+  }
+
+  return { status: 'timeout', attempts: maxAttempts, detail: lastDetail };
+}
+
+// ------------------------------------------------------------------
+// Cross-SPA BroadcastChannel — publish-success instant card update
+// ------------------------------------------------------------------
+
+/**
+ * PUBLISH_CHANNEL_NAME — the BroadcastChannel name both the dark
+ * editor (publisher) and the main Vite app (listener) MUST use.
+ *
+ * IMPORTANT: keep the name stable — a rename breaks the cross-SPA
+ * contract. Documented in web/src/lib/broadcast/publishChannel.ts
+ * (the listener side declares the same constant).
+ */
+export const PUBLISH_CHANNEL_NAME = 'instaedit-publish';
+
+export interface PublishBroadcastPayload {
+  /** 'published' after the publish orchestrator stamps. */
+  status: string;
+  /** YouTube-confirmed privacy at the moment of publish. */
+  actual_privacy: string;
+  /** Lifecycle marker (confirmed/drift/pending/failed). */
+  youtube_sync_status: string;
+  /** The editor session id this update applies to. The listener
+   *  uses this to locate the cache entry to mutate. */
+  youtube_video_id: string;
+  /** velox_project_id for cross-tab debugging. */
+  velox_project_id: string;
+  /** ISO-8601 stamp for the listener to ignore stale events. */
+  emitted_at: string;
+}
+
+/**
+ * publishBroadcast — fire a BroadcastChannel event so the main Vite
+ * app's Groups card can apply the optimistic update synchronously
+ * without polling.
+ *
+ * Defensive in headless/test environments: if BroadcastChannel is
+ * undefined (Node, Vitest, JSDOM without polyfill), this is a no-op.
+ * The POST response payload is the authoritative source of truth —
+ * the broadcast is purely an optimization for the cross-tab UX.
+ */
+export function publishBroadcast(payload: Omit<PublishBroadcastPayload, 'emitted_at'>): void {
+  if (typeof BroadcastChannel === 'undefined') {
+    return;
+  }
+  try {
+    const channel = new BroadcastChannel(PUBLISH_CHANNEL_NAME);
+    const full: PublishBroadcastPayload = {
+      ...payload,
+      emitted_at: new Date().toISOString(),
+    };
+    channel.postMessage(full);
+    // Immediately close — keep the channel pool clean across many
+    // publishes. The browser costs ~zero resources for a no-listener
+    // channel; the close is purely hygiene.
+    channel.close();
+  } catch {
+    // Defensive: BroadcastChannel can throw on some browsers when
+    // permissions for cross-origin frames are missing. The main
+    // SPA still has its 10s polling fallback.
+  }
 }
 
 // ------------------------------------------------------------------
