@@ -20,6 +20,7 @@ import { APP_ROUTES } from './routes';
 const DashboardView = lazy(() => import('./views/DashboardView'));
 const JobDetailView = lazy(() => import('./views/JobDetailView'));
 const VeloxJobDetailView = lazy(() => import('./views/VeloxJobDetailView'));
+const GroupsView = lazy(() => import('./views/GroupsView'));
 const CalendarView = lazy(() => import('./views/CalendarView').then(async m => {
     const { CalendarErrorBoundary } = await import('./views/CalendarView/CalendarErrorBoundary');
     return {
@@ -147,6 +148,16 @@ export const router = createBrowserRouter([
             {
                 path: `${APP_ROUTES.veloxJobDetail}/:jobId`,
                 element: <VeloxJobDetailView />
+            },
+
+            // --- Groups (per-group video card grid for P0 one-click) ---
+            {
+                path: `${APP_ROUTES.groupsVideosBase}/:groupId/videos`,
+                element: (
+                    <ErrorBoundary>
+                        <GroupsView />
+                    </ErrorBoundary>
+                )
             },
 
             // --- Default redirect ---
