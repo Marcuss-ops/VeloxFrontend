@@ -222,6 +222,66 @@ export async function updateEditorSessionThumbnail(
 }
 
 // ------------------------------------------------------------------
+// Publish — P0#5 + P1 metadata. Mirrors the OpenAPI contract landed
+// in commit 250a3ea on InstaeditLogin:
+//   POST /api/v1/youtube/editor-sessions/by-project/{veloxProjectId}/publish
+//
+// Field contract (all fields optional; orchestrator on the backend
+// resolves defaults + runs YouTubePublishOptions.Validate() BEFORE any
+// side-effect fetch):
+//   - title:                  ≤100 chars (YouTube-published bound)
+//   - description:            ≤5000 chars
+//   - privacy_status:         "public" | "unlisted" | "private"
+//   - publish_at:             ISO-8601 (only honoured when privacy=private)
+//   - tags:                   ≤30 items, ≤500 chars total incl. commas
+//   - default_language:       BCP-47 code; required if translations is set
+//   - default_audio_language: BCP-47 code
+//   - translations:           map[lang] → {title, description}
+//
+// On the SPA side the Dark Editor stays thin: we ship the form values
+// verbatim + let the backend enforce bounds + idempotency. If the
+// backend returns 400 (validation) the toast surfaces the original
+// `data.error` string so the operator sees a friendly message instead
+// of a paid-for 4xx.
+// ------------------------------------------------------------------
+
+export interface YouTubeTranslation {
+  title: string;
+  description: string;
+}
+
+export interface PublishYouTubeEditorSessionRequest {
+  title?: string;
+  description?: string;
+  privacy_status?: 'public' | 'unlisted' | 'private';
+  publish_at?: string | null;
+  tags?: string[];
+  default_language?: string;
+  default_audio_language?: string;
+  translations?: Record<string, YouTubeTranslation>;
+}
+
+export interface PublishYouTubeEditorSessionResponse {
+  public_url: string;
+  video_id: string;
+  privacy_status: string;
+  published_at?: string | null;
+}
+
+export async function publishEditorSession(
+  veloxProjectId: string,
+  body: PublishYouTubeEditorSessionRequest
+): Promise<PublishYouTubeEditorSessionResponse> {
+  return bffFetch<PublishYouTubeEditorSessionResponse>(
+    `/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(veloxProjectId)}/publish`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+// ------------------------------------------------------------------
 // Helpers
 // ------------------------------------------------------------------
 
