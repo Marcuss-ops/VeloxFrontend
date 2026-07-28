@@ -1,112 +1,16 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { produceWithPatches, applyPatches, Patch, enablePatches } from 'immer';
+import { enablePatches } from 'immer';
+
+import { createHistorySlice } from './slices/historySlice';
+import type { HistorySlice } from './slices/historySlice';
 
 enablePatches();
 
-export type CanvasObject = {
-  id: string;
-  type: 'image' | 'text' | 'rect' | 'circle' | 'shape';
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation: number;
-  scaleX: number;
-  scaleY: number;
-  opacity: number;
-  visible: boolean;
-  locked: boolean;
-  name: string;
-  // Type-specific properties
-  src?: string; // for images
-  text?: string; // for text
-  fill?: string; // for shapes
-  stroke?: string;
-  strokeWidth?: number;
-  fontSize?: number;
-  fontFamily?: string;
-  letterSpacing?: number;
-  lineHeight?: number;
-  fontWeight?: string;
-  allCaps?: boolean;
-  backgroundFill?: string;
-  backgroundOpacity?: number;
-  padding?: number;
-  filters?: {
-    brightness: number;
-    contrast: number;
-    saturation: number;
-    blur: number;
-  };
-  // NEW: Censorship & Translation
-  censoredText?: string; // Censored version of text
-  useCensorship?: boolean; // Toggle censorship on/off
-  // NEW: Focus/Defocus & Pixelation
-  blur?: number; // Blur intensity (0 = no effect)
-  sharpen?: number; // Sharpen intensity (0 = no effect)
-  pixelation?: number; // Pixel size (0 = no effect)
+import type { CanvasObject } from './types';
+export type { CanvasObject };
 
-  // NEW: Advanced Text Effects
-  textShadow?: {
-    offsetX: number;
-    offsetY: number;
-    blur: number;
-    color: string;
-  };
-  textStroke?: {
-    width: number;
-    color: string;
-  };
-  textGradient?: {
-    type: 'linear' | 'radial';
-    angle: number;
-    colors: string[];
-  };
-  textCurve?: {
-    enabled: boolean;
-    radius: number;
-    direction: 'up' | 'down';
-  };
-
-  // NEW: Shape & Image Effects
-  dropShadow?: {
-    offsetX: number;
-    offsetY: number;
-    blur: number;
-    spread: number;
-    color: string;
-  };
-  borderRadius?: number;
-  shapeGradient?: {
-    type: 'linear' | 'radial';
-    angle: number;
-    colors: string[];
-  };
-  texture?: {
-    type: 'none' | 'noise' | 'grain' | 'paper' | 'metal';
-    intensity: number;
-  };
-  // NEW: Image Fills for Clipping Masks
-  imageFill?: {
-    src: string;
-    scale: number;
-    offsetX: number;
-    offsetY: number;
-  };
-  cropMode?: 'free' | 'square' | 'circle' | 'lasso';
-  cropRect?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  cropPathPoints?: number[];
-  feather?: number;
-  processing?: boolean; // NEW: Processing state for AI actions
-};
-
-export interface EditorState {
+export interface EditorState extends HistorySlice {
   // Canvas state
   objects: Record<string, CanvasObject>; // O(1) lookup by id
   objectIds: string[]; // layer order
@@ -116,12 +20,6 @@ export interface EditorState {
   zoom: number;
   offsetX: number;
   offsetY: number;
-
-  // History for undo/redo
-  pastPatches: { patches: Patch[]; inversePatches: Patch[] }[];
-  futurePatches: { patches: Patch[]; inversePatches: Patch[] }[];
-  pendingPatches: Patch[];
-  pendingInversePatches: Patch[];
 
   // Clipboard
   clipboard: CanvasObject[];
@@ -143,13 +41,6 @@ export interface EditorState {
   setCanvasSize: (width: number, height: number) => void;
   setZoom: (zoom: number) => void;
   setOffset: (x: number, y: number) => void;
-
-  // History actions
-  undo: () => void;
-  redo: () => void;
-  saveToHistory: () => void;
-  commitMutation: (recipe: (draft: { objects: Record<string, CanvasObject>; objectIds: string[] }) => void) => void;
-  commitLiveMutation: (recipe: (draft: { objects: Record<string, CanvasObject>; objectIds: string[] }) => void) => void;
 
   // Bulk actions
   loadObjects: (objects: CanvasObject[]) => void;
@@ -207,48 +98,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   zoom: 1,
   offsetX: 0,
   offsetY: 0,
-  pastPatches: [],
-  futurePatches: [],
-  pendingPatches: [],
-  pendingInversePatches: [],
   clipboard: [],
 
-  // Helpers
-  commitMutation: (recipe) => {
-    const { objects, objectIds, pastPatches, pendingPatches, pendingInversePatches } = get();
-    const [nextState, patches, inversePatches] = produceWithPatches({ objects, objectIds }, recipe);
-
-    if (patches.length === 0 && pendingPatches.length === 0) return;
-
-    const finalPatches = [...pendingPatches, ...patches];
-    const finalInversePatches = [...inversePatches, ...pendingInversePatches];
-
-    const newPast = [...pastPatches, { patches: finalPatches, inversePatches: finalInversePatches }];
-    if (newPast.length > 50) newPast.shift();
-
-    set({
-      objects: nextState.objects,
-      objectIds: nextState.objectIds,
-      pastPatches: newPast,
-      futurePatches: [],
-      pendingPatches: [],
-      pendingInversePatches: [],
-    });
-  },
-
-  commitLiveMutation: (recipe) => {
-    const { objects, objectIds, pendingPatches, pendingInversePatches } = get();
-    const [nextState, patches, inversePatches] = produceWithPatches({ objects, objectIds }, recipe);
-
-    if (patches.length === 0) return;
-
-    set({
-      objects: nextState.objects,
-      objectIds: nextState.objectIds,
-      pendingPatches: [...pendingPatches, ...patches],
-      pendingInversePatches: [...inversePatches, ...pendingInversePatches],
-    });
-  },
+  // Spread from historySlice (commit 1 of the editor-store-slices refactor).
+  // Owns pastPatches/futurePatches/pendingPatches/pendingInversePatches +
+  // commitMutation, commitLiveMutation, undo, redo, saveToHistory.
+  ...createHistorySlice(set, get),
 
   // Actions
   addObject: (obj) => {
@@ -390,64 +245,6 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
   setOffset: (x, y) => {
     set({ offsetX: x, offsetY: y });
-  },
-
-  undo: () => {
-    const { pastPatches, futurePatches, objects, objectIds, pendingPatches, pendingInversePatches } = get();
-    const currentState = { objects, objectIds };
-
-    if (pendingPatches.length > 0) {
-      const nextState = applyPatches(currentState, pendingInversePatches);
-      set({
-        objects: nextState.objects,
-        objectIds: nextState.objectIds,
-        pendingPatches: [],
-        pendingInversePatches: [],
-      });
-      return;
-    }
-
-    if (pastPatches.length === 0) return;
-
-    const lastEntry = pastPatches[pastPatches.length - 1];
-    const prevState = applyPatches(currentState, lastEntry.inversePatches);
-
-    set({
-      objects: prevState.objects,
-      objectIds: prevState.objectIds,
-      pastPatches: pastPatches.slice(0, -1),
-      futurePatches: [lastEntry, ...futurePatches],
-      selectedIds: [],
-    });
-  },
-
-  redo: () => {
-    const { futurePatches, pastPatches, objects, objectIds, pendingPatches } = get();
-    if (futurePatches.length === 0 || pendingPatches.length > 0) return;
-
-    const nextEntry = futurePatches[0];
-    const currentState = { objects, objectIds };
-    const nextState = applyPatches(currentState, nextEntry.patches);
-
-    set({
-      objects: nextState.objects,
-      objectIds: nextState.objectIds,
-      pastPatches: [...pastPatches, nextEntry],
-      futurePatches: futurePatches.slice(1),
-    });
-  },
-
-  saveToHistory: () => {
-    const { pendingPatches, pendingInversePatches, pastPatches } = get();
-    if (pendingPatches.length === 0) return;
-    const newPast = [...pastPatches, { patches: pendingPatches, inversePatches: pendingInversePatches }];
-    if (newPast.length > 50) newPast.shift();
-    set({
-      pastPatches: newPast,
-      futurePatches: [],
-      pendingPatches: [],
-      pendingInversePatches: [],
-    });
   },
 
   loadObjects: (objects) => {
