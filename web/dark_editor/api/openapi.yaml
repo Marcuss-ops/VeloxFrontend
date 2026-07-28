@@ -2,17 +2,13 @@
 # VENDORED COPY — DO NOT EDIT HERE
 # =========================================================
 # Source of truth: InstaeditLogin/api/openapi.yaml
-# Sync cadence:     manual (re-copy before any push that
-#                   touches the publish response contract)
-# Names of interest:
-#   - YouTubeEditorSessionPublishResponse (the schema this
-#     contract test + the Go-side
-#     TestPublishResponseContract_OpenAPI_Matches_DTO both
-#     bridge against the Go DTO + TS type)
+# Sync cadence:     manual (run `make sync-openapi` before any
+#                   push that touches the publish response contract)
 # Two contract test locations (must stay in sync):
 #   InstaeditLogin/pkg/api/youtube_editor_sessions_contract_test.go
 #   VeloxFrontend/web/dark_editor/__tests__/publishResponseContract.test.ts
 # =========================================================
+# >>> END_VENDORED_HEADER - do not remove this marker <<<
 # =========================================================
 # API AUDIT SUMMARY (1 dropped, 22 kept endpoints)
 # =========================================================
