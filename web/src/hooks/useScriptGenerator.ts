@@ -20,6 +20,19 @@ import type {
     GenerationResult,
     GenerationResultItem,
 } from '../types/scriptGenerator';
+import { INITIAL_PROGRESS } from './useScriptGenerator/types';
+import type {
+    ProjectBatch,
+    UseScriptGeneratorOptions,
+    UseScriptGeneratorReturn,
+    BatchGenerationOptions,
+} from './useScriptGenerator/types';
+export type {
+    ProjectBatch,
+    UseScriptGeneratorOptions,
+    UseScriptGeneratorReturn,
+    BatchGenerationOptions,
+} from './useScriptGenerator/types';
 import { veloxApi } from '@/lib/api/veloxApi';
 
 // Import shared utilities from scriptGenerator.ts (Agent 1A)
@@ -36,44 +49,7 @@ import {
     getBackendErrorMessage,
 } from '../utils/scriptGenerator';
 
-// ============ Additional Local Types ============
 
-export interface ProjectBatch {
-    project: ProjectRef;
-    queueIndex: number | null;
-    titles: string[];
-}
-
-export interface UseScriptGeneratorOptions {
-    apiBaseUrl?: string;
-    onGenerationComplete?: (results: GenerationResult[]) => void;
-    onError?: (error: Error) => void;
-    onProgress?: (progress: GenerationProgress) => void;
-}
-
-export interface UseScriptGeneratorReturn {
-    isGenerating: boolean;
-    progress: GenerationProgress;
-    logs: string[];
-    generateScripts: (projects: ProjectBatch[], options?: BatchGenerationOptions) => Promise<GenerationResult>;
-    cancelGeneration: () => void;
-    clearLogs: () => void;
-}
-
-export interface BatchGenerationOptions {
-    forceRemoteGeneration?: boolean;
-    sourceContext?: string;
-    duration?: string;
-}
-
-// ============ Constants ============
-
-const INITIAL_PROGRESS: GenerationProgress = {
-    global: 0,
-    scripting: { percent: 0, status: 'idle', logs: [] },
-    voiceover: { percent: 0, status: 'idle', logs: [] },
-    remote: { step: 'IDLE', message: 'In attesa...', progress: 0, isError: false },
-};
 
 // ============ Main Hook ============
 
