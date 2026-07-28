@@ -93,54 +93,12 @@ export function listSocialDestinations(
 }
 
 // ------------------------------------------------------------------
-// Velox projects/jobs — the dark editor only passes the opaque
+// Velox projects/jobs — lib/api/bff/projects.ts (commit 4 of the
+// api-bff refactor series). The dark editor only passes the opaque
 // external_destination_id; no platform credentials ever leave InstaEdit.
+// Re-exported below for back-compat with legacy `@/lib/api/bff`
+// callers.
 // ------------------------------------------------------------------
-
-export interface VeloxProject {
-  id: string;
-  name: string;
-  workspaceId?: number;
-  status?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export function createVeloxProject(body: { name: string; templateId?: string }): Promise<VeloxProject> {
-  return bffPost('/api/v1/projects', body);
-}
-
-export interface VeloxJob {
-  id: string;
-  projectId?: string;
-  renderStatus: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateVeloxJobRequest {
-  projectId: string;
-  renderSpec: Record<string, unknown>;
-  deliveryPlan: {
-    destinations: Array<{
-      externalDestinationId: string;
-      metadata?: Record<string, unknown>;
-    }>;
-  };
-}
-
-export function createVeloxJob(body: CreateVeloxJobRequest): Promise<VeloxJob> {
-  return bffPost('/api/v1/velox/jobs', {
-    project_id: body.projectId,
-    render_spec: body.renderSpec,
-    delivery_plan: {
-      destinations: body.deliveryPlan.destinations.map(d => ({
-        external_destination_id: d.externalDestinationId,
-        metadata: d.metadata,
-      })),
-    },
-  });
-}
 
 // ------------------------------------------------------------------
 // Media upload (used by the dark editor to store thumbnails in
@@ -284,3 +242,11 @@ export {
   type YouTubeEditorSessionDraftRequest,
   type YouTubeEditorSessionDraftResponse,
 } from './bff/youtube';
+
+export {
+  type VeloxProject,
+  type VeloxJob,
+  type CreateVeloxJobRequest,
+  createVeloxProject,
+  createVeloxJob,
+} from './bff/projects';
