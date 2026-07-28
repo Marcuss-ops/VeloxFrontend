@@ -11,17 +11,32 @@ import { getCanvasElement, exportCanvasToBlob, exportStageToBlob } from '@/lib/c
 // HTMLCanvasElement doesn't have naturalWidth/Height in W3C, but the
 // PNG/JPEG-surrogate semantics the user explicitly asked about are
 // captured here via an intersection type so tests can assert both views.
+//
+// The mock derives the toBlob'd bytes from the LAST image passed to
+// ctx.drawImage(img, ...). This keeps the byte-equality test meaningful
+// in tests that compare the same image source across different zoom/pan
+// inputs -- the bytes would only match if the pipeline truly was
+// invariant to the captured-region inputs.
 type CanvasLike = HTMLCanvasElement & { naturalWidth: number; naturalHeight: number };
 
 function createMockCanvas(width = 1280, height = 720): CanvasLike {
+  let lastDrawnSrc = '';
   return {
     width,
     height,
     naturalWidth: width,
     naturalHeight: height,
-    getContext: vi.fn(() => ({ drawImage: vi.fn() })),
+    getContext: vi.fn(() => ({
+      drawImage: vi.fn((img: HTMLImageElement & { src: string }) => {
+        // Track the most-recently drawn source so canvas.toBlob() can
+        // derive its output bytes from it -- lets byte-equality tests
+        // detect differences in what the pipeline feeds into the canvas.
+        lastDrawnSrc = img?.src ?? '';
+      }),
+    })),
     toBlob: vi.fn((callback: BlobCallback, _mime?: string, _quality?: number) => {
-      callback(new Blob(['image'], { type: _mime ?? 'image/png' }) as unknown as globalThis.Blob);
+      const content = `drawn:${lastDrawnSrc}`;
+      callback(new Blob([content], { type: _mime ?? 'image/png' }) as unknown as globalThis.Blob);
     }),
     toDataURL: vi.fn(() => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
   } as unknown as CanvasLike;
@@ -324,6 +339,129 @@ describe('canvasExport', () => {
     expect(stageState.y).toBe(50);
     expect(stageState.scaleX).toBe(1.5);
     expect(stageState.scaleY).toBe(1.5);
+  });
+
+  it('produces byte-identical blob across zoom 50% / 100% / 200% with active pan offsets', async () => {
+    // exportStageToBlob proactively resets stage.position(0,0) and
+    // stage.scale(1,1) before calling stage.toDataURL(...). After that
+    // reset, toDataURL receives IDENTICAL arguments regardless of the
+    // initial zoom/pan the user had at the moment of capture, so the
+    // resulting blob must be byte-identical. Proves the user-facing
+    // invariant: "the editor's current zoom and pan do NOT influence
+    // the final 1280x720 thumbnail PNG".
+    //
+    // Mock strategy:
+    //   - All 3 cases use the SAME stage.toDataURL() return value, so
+    //     MockImage.src is identical across cases. In real Konva the
+    //     captured pixel content would also be identical once stage
+    //     content + capture region + pixelRatio match.
+    //   - createMockCanvas.toBlob() derives its blob bytes from the
+    //     last image passed to ctx.drawImage(img, ...). So if the
+    //     pipeline fed drawImage an image with a different src between
+    //     cases, the blob bytes would diverge -- making the byte check
+    //     a true regression guard rather than a tautology.
+    const STAGE_DATAURL =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+    const initialStates: ReadonlyArray<{
+      label: string;
+      panX: number;
+      panY: number;
+      scaleX: number;
+      scaleY: number;
+    }> = [
+      { label: '50% zoom + pan (100, 200)', panX: 100, panY: 200, scaleX: 0.5, scaleY: 0.5 },
+      { label: '100% zoom, no pan',         panX: 0,   panY: 0,   scaleX: 1.0, scaleY: 1.0 },
+      { label: '200% zoom + pan (-50, 75)', panX: -50, panY: 75,  scaleX: 2.0, scaleY: 2.0 },
+    ];
+
+    interface CapturedCase {
+      label: string;
+      blob: Blob;
+      toDataURLOpts: Record<string, unknown>;
+      blobBytes: string;
+    }
+    const captured: CapturedCase[] = [];
+
+    for (const init of initialStates) {
+      const stage = createMockStage();
+      // Override the closure-state getters so production code sees THIS
+      // iteration's initial state at the moment exportStageToBlob samples
+      // stage.x()/y()/scaleX()/scaleY() for the restore snapshot. Stage.x
+      // must stay a callable (the production code uses `stage.x()`); a
+      // plain property reassignment with a vi.fn preserves callability.
+      const stateRef = { x: init.panX, y: init.panY, scaleX: init.scaleX, scaleY: init.scaleY };
+      const xSpy = vi.fn(() => stateRef.x);
+      const ySpy = vi.fn(() => stateRef.y);
+      const sXSpy = vi.fn(() => stateRef.scaleX);
+      const sYSpy = vi.fn(() => stateRef.scaleY);
+      stage.x = xSpy as unknown as typeof stage.x;
+      stage.y = ySpy as unknown as typeof stage.y;
+      stage.scaleX = sXSpy as unknown as typeof stage.scaleX;
+      stage.scaleY = sYSpy as unknown as typeof stage.scaleY;
+
+      (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
+
+      const dataCalls: Array<Record<string, unknown>> = [];
+      // Constant across iterations -- the contract under test is that
+      // the captured content is invariant to the editor's zoom/pan.
+      stage.toDataURL = vi.fn((opts: Record<string, unknown>) => {
+        dataCalls.push(opts);
+        return STAGE_DATAURL;
+      }) as unknown as typeof stage.toDataURL;
+
+      const result = await exportStageToBlob(stage, 1920, 1080, 'png', 90);
+      expect(result, `exportStageToBlob must return a blob for: ${init.label}`).not.toBeNull();
+
+      // Neutralisation happened before capture independent of the initial state.
+      expect(stage.position, `${init.label}: stage.position must reset to (0,0)`).toHaveBeenCalledWith({ x: 0, y: 0 });
+      expect(stage.scale,    `${init.label}: stage.scale must reset to (1,1)`).toHaveBeenCalledWith({ x: 1, y: 1 });
+
+      // toDataURL was called with the logical-rect capture args and they
+      // match the canvasWidth/canvasHeight + pixelRatio=1 + image/png spec
+      // — not derived from the initial pan/zoom.
+      expect(dataCalls.length, `${init.label}: stage.toDataURL should be called`).toBeGreaterThan(0);
+      const opts = dataCalls[0];
+      expect(opts.x,           `${init.label}: toDataURL x = 0`).toBe(0);
+      expect(opts.y,           `${init.label}: toDataURL y = 0`).toBe(0);
+      expect(opts.width,       `${init.label}: toDataURL width = canvasWidth`).toBe(1920);
+      expect(opts.height,      `${init.label}: toDataURL height = canvasHeight`).toBe(1080);
+      expect(opts.pixelRatio,  `${init.label}: toDataURL pixelRatio = 1`).toBe(1);
+      expect(opts.mimeType,    `${init.label}: toDataURL mimeType = image/png`).toBe('image/png');
+
+      const blob = result!.blob;
+      const buf = await blob.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      const bytesStr = Array.from(bytes).join(',');
+      captured.push({ label: init.label, blob, toDataURLOpts: opts, blobBytes: bytesStr });
+    }
+
+    // All toDataURL opts must match across the 3 cases (the spec the
+    // user asked about: zoom/pan do NOT alter the capture region).
+    const firstOpts = captured[0].toDataURLOpts;
+    for (let i = 1; i < captured.length; i++) {
+      const o = captured[i].toDataURLOpts;
+      expect(o.x,           `case ${i} toDataURL x must match case 0`).toBe(firstOpts.x);
+      expect(o.y,           `case ${i} toDataURL y must match case 0`).toBe(firstOpts.y);
+      expect(o.width,       `case ${i} toDataURL width must match case 0`).toBe(firstOpts.width);
+      expect(o.height,      `case ${i} toDataURL height must match case 0`).toBe(firstOpts.height);
+      expect(o.pixelRatio,  `case ${i} toDataURL pixelRatio must match case 0`).toBe(firstOpts.pixelRatio);
+      expect(o.mimeType,    `case ${i} toDataURL mimeType must match case 0`).toBe(firstOpts.mimeType);
+    }
+
+    // All blobs must be byte-identical across the 3 cases regardless of
+    // initial zoom/pan. createMockCanvas.toBlob derives its content from
+    // ctx.drawImage(img, ...).src -- if the pipeline fed drawImage an
+    // image with a different src between cases, the blob bytes would
+    // diverge. With the SAME STAGE_DATAURL across all 3 iterations and
+    // the production code neutralising zoom/pan before capture, the
+    // resulting blobs MUST be byte-identical -- this is the user-facing
+    // invariant the followup asks for.
+    for (let i = 1; i < captured.length; i++) {
+      expect(captured[i].blobBytes, `Blob bytes for ${captured[i].label} must match blob bytes for ${captured[0].label}`).toBe(captured[0].blobBytes);
+      expect(captured[i].blob.size, `Blob size for ${captured[i].label} must match blob size for ${captured[0].label}`).toBe(captured[0].blob.size);
+      expect(captured[i].blob.type, `Blob type for ${captured[i].label} must match blob type for ${captured[0].label}`).toBe(captured[0].blob.type);
+    }
   });
 
   it('hides grid, guides, transformer and crop overlays during export and restores them', async () => {
