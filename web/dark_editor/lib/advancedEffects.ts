@@ -22,22 +22,12 @@ import type {
 
 export * from './effects/types';
 
-// Canvas Pool to reuse elements and reduce GC pressure
-class CanvasPool {
-  private pool: HTMLCanvasElement[] = [];
-
-  acquire(): HTMLCanvasElement {
-    return this.pool.shift() || document.createElement('canvas');
-  }
-
-  release(canvas: HTMLCanvasElement) {
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-    this.pool.push(canvas);
-  }
-}
-
-export const canvasPool = new CanvasPool();
+// canvasPool singleton lives in lib/effects/canvasPool.ts — the
+// two renderer classes below still reference it via the import
+// below, and `export *` forwards it to anyone using the legacy
+// `@/lib/advancedEffects` import surface.
+import { canvasPool } from './effects/canvasPool';
+export * from './effects/canvasPool';
 
 // Text Effects Renderer
 export class TextEffectsRenderer {
