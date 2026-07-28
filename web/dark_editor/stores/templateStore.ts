@@ -1,37 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { defaultTemplates } from '../data/defaultTemplates';
+import {
+  applyTemplate as applyTemplateEngine,
+  batchApplyTemplate as batchApplyTemplateEngine,
+} from '../lib/templateEngine';
 import { CanvasObject } from './editorStore';
 
-export interface TemplateVariable {
-  id: string;
-  name: string;
-  type: 'text' | 'color' | 'image' | 'number';
-  defaultValue: string | number;
-  placeholder?: string;
-}
-
-export interface TemplateCondition {
-  id: string;
-  variableId: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
-  value: string | number;
-}
-
-export interface Template {
-  id: string;
-  name: string;
-  description?: string;
-  type: 'complete' | 'text' | 'dynamic';
-  objects: CanvasObject[];
-  variables?: TemplateVariable[];
-  conditions?: TemplateCondition[];
-  previewUrl?: string;
-  createdAt: number;
-  updatedAt: number;
-  category?: string;
-  tags?: string[];
-}
+// Re-export the engine's wire types for back-compat with any legacy
+// `@/stores/templateStore` consumer that reaches Template / TemplateVariable
+// / TemplateCondition through the barrel (the dark editor's own UI + the
+// AdvancedTemplatePanel only import from the barrel, so this preserves
+// their compile-time contract unchanged).
+export type {
+  Template,
+  TemplateVariable,
+  TemplateCondition,
+} from '../lib/templateEngine';
 
 export interface TemplateStore {
   templates: Template[];
@@ -102,36 +87,15 @@ export const useTemplateStore = create<TemplateStore>()(
       applyTemplate: (id, variables = {}) => {
         const template = get().getTemplate(id);
         if (!template) return [];
-        
-        const appliedObjects = template.objects.map(obj => {
-          const clonedObj = JSON.parse(JSON.stringify(obj));
-          
-          // Replace variables in text
-          if (clonedObj.text && typeof clonedObj.text === 'string') {
-            let text = clonedObj.text;
-            Object.entries(variables).forEach(([key, value]) => {
-              text = text.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
-            });
-            clonedObj.text = text;
-          }
-          
-          // Replace variables in fill color
-          if (clonedObj.fill && typeof clonedObj.fill === 'string') {
-            let fill = clonedObj.fill;
-            Object.entries(variables).forEach(([key, value]) => {
-              fill = fill.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
-            });
-            clonedObj.fill = fill;
-          }
-          
-          return clonedObj;
-        });
-        
-        return appliedObjects;
+        // Delegate to the pure engine function. Engine owns the substitution
+        // contract — see lib/templateEngine.ts.
+        return applyTemplateEngine(template, variables);
       },
       
       batchApplyTemplate: (templateId, dataSets) => {
-        return dataSets.map(dataSet => get().applyTemplate(templateId, dataSet));
+        const template = get().getTemplate(templateId);
+        if (!template) return dataSets.map(() => []);
+        return batchApplyTemplateEngine(template, dataSets);
       },
       
       searchTemplates: (query) => {

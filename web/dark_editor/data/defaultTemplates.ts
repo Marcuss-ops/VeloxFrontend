@@ -22,7 +22,7 @@
 // (`{ templates: Template[] }`) is unchanged, so existing browser
 // localStorage entries keep working — no user-data loss.
 
-import type { Template } from '../stores/templateStore';
+import type { Template } from '../lib/templateEngine';
 
 const NOW = Date.now();
 
