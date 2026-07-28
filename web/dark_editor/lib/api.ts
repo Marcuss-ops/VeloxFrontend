@@ -5,8 +5,9 @@
 // preserved.
 
 // HTTP infra lives in lib/api/httpClient.ts. We import the bits the
-// remaining client wrappers below still need (apiGet/Post/Put/
-// Delete/Upload + the requestManager singleton + FOLDERS_API_BASE).
+// remaining project/preset/folder/drive clients below still need.
+// (apiUpload stays because uploadToDrive has not been extracted yet
+// — it moves to lib/api/driveClient.ts in a later commit.)
 import {
   FOLDERS_API_BASE,
   apiGet,
@@ -14,7 +15,6 @@ import {
   apiPut,
   apiDelete,
   apiUpload,
-  requestManager,
 } from './api/httpClient';
 
 // Types live in lib/api/types.ts. We import them so the function
@@ -72,44 +72,18 @@ export {
   getProjectFileUrl,
 } from './api/utils';
 
-export async function uploadImage(file: File): Promise<UploadResponse> {
-  const formData = new FormData();
-  formData.append('file', file);
-  return apiUpload<UploadResponse>('/upload', formData);
-}
-
-export async function applyFilter(request: FilterRequest): Promise<FilterResponse> {
-  return apiPost<FilterResponse>('/process/filter', request);
-}
-
-export async function transformImage(request: TransformRequest): Promise<FilterResponse> {
-  return apiPost<FilterResponse>('/process/transform', request);
-}
-
-export async function exportImage(request: ExportRequest): Promise<{ url: string; filename: string }> {
-  return apiPost<{ url: string; filename: string }>('/export', request);
-}
-
-export async function generateImage(request: GenerateRequest): Promise<GenerateResponse> {
-  return apiPost<GenerateResponse>('/generate', request);
-}
-
-export async function upscaleImage(request: UpscaleRequest): Promise<UpscaleResponse> {
-  return apiPost<UpscaleResponse>('/api/upscale', request);
-}
-
-export async function removeBackground(request: RemoveBgRequest): Promise<RemoveBgResponse> {
-  const signal = requestManager.getSignal(`remove-bg-${request.filename}`);
-  try {
-    return await apiPost<RemoveBgResponse>('/api/remove-bg', request, { signal });
-  } finally {
-    requestManager.clear(`remove-bg-${request.filename}`);
-  }
-}
-
-export async function getBackgroundRemovalStatus(taskId: string): Promise<RemoveBgStatusResponse> {
-  return apiGet<RemoveBgStatusResponse>(`/api/remove-bg/status/${taskId}`);
-}
+// Media client lives in lib/api/mediaClient.ts — re-exported here
+// for back-compat so existing call sites (`@/lib/api`) keep working.
+export {
+  uploadImage,
+  applyFilter,
+  transformImage,
+  exportImage,
+  generateImage,
+  upscaleImage,
+  removeBackground,
+  getBackgroundRemovalStatus,
+} from './api/mediaClient';
 
 export async function listProjects(type?: string): Promise<Project[]> {
   const query = type ? `?type=${encodeURIComponent(type)}` : '';
