@@ -1,3 +1,10 @@
+// @vitest-environment jsdom
+// Required: dark_editor/vitest.config.ts defaults to `environment: 'node'`,
+// which does not provide the `localStorage` global. This directive
+// mirrors the pattern already used by `canvasObjectNode.render.test.tsx`
+// (the only other test in __tests__/ that needs DOM globals) and
+// scopes the env override to just this persist-migration test.
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { useTemplateStore } from '../stores/templateStore';
 import { defaultTemplates } from '../data/defaultTemplates';
