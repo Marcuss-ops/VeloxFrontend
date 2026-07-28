@@ -37,16 +37,20 @@
  *     same-browser only; cross-tab within the same InstaEdit domain.
  */
 
-// bffFetch CSRF-aware JSON fetch + BFF_BASE + getCookie + bffPost +
-// sha256Hex live in lib/api/bff/types.ts (POLL_INTERVAL_MS +
-// POLL_MAX_ATTEMPTS also live there but are consumed inside
-// lib/api/bff/youtube.ts, not below). We import the runtime helpers
-// so the surviving inline domain function (listSocialDestinations)
-// still reaches them. (getMe, createVeloxProject, createVeloxJob,
-// publishBroadcast, uploadMediaAsset, updateEditorSessionThumbnail
-// moved to bff/auth.ts + bff/projects.ts + bff/broadcast.ts +
-// bff/upload.ts respectively — re-exported below for back-compat
-// with legacy `@/lib/api/bff` callers.)
+// All shared HTTP infrastructure (bffFetch CSRF-aware JSON fetch +
+// BFF_BASE + getCookie + bffPost + sha256Hex + POLL_INTERVAL_MS +
+// POLL_MAX_ATTEMPTS) lives in lib/api/bff/types.ts. All domain
+// functions have been extracted to per-domain modules — re-exported
+// below for back-compat with legacy `@/lib/api/bff` callers. No
+// inline domain functions remain in this barrel after all 7 commits
+// of the api-bff refactor series have landed.
+import {
+  BFF_BASE,
+  bffFetch,
+  bffPost,
+  getCookie,
+  sha256Hex,
+} from './bff/types';
 import {
   BFF_BASE,
   bffFetch,
@@ -62,29 +66,12 @@ import {
 // ------------------------------------------------------------------
 
 // ------------------------------------------------------------------
-// Social destinations (generic, platform-agnostic)
+// Social destinations (generic, platform-agnostic) — lives in
+// lib/api/bff/socialDestinations.ts (commit 6 of the api-bff
+// refactor series; the LAST remaining inline domain extracted from
+// this barrel). Re-exported below for back-compat with legacy
+// `@/lib/api/bff` callers (useSocialDestinations hook).
 // ------------------------------------------------------------------
-
-export interface SocialDestination {
-  external_destination_id: string;
-  label?: string;
-  provider?: string;
-  status: 'active' | 'disabled' | 'reauth_required';
-  platform_account_id: number;
-  workspace_id: number;
-  source_system?: string;
-  defaults?: Record<string, unknown>;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export function listSocialDestinations(
-  workspaceId: number
-): Promise<{ destinations: SocialDestination[] }> {
-  return bffFetch(
-    `/api/v1/integrations/velox/destinations?workspace_id=${encodeURIComponent(workspaceId)}`
-  );
-}
 
 // ------------------------------------------------------------------
 // Velox projects/jobs — lib/api/bff/projects.ts (commit 4 of the
@@ -169,3 +156,8 @@ export {
   uploadMediaAsset,
   updateEditorSessionThumbnail,
 } from './bff/upload';
+
+export {
+  listSocialDestinations,
+  type SocialDestination,
+} from './bff/socialDestinations';
