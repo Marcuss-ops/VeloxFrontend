@@ -4,6 +4,9 @@ import { defaultTemplates } from '../data/defaultTemplates';
 import {
   applyTemplate as applyTemplateEngine,
   batchApplyTemplate as batchApplyTemplateEngine,
+  type Template,
+  type TemplateVariable,
+  type TemplateCondition,
 } from '../lib/templateEngine';
 import { CanvasObject } from './editorStore';
 
