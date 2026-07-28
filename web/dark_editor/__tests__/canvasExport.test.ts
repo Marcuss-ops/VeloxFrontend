@@ -481,4 +481,122 @@ describe('canvasExport', () => {
       expect(node.visible.mock.calls).toEqual([[], [false], [true]]);
     }
   });
+
+  it('snapshot at stage.toDataURL: every editor-only overlay is hidden AND every content node remains visible (symmetric overhide guard)', async () => {
+    // The export pipeline must:
+    //   - Hide EVERY node tagged name="export-exclude" (grid lines, guides,
+    //     snap lines, transformer + handles, crop overlay, lasso points)
+    //     -- the editor-UI set. Hiding them keeps the final 1280x720 PNG
+    //     free of placement guides / crop wireframes / transformer grips.
+    //   - Leave un-tagged content untouched (canvas background, image and
+    //     text objects). They MUST remain visible so the captured PNG
+    //     reflects the user-visible content.
+    // This test snapshots the visibility state INSIDE toDataURL so we
+    // observe exactly what the PNG serializer reads from. A regression
+    // where production over-hid content (or under-hid overlays, or hid
+    // them AFTER toDataURL) would correctly flip any of these snapshots.
+    const stage = createMockStage();
+
+    // Build a Konva.Node-shaped mock. Konva's `name()` is a callable
+    // (getter/setter), not a string property, so we declare `name` as a
+    // method that returns the captured string. `visible()` is the same
+    // getter/setter idiom; without an arg it returns the current state,
+    // with an arg it sets and returns the node for chainability. The
+    // final `as unknown as Konva.Node` cast bridges the gap between our
+    // minimal-shape literal and the real Konva.Node interface (only the
+    // methods used by the production code under test need to exist).
+    function makeMockNode(name: string, initialVisible: boolean): Konva.Node {
+      let visible = initialVisible;
+      const node = {
+        name(): string {
+          return name;
+        },
+        visible(v?: boolean): unknown {
+          if (v === undefined) return visible;
+          visible = !!v;
+          return node;
+        },
+      };
+      return node as unknown as Konva.Node;
+    }
+
+    const editorOverlayNodes: Konva.Node[] = [
+      makeMockNode('grid-line-v',        true),
+      makeMockNode('grid-line-h',        true),
+      makeMockNode('grid-group',         true),
+      makeMockNode('guide-v',            true),
+      makeMockNode('guide-h',            true),
+      makeMockNode('snap-line-h',        true),
+      makeMockNode('snap-line-v',        true),
+      makeMockNode('transformer',        true),
+      makeMockNode('transformer-handle', true),
+      makeMockNode('crop-overlay',       true),
+      makeMockNode('crop-overlay-group', true),
+      makeMockNode('lasso-line',         true),
+      makeMockNode('lasso-point',        true),
+    ];
+
+    // Content nodes: NOT picked up by stage.find('.export-exclude') -- they
+    // must remain untouched throughout the export pipeline so the captured
+    // PNG reflects actual user-visible content.
+    const contentNodes: Konva.Node[] = [
+      makeMockNode('canvas-background', true),
+      makeMockNode('image-object-1',    true),
+      makeMockNode('text-object-1',     true),
+    ];
+
+    // stage.find('.export-exclude') returns ONLY the editor overlay nodes;
+    // any other selector returns an empty match (content nodes are picked
+    // up by name-based selectors elsewhere in production, not here).
+    (stage.find as ReturnType<typeof vi.fn>).mockImplementation((selector: string) => {
+      if (selector === '.export-exclude') return editorOverlayNodes;
+      return [];
+    });
+
+    // Capture visibility snapshot AT THE MOMENT stage.toDataURL runs. This
+    // is exactly when the PNG serializer reads node state, so this is the
+    // canonical "what does the user see in the final image" sample.
+    const snapshotAtToDataURL: Array<{ name: string; visible: boolean }> = [];
+    stage.toDataURL = vi.fn((opts: Record<string, unknown>) => {
+      for (const node of editorOverlayNodes) {
+        snapshotAtToDataURL.push({ name: node.name(), visible: node.visible() as boolean });
+      }
+      for (const node of contentNodes) {
+        snapshotAtToDataURL.push({ name: node.name(), visible: node.visible() as boolean });
+      }
+      return 'data:image/png;base64,SNAPSHOT_CONTENT';
+    }) as unknown as typeof stage.toDataURL;
+
+    await exportStageToBlob(stage, 1920, 1080, 'png', 90);
+
+    // toDataURL was called (proves pipeline reached capture step).
+    expect(snapshotAtToDataURL.length, 'stage.toDataURL should have been called').toBeGreaterThan(0);
+
+    // Every editor-only overlay MUST be hidden AT this snapshot. If any
+    // editor node slipped through with visible():true, the captured PNG
+    // would contain its pixels.
+    for (const overlayNode of editorOverlayNodes) {
+      const overlayName = overlayNode.name();
+      const captured = snapshotAtToDataURL.find(s => s.name === overlayName);
+      expect(captured, `${overlayName} must appear in the toDataURL snapshot`).toBeDefined();
+      expect(
+        captured!.visible,
+        `${overlayName} must be hidden AT THE MOMENT stage.toDataURL ran -- otherwise the final 1280x720 PNG will contain this editor UI`,
+      ).toBe(false);
+    }
+
+    // Every content node MUST STILL BE VISIBLE AT this snapshot. If the
+    // production pipeline ever over-hid content (e.g. by using a too-broad
+    // selector, or by hiding entire layers), these would be visible:false
+    // and the captured PNG would be missing content.
+    for (const contentNode of contentNodes) {
+      const nodeName = contentNode.name();
+      const captured = snapshotAtToDataURL.find(s => s.name === nodeName);
+      expect(captured, `${nodeName} must appear in the toDataURL snapshot`).toBeDefined();
+      expect(
+        captured!.visible,
+        `${nodeName} must remain visible AT THE MOMENT stage.toDataURL ran -- otherwise the export pipeline is over-hiding content`,
+      ).toBe(true);
+    }
+  });
 });
