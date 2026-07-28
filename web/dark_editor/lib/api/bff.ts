@@ -66,20 +66,10 @@ import {
 import type { PollResult, PublishBroadcastPayload } from './bff/types';
 
 // ------------------------------------------------------------------
-// Auth
+// Auth section lives in lib/api/bff/auth.ts (commit 2). The legacy
+// `@/lib/api/bff` import surface keeps working through the wildcard
+// re-export below.
 // ------------------------------------------------------------------
-
-export interface BffUser {
-  id: number;
-  name: string;
-  email?: string;
-  workspace_id: number;
-  is_admin?: boolean;
-}
-
-export function getMe(): Promise<{ user: BffUser }> {
-  return bffFetch('/api/v1/auth/me');
-}
 
 // ------------------------------------------------------------------
 // Social destinations (generic, platform-agnostic)
@@ -507,3 +497,18 @@ export {
   POLL_INTERVAL_MS,
   POLL_MAX_ATTEMPTS,
 };
+
+// ------------------------------------------------------------------
+// Back-compat forwarders \u2014 commit-N re-exports of the per-domain
+// modules that have already been extracted. Each one preserves the
+// legacy `@/lib/api/bff` import surface for callers that haven't yet
+// migrated to the per-domain sub-module path. As commits 3\u20137 land,
+// the corresponding `export * from './bff/<domain>'` line gets added
+// here so the pattern stays explicit and grep-able.
+//
+// (Eventually this whole bottom block becomes a single
+// `export * from './bff'` once the per-domain folder re-exports its
+// own children \u2014 see commit 9 plan.)
+// ------------------------------------------------------------------
+
+export { getMe, type BffUser } from './bff/auth';
