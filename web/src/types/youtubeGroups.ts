@@ -39,6 +39,19 @@ export interface GroupYouTubeVideoEntry {
     /** PLACEHOLDER today; reconciler will overwrite to live YouTube value. */
     actual_privacy?: GroupYouTubeVideoPrivacyStatus;
     youtube_sync_status?: GroupYouTubeVideoSyncStatus;
+    /**
+     * Phantom entry — synthesized server-side from a session row
+     * whose matching YouTube video was filtered out of
+     * ListEditableVideos (typically because the operator published
+     * the video as `public`, which the YouTube query excludes).
+     * The thumbnail URL points to YouTube's public CDN so the
+     * operator still gets a visual signal; the title may differ
+     * from the live YouTube title if the operator edited it on
+     * YouTube Studio since the publish. UI hint: the badge stack
+     * ("Pubblico" + "Pubblicato") already conveys the state; no
+     * special rendering needed.
+     */
+    phantom?: boolean;
 }
 
 export interface GroupYouTubeVideosResponse {
