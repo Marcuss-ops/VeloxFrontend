@@ -6,12 +6,19 @@
  *   - On mount: subscribe to BroadcastChannel('instaedit-publish')
  *     and react-query-cache-mutate any matching group card row to
  *     the optimistic target the dark editor just published.
+ *     Mounted with `veloxProjectId: undefined` the listener is a
+ *     page-level fan-out: it patches every cache row whose
+ *     `youtube_video_id` matches the broadcaster, which covers the
+ *     open-then-publish race the per-card mount cannot (cards in
+ *     `editor_status='ready'` have no `velox_project_id` until the
+ *     operator clicks "Apri Dark Editor").
  *   - Optional short-poll loop (5s cadence, 30s cap, early-stops when
  *     the GET reports status=published + youtube_sync_status=confirmed)
  *     catches the drift reconciler's eventual actual_privacy update.
- *     Disabled by default when the hook is mounted inside a grid item
- *     to avoid one poller per card; callers can enable it with
- *     `autoStartPolling` or trigger it manually via `start()`.
+ *     Only enabled with `autoStartPolling` AND when `veloxProjectId`
+ *     is set (the GET takes a project id). Page-level mounts don't
+ *     auto-poll; per-card callers can opt in or trigger manually via
+ *     `start()`.
  *   - Cleans up on unmount (AbortController cancellation).
  *
  * WHY THE HYBRID:
@@ -99,8 +106,10 @@ function patchVideoEntry(
 
 export interface UseEditorSessionLiveUpdateArgs {
     /** velox_project_id of the card the operator is currently looking at.
-     *  Used to filter BroadcastChannel events (the channel is shared
-     *  across every open card; we only care about the one in front). */
+     *  When set, BroadcastChannel events are filtered to those whose
+     *  `velox_project_id` matches (per-card use); when undefined the
+     *  listener is a page-level fan-out and patches every matching
+     *  `youtube_video_id` row in the cache. */
     veloxProjectId: string | undefined;
     /** Group id — needed to find the right react-query cache slice. */
     groupId: number | string | undefined;
@@ -193,9 +202,16 @@ export function useEditorSessionLiveUpdate(
     // the short-poll loop. AbortSignal cancels both on unmount or
     // when the watched veloxProjectId changes.
     useEffect(() => {
-        if (!veloxProjectId || typeof BroadcastChannel === 'undefined') {
+        if (typeof BroadcastChannel === 'undefined') {
             return;
         }
+        // Page-level mount (veloxProjectId === undefined): the
+        // listener stays installed and patches every cache row whose
+        // youtube_video_id matches the broadcaster. applyPatch does
+        // the per-row match, so no listener-side filter at all —
+        // cards in editor_status='ready' (no velox_project_id at
+        // mount time) get the optimistic update on the same render
+        // frame as the publish POST returns.
         const ac = new AbortController();
         abortRef.current?.abort();
         abortRef.current = ac;
@@ -204,17 +220,24 @@ export function useEditorSessionLiveUpdate(
         const onMessage = (event: MessageEvent) => {
             const payload = event.data;
             if (!isPublishBroadcastPayload(payload)) return;
-            // Filter on the project we're watching + reject stale events.
-            if (payload.velox_project_id !== veloxProjectId) return;
+            // Filter ONLY when a specific project is being watched
+            // (per-card mount); at page-level every cross-tab event
+            // is fair game and applyPatch routes it to the right row.
+            if (veloxProjectId && payload.velox_project_id !== veloxProjectId) return;
             if (Date.now() - Date.parse(payload.emitted_at) > STALE_EVENT_THRESHOLD_MS) return;
             applyPatch(payload);
-            // Cancel any pending poll because the broadcaster just
-            // gave us a fresh read.
-            ac.abort();
+            // Per-card mount may have a polling cycle in flight; abort
+            // it because the broadcaster just gave us a fresh read.
+            // Page-level never polls so this is a no-op there.
+            if (veloxProjectId) {
+                ac.abort();
+            }
         };
         channel.addEventListener('message', onMessage);
 
-        if (autoStartPolling) {
+        // Short-poll requires a velox_project_id because the GET takes
+        // one as a path param; page-level mounts skip it.
+        if (autoStartPolling && veloxProjectId) {
             startPolling(ac.signal);
         }
 

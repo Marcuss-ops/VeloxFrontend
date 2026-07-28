@@ -31,6 +31,7 @@ import { useGroupYouTubeVideos, groupYouTubeVideosQueryKey } from './useGroupYou
 import { GroupVideoCard } from './components/GroupVideoCard';
 import { GroupVideosSkeleton } from './components/GroupVideosSkeleton';
 import { GroupVideosEmptyState } from './components/GroupVideosEmptyState';
+import { useEditorSessionLiveUpdate } from '@/hooks/useEditorSessionLiveUpdate';
 
 interface ErrorBannerProps {
     message: string;
@@ -55,6 +56,14 @@ const GroupsView: React.FC = () => {
 
     const groupId = params.groupId;
     const includeSubgroups = false; // future toggleable via ?include_subgroups=true
+
+    // Page-level live-update listener: catches every cross-Dark-Editor
+    // publish event and optimistically flips the cached row -- even
+    // cards in editor_status='ready' (no velox_project_id at mount
+    // time, which is the open-then-publish race the per-card listener
+    // could not cover). Without this the grid waits 10s for
+    // refetchInterval after a publish before showing the new state.
+    useEditorSessionLiveUpdate({ veloxProjectId: undefined, groupId, includeSubgroups });
 
     const { videos, warnings, isLoading, isError, error, refetch } =
         useGroupYouTubeVideos({ groupId, includeSubgroups });
