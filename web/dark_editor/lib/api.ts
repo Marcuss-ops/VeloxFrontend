@@ -5,11 +5,13 @@
 // preserved.
 
 // HTTP infra lives in lib/api/httpClient.ts. We import the bits the
-// remaining project/preset/folder/drive clients below still need.
-// (apiUpload stays because uploadToDrive has not been extracted yet
-// — it moves to lib/api/driveClient.ts in a later commit.)
+// remaining drive wrappers below still need: apiGet / apiPost /
+// apiPut / apiDelete + apiUpload (for uploadToDrive, which will
+// move to lib/api/driveClient.ts in commit 8).
+//
+// FOLDERS_API_BASE has dropped because the folder wrappers all
+// moved to lib/api/folderClient.ts.
 import {
-  FOLDERS_API_BASE,
   apiGet,
   apiPost,
   apiPut,
@@ -118,31 +120,16 @@ export {
 
 
 
-export async function listFolders(): Promise<ProjectFolder[]> {
-  return apiGet<ProjectFolder[]>(FOLDERS_API_BASE, { cache: 'no-store' });
-}
-
-export async function createFolder(folder: {
-  name: string;
-  parent_id?: string | null;
-}): Promise<ProjectFolder> {
-  return apiPost<ProjectFolder>(FOLDERS_API_BASE, folder);
-}
-
-export async function updateFolder(id: string, folder: {
-  name?: string;
-  parent_id?: string | null;
-}): Promise<ProjectFolder> {
-  return apiPut<ProjectFolder>(`${FOLDERS_API_BASE}/${id}`, folder);
-}
-
-export async function deleteFolder(id: string): Promise<{ success: boolean }> {
-  return apiDelete<{ success: boolean }>(`${FOLDERS_API_BASE}/${id}`);
-}
-
-export async function assignProjectToFolder(projectId: string, folderId: string | null): Promise<{ success: boolean }> {
-  return apiPut<{ success: boolean }>(`/api/projects/${projectId}/folder`, { folder_id: folderId });
-}
+// Folder client lives in lib/api/folderClient.ts — re-exported
+// here for back-compat so existing call sites (`@/lib/api`) keep
+// working.
+export {
+  listFolders,
+  createFolder,
+  updateFolder,
+  deleteFolder,
+  assignProjectToFolder,
+} from './api/folderClient';
 
 
 
