@@ -1,48 +1,26 @@
 // Advanced Effects Utilities
 // Handles text and shape effects rendering
 
-export interface TextShadow {
-  offsetX: number;
-  offsetY: number;
-  blur: number;
-  color: string;
-}
+// Effect interfaces (TextShadow, TextStroke, TextGradient,
+// TextCurve, DropShadow, ShapeGradient, Texture) live in
+// lib/effects/types.ts. We import them here so the function
+// signatures below can reference them locally (the `export * from`
+// re-export does NOT bind names into local scope — same TS2304
+// footgun we caught in api.ts commits 1 + 5). The `export *`
+// statement then forwards the same set to any caller still using
+// `@/lib/advancedEffects`. New code should import directly from
+// `@/lib/effects/<sub-module>`.
+import type {
+  TextShadow,
+  TextStroke,
+  TextGradient,
+  TextCurve,
+  DropShadow,
+  ShapeGradient,
+  Texture,
+} from './effects/types';
 
-export interface TextStroke {
-  width: number;
-  color: string;
-}
-
-export interface TextGradient {
-  type: 'linear' | 'radial';
-  angle: number;
-  colors: string[];
-}
-
-export interface TextCurve {
-  enabled: boolean;
-  radius: number;
-  direction: 'up' | 'down';
-}
-
-export interface DropShadow {
-  offsetX: number;
-  offsetY: number;
-  blur: number;
-  spread: number;
-  color: string;
-}
-
-export interface ShapeGradient {
-  type: 'linear' | 'radial';
-  angle: number;
-  colors: string[];
-}
-
-export interface Texture {
-  type: 'none' | 'noise' | 'grain' | 'paper' | 'metal';
-  intensity: number;
-}
+export * from './effects/types';
 
 // Canvas Pool to reuse elements and reduce GC pressure
 class CanvasPool {
