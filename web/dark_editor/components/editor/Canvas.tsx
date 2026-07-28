@@ -10,12 +10,12 @@ import Konva from 'konva';
 import { buildSelectedIdSet, findEditingObject } from '@/lib/canvasSelection';
 import { selectCropTarget } from '@/lib/editorSelectors';
 import CanvasObjectNode from './CanvasObjectNode';
+import { ObjectRenderer } from '@/components/editor/canvas/CanvasRenderers';
 import {
   CropSelectionOverlay,
   GridOverlay,
-  ObjectRenderer,
   TextEditorOverlay,
-} from '@/components/editor/canvas/CanvasRenderers';
+} from '@/components/editor/canvas/renderers/overlay';
 
 interface CanvasProps {
   containerRef?: React.RefObject<HTMLDivElement>;
