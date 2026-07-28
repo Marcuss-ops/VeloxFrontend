@@ -401,7 +401,7 @@ export function CropSelectionOverlay({
   const bh = stageBounds.height;
 
   return (
-    <>
+    <Group name="export-exclude">
       {/* Dimming / Shield Areas (Photoshop style) */}
       <Rect x={bx} y={by} width={Math.max(0, cx - bx)} height={bh} fill="rgba(0, 0, 0, 0.55)" listening={false} />
       <Rect x={cx + cw} y={by} width={Math.max(0, bx + bw - (cx + cw))} height={bh} fill="rgba(0, 0, 0, 0.55)" listening={false} />
@@ -437,6 +437,7 @@ export function CropSelectionOverlay({
         rotateEnabled={false}
         keepRatio={keepRatio}
         centeredScaling={false}
+        name="export-exclude"
         boundBoxFunc={(oldBox, newBox) => {
           const minSize = 20;
           let x = Math.max(stageBounds.x, newBox.x);
@@ -463,7 +464,7 @@ export function CropSelectionOverlay({
           };
         }}
       />
-    </>
+    </Group>
   );
 }
 
@@ -680,7 +681,7 @@ export function GridOverlay({ width, height, gridSize }: any) {
     lines.push(<Rect key={`gy-${y}`} x={0} y={y} width={width} height={1} fill={color} listening={false} />);
   }
 
-  return <>{lines}</>;
+  return <Group name="export-exclude">{lines}</Group>;
 }
 
 export function ObjectRenderer({ obj, commonProps, shadowProps, editingId, handleTextDblClick }: { obj: CanvasObject, commonProps: any, shadowProps: any, editingId: string | null, handleTextDblClick: any }) {

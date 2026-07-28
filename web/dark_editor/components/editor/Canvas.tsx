@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { Stage, Layer, Rect, Transformer, Circle, Line } from 'react-konva';
+import { Stage, Layer, Rect, Transformer, Circle, Line, Group } from 'react-konva';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
 import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
@@ -365,10 +365,10 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
           ) : null}
 
           {guides.v.map((x, i) => (
-            <Rect key={`gvline-${i}`} x={x} y={0} width={1} height={canvasHeight} fill="rgba(59,130,246,0.8)" listening={false} />
+            <Rect key={`gvline-${i}`} name="export-exclude" x={x} y={0} width={1} height={canvasHeight} fill="rgba(59,130,246,0.8)" listening={false} />
           ))}
           {guides.h.map((y, i) => (
-            <Rect key={`ghline-${i}`} x={0} y={y} width={canvasWidth} height={1} fill="rgba(59,130,246,0.8)" listening={false} />
+            <Rect key={`ghline-${i}`} name="export-exclude" x={0} y={y} width={canvasWidth} height={1} fill="rgba(59,130,246,0.8)" listening={false} />
           ))}
 
           {objects.map((obj) => (
@@ -387,17 +387,19 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
             />
           ))}
           {cropTarget && cropDraft && cropEditingMode !== 'free' && (
-            <CropSelectionOverlay
-              target={cropTarget}
-              draft={cropDraft}
-              mode={cropEditingMode || 'free'}
-              onDraftChange={setCropDraft}
-            />
+            <Group name="export-exclude">
+              <CropSelectionOverlay
+                target={cropTarget}
+                draft={cropDraft}
+                mode={cropEditingMode || 'free'}
+                onDraftChange={setCropDraft}
+              />
+            </Group>
           )}
           {cropTarget && cropEditingMode === 'free' && (
             <>
               {lassoPoints.length > 0 && (
-                <Line
+                <Line name="export-exclude"
                   points={[
                     ...lassoPoints.map(p => [
                       cropTarget.x + p.x * (cropTarget.scaleX || 1),
@@ -418,6 +420,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
                 return (
                   <Circle
                     key={idx}
+                    name="export-exclude"
                     x={cropTarget.x + p.x * (cropTarget.scaleX || 1)}
                     y={cropTarget.y + p.y * (cropTarget.scaleY || 1)}
                     radius={isStart ? 8 : 5}
@@ -444,6 +447,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
 
           <Transformer
             ref={transformerRef}
+            name="export-exclude"
             boundBoxFunc={(oldBox, newBox) => {
               if (newBox.width < 5 || newBox.height < 5) return oldBox;
               return newBox;

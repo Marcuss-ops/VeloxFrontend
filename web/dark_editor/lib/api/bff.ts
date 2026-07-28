@@ -51,13 +51,6 @@ import {
   getCookie,
   sha256Hex,
 } from './bff/types';
-import {
-  BFF_BASE,
-  bffFetch,
-  bffPost,
-  getCookie,
-  sha256Hex,
-} from './bff/types';
 
 // ------------------------------------------------------------------
 // Auth section lives in lib/api/bff/auth.ts (commit 2). The legacy

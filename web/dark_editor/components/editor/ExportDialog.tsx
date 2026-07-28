@@ -99,6 +99,8 @@ const EMPTY_FORM: FormState = {
 interface ExportDialogProps {
   isOpen?: boolean;
   onClose?: () => void;
+  /** Canvas ref that exposes getStage() for the Konva Stage API export path. */
+  canvasRef?: React.RefObject<any>;
 }
 
 /**
@@ -130,7 +132,7 @@ interface ExportDialogProps {
  * (rather than `PublishDialog.tsx`) to keep imports in ToolbarDock,
  * page.tsx, and the keyboard shortcut hook unchanged.
  */
-export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
+export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProps) {
   const { showExportDialog, setExportDialog } = useUIStore();
   const { currentProject } = useProjectStore();
   const params = useParams();
@@ -281,6 +283,7 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
     exportedBlob,
     exportedFilename,
     handleExport,
+    exportCanvas,
     triggerDownload,
     resetExportState,
   } = useExportOperation({
@@ -289,6 +292,7 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
     projectName: currentProject?.name ?? 'image',
     uploadToDriveEnabled: false,
     handleDriveUpload: drive.handleDriveUpload,
+    canvasRef,
   });
 
   // Reset the export pipeline (blob/filename/completion) whenever the
@@ -338,19 +342,6 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
   // -------- Pubblica (image export → upload → attach → publish) --------
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // Closure-race fix (B-1 from the code-review pass): useExportOperation
-  // updates hook state asynchronously so the closure-captured
-  // `exportedBlob` is stale until React re-renders. We mirror the blob
-  // into a ref via useEffect so the publish handler always reads the
-  // LATEST value, and after we await handleExport() we wait one frame
-  // (~16ms) so the effect ref update has flushed before we read.
-  const exportedBlobRef = React.useRef<Blob | null>(null);
-  const exportedFilenameRef = React.useRef<string>('');
-  useEffect(() => {
-    exportedBlobRef.current = exportedBlob;
-    exportedFilenameRef.current = exportedFilename;
-  }, [exportedBlob, exportedFilename]);
-
   const handlePublish = useCallback(async () => {
     if (!projectId) {
       toast.addToast('error', 'Project id mancante.');
@@ -394,31 +385,18 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
 
     setIsPublishing(true);
     try {
-      // Step 1: render the canvas to a JPEG/PNG blob (re-uses the
-      // pre-refactor export pipeline). If the operator pressed
-      // Pubblica without rendering first, the pipeline is invoked
-      // automatically so the publish path is one-click. We read the
-      // LATEST blob from the ref (not the closed-over state value)
-      // because React state updates flush on the next render.
-      let blob = exportedBlobRef.current;
-      if (!blob) {
-        await handleExport();
-        // Wait one frame so the useEffect-driven ref update has flushed
-        // before we read again.
-        await new Promise<void>((r) => setTimeout(r, 16));
-        blob = exportedBlobRef.current;
-      }
-      if (!blob) {
+      // Step 1: render the canvas to a JPEG/PNG blob. Uses the direct
+      // exportCanvas() helper (not the ref-mirrored state) so we always
+      // read the latest canvas content without a React render cycle.
+      const exported = await exportCanvas();
+      if (!exported) {
         toast.addToast(
           'error',
           'Impossibile generare il thumbnail: nessun blob prodotto.',
         );
         return;
       }
-
-      const filename =
-        exportedFilenameRef.current ||
-        `${(currentProject?.name ?? 'thumbnail').replace(/\s+/g, '-')}.${format === 'png' ? 'png' : 'jpg'}`;
+      const { blob, filename } = exported;
 
       // Step 2: upload the blob to media storage.
       const assetId = await uploadMediaAsset(blob, filename);
@@ -518,10 +496,9 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
     }
   }, [
     currentProject?.name,
-    format,
+    exportCanvas,
     form,
     handleClose,
-    handleExport,
     projectId,
     tagsArray,
     toast,
@@ -787,6 +764,7 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
             setFormat={setFormat}
             quality={quality}
             setQuality={setQuality}
+            excludeFormats={['webp']}
           />
 
           {/* Thumbnail preview / download (optional, mirrors the
