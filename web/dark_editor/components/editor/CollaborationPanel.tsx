@@ -3,6 +3,7 @@ import { useCollaborationStore, User, Comment, Task } from '@/stores/collaborati
 import { useEditorStore } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
 import { buildUsersById } from '@/lib/collaborationUsers';
+import { getPriorityColor, getStatusColor } from '@/components/editor/collab/colors';
 import { 
   Users, 
   MessageSquare, 
@@ -538,20 +539,3 @@ function TaskCard({
   );
 }
 
-function getPriorityColor(priority: string) {
-  switch (priority) {
-    case 'high': return 'text-red-500';
-    case 'medium': return 'text-yellow-500';
-    case 'low': return 'text-green-500';
-    default: return 'text-gray-500';
-  }
-}
-
-function getStatusColor(status: string) {
-  switch (status) {
-    case 'completed': return 'text-green-500';
-    case 'in_progress': return 'text-blue-500';
-    case 'pending': return 'text-gray-500';
-    default: return 'text-gray-500';
-  }
-}
