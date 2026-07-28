@@ -1,0 +1,100 @@
+# .github/workflows/integration-fast.yml — VeloxFrontend CI fast gate
+#
+# This is the PRODUCTION-DEPLOY-GATING workflow for VeloxFrontend. The
+# contract test (web/dark_editor/__tests__/publishResponseContract.test.ts)
+# is the load-bearing check: it locks the publish response shape against
+# the vendored OpenAPI schema at web/dark_editor/api/openapi.yaml, which
+# in turn mirrors InstaeditLogin/api/openapi.yaml. Run the same logical
+# gate on InstaeditLogin via integration-fast.yml there (mirror — both
+# repos gate deploys on `go test` / `npm run validate`).
+#
+# Coverage (this file):
+#   1. Dark Editor package `npm ci` succeeds with the committed lockfile.
+#   2. `npm run validate` (= `tsc --noEmit && vitest run && next lint --dir lib`)
+#      is green. This includes the contract test:
+#        web/dark_editor/__tests__/publishResponseContract.test.ts
+#   3. Main SPA `web/` package: `npm ci` + `npm run test` + `npm run build`
+#      (the contract test lives in the Dark Editor package, but the main
+#      SPA must also stay green).
+#
+# The contract test reads:
+#   - web/dark_editor/api/openapi.yaml (vendored copy of InstaeditLogin's
+#     OpenAPI; the test navigates to components.schemas.YouTubeEditorSessionPublishResponse)
+#   - web/dark_editor/lib/api/bff/youtube.ts (the TS interface)
+# Go counterpart: pkg/api/youtube_editor_sessions_contract_test.go in
+# InstaeditLogin (reads InstaeditLogin/api/openapi.yaml directly + reflects
+# on the publishYouTubeEditorSessionResponse DTO).
+
+name: integration-fast
+
+# Least-privilege: checkout + build + test don't need write or
+# deploy scopes. The default GITHUB_TOKEN has PR / deployment scopes
+# but we explicitly gate contents: read to make the intent obvious
+# to reviewers.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel any in-flight run for the same ref when a new commit is
+# pushed — saves ~3 min of runner time per redundant push.
+concurrency:
+  group: integration-fast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dark-editor:
+    name: Dark Editor (contract test + vitest + tsc + lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/dark_editor
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/dark_editor/package-lock.json
+
+      - name: Install deps (npm ci)
+        run: npm ci
+
+      - name: Validate (tsc + vitest + next lint)
+        # `npm run validate` runs:
+        #   tsc --noEmit && vitest run && next lint --dir lib
+        # which exercises the contract test along with the rest of
+        # the Dark Editor suite. If the vendored OpenAPI drifts from
+        # InstaeditLogin's canonical, OR the TS interface drops the
+        # `status` field that the SPA's BroadcastChannel listener
+        # depends on, this step fails.
+        run: npm run validate
+
+  web-spa:
+    name: Web SPA (vitest + tsc + vite build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install deps (npm ci)
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
