@@ -31,7 +31,7 @@ import FormatQualitySection from './export/FormatQualitySection';
 import CanvasInfoSection from './export/CanvasInfoSection';
 import ExportFooter from './export/ExportFooter';
 import { useExportFormatQuality } from './export/useExportFormatQuality';
-import { SUGGESTED_LANGS, pickNextSuggestedLang } from './export/SuggestedLangs';
+import { pickNextSuggestedLang } from './export/SuggestedLangs';
 import {
   uploadMediaAsset,
   updateEditorSessionThumbnail,
@@ -456,6 +456,13 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       };
 
       const publishResult = await publishEditorSession(projectId, payload);
+
+      // Defensive: the backend contract must return a status. If the
+      // response ever drops it, stop before broadcasting a malformed
+      // payload to the Groups card.
+      if (!publishResult.status) {
+        throw new Error('Risposta di publish mancante del campo status.');
+      }
 
       // Step 5a: cross-SPA optimistic update. Broadcast the new
       // status + actual_privacy + youtube_sync_status + video_id to
