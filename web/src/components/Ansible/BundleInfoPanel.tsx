@@ -1,4 +1,5 @@
 import React from 'react';
+import { SectionBadge, SectionCard, SectionStatus } from './BundleInfoPanel/sections';
 
 // Types
 interface BundleDir {
@@ -43,71 +44,12 @@ const formatDateTime = (iso?: string): string => {
     }
 };
 
-// Section Badge Component
-const SectionBadge: React.FC<{
-    label: string;
-    status: 'ok' | 'warning' | 'error' | 'unknown';
-    detail?: string;
-}> = ({ label, status, detail }) => {
-    const statusColors = {
-        ok: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-        warning: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-        error: 'bg-red-500/20 text-red-400 border-red-500/30',
-        unknown: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
-    };
-
-    const statusIcons = {
-        ok: 'check_circle',
-        warning: 'warning',
-        error: 'cancel',
-        unknown: 'help',
-    };
-
-    return (
-        <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs border ${statusColors[status]}`}>
-            <span className="material-symbols-rounded text-[14px]">{statusIcons[status]}</span>
-            <span>{label}</span>
-            {detail && <span className="opacity-70">({detail})</span>}
-        </div>
-    );
-};
-
-// Section Card Component
-const SectionCard: React.FC<{
-    title: string;
-    icon: string;
-    iconColor: string;
-    children: React.ReactNode;
-    collapsed?: boolean;
-    onToggle?: () => void;
-}> = ({ title, icon, iconColor, children, collapsed = false, onToggle }) => (
-    <div className="bg-card-dark border border-border-dark rounded-xl overflow-hidden">
-        <button
-            onClick={onToggle}
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
-        >
-            <div className="flex items-center gap-2">
-                <span className={`material-symbols-rounded ${iconColor}`}>{icon}</span>
-                <h4 className="text-sm font-semibold text-text-primary">{title}</h4>
-            </div>
-            <span className={`material-symbols-rounded text-text-muted transition-transform ${collapsed ? '' : 'rotate-180'}`}>
-                expand_more
-            </span>
-        </button>
-        {!collapsed && (
-            <div className="px-4 pb-4 border-t border-border-dark/50">
-                {children}
-            </div>
-        )}
-    </div>
-);
-
 // Analysis item type
 interface AnalysisItem {
     exists: boolean;
     size?: string;
     count?: number;
-    status: 'ok' | 'warning' | 'error' | 'unknown';
+    status: SectionStatus;
 }
 
 export interface BundleInfoPanelProps {
