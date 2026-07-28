@@ -6,12 +6,12 @@
  *   - On mount: subscribe to BroadcastChannel('instaedit-publish')
  *     and react-query-cache-mutate any matching group card row to
  *     the optimistic target the dark editor just published.
- *   - In parallel: a short-poll loop (5s cadence, 30s cap, early-stops
- *     when the GET reports status=published + youtube_sync_status
- *     =confirmed) catches the drift reconciler's eventual
- *     actual_privacy update.
- *   - Exposes a single `start()` function the caller fires when the
- *     card row is rendered (so we don't run two pollers per card).
+ *   - Optional short-poll loop (5s cadence, 30s cap, early-stops when
+ *     the GET reports status=published + youtube_sync_status=confirmed)
+ *     catches the drift reconciler's eventual actual_privacy update.
+ *     Disabled by default when the hook is mounted inside a grid item
+ *     to avoid one poller per card; callers can enable it with
+ *     `autoStartPolling` or trigger it manually via `start()`.
  *   - Cleans up on unmount (AbortController cancellation).
  *
  * WHY THE HYBRID:
@@ -50,6 +50,22 @@ const POLL_MAX_ATTEMPTS = 6; // 30 seconds cap total.
 const STALE_EVENT_THRESHOLD_MS = 60_000; // ignore events older than 60s.
 
 /**
+ * Append a cache-busting query param to a thumbnail URL so the
+ * browser re-fetches it after a publish instead of serving the
+ * previously cached YouTube/CDN asset.
+ */
+function addThumbnailCacheBuster(url: string, version: string): string {
+    if (!url) return url;
+    try {
+        const u = new URL(url);
+        u.searchParams.set('v', version);
+        return u.toString();
+    } catch {
+        return `${url}${url.includes('?') ? '&' : '?'}v=${encodeURIComponent(version)}`;
+    }
+}
+
+/**
  * Patch a single cache entry in place. We deliberately keep the
  * cache shape stable (GroupYouTubeVideoEntry[]) by mutating the
  * object the query owns — react-query's structural sharing means
@@ -58,18 +74,27 @@ const STALE_EVENT_THRESHOLD_MS = 60_000; // ignore events older than 60s.
  */
 function patchVideoEntry(
     videos: GroupYouTubeVideoEntry[],
-    payload: PublishBroadcastPayload | { youtube_video_id: string; status: string; actual_privacy: string; youtube_sync_status: string },
+    payload: PublishBroadcastPayload | { youtube_video_id: string; status: string; actual_privacy: string; youtube_sync_status: string; emitted_at: string },
 ): GroupYouTubeVideoEntry[] {
-    return videos.map((v) =>
-        v.youtube_video_id === payload.youtube_video_id
-            ? {
-                ...v,
-                editor_status: payload.status as GroupYouTubeVideoEditorStatus,
-                actual_privacy: payload.actual_privacy as GroupYouTubeVideoPrivacyStatus | undefined,
-                youtube_sync_status: payload.youtube_sync_status as GroupYouTubeVideoSyncStatus | undefined,
-            }
-            : v,
-    );
+    const cacheBuster = 'emitted_at' in payload ? payload.emitted_at : new Date().toISOString();
+    return videos.map((v) => {
+        if (v.youtube_video_id !== payload.youtube_video_id) return v;
+
+        const patched: GroupYouTubeVideoEntry = {
+            ...v,
+            editor_status: payload.status as GroupYouTubeVideoEditorStatus,
+            actual_privacy: payload.actual_privacy as GroupYouTubeVideoPrivacyStatus | undefined,
+            youtube_sync_status: payload.youtube_sync_status as GroupYouTubeVideoSyncStatus | undefined,
+        };
+
+        // YouTube/CDN caches the old thumbnail; append a cache buster
+        // so the card image updates immediately after publish.
+        if (payload.status === 'published' && v.thumbnail_url) {
+            patched.thumbnail_url = addThumbnailCacheBuster(v.thumbnail_url, cacheBuster);
+        }
+
+        return patched;
+    });
 }
 
 export interface UseEditorSessionLiveUpdateArgs {
@@ -81,6 +106,12 @@ export interface UseEditorSessionLiveUpdateArgs {
     groupId: number | string | undefined;
     /** Include subgroups, must match the listing call. */
     includeSubgroups?: boolean;
+    /** When true the hook starts the short-poll loop automatically on
+     *  mount. Defaults to false to avoid one poller per card when the
+     *  hook is mounted inside a grid item; the BroadcastChannel listener
+     *  is always active and the start() function can trigger polling
+     *  manually when needed. */
+    autoStartPolling?: boolean;
 }
 
 export interface UseEditorSessionLiveUpdateHandle {
@@ -95,7 +126,7 @@ export interface UseEditorSessionLiveUpdateHandle {
 export function useEditorSessionLiveUpdate(
     args: UseEditorSessionLiveUpdateArgs,
 ): UseEditorSessionLiveUpdateHandle {
-    const { veloxProjectId, groupId, includeSubgroups = false } = args;
+    const { veloxProjectId, groupId, includeSubgroups = false, autoStartPolling = false } = args;
     const queryClient = useQueryClient();
     const abortRef = useRef<AbortController | null>(null);
 
@@ -183,14 +214,16 @@ export function useEditorSessionLiveUpdate(
         };
         channel.addEventListener('message', onMessage);
 
-        startPolling(ac.signal);
+        if (autoStartPolling) {
+            startPolling(ac.signal);
+        }
 
         return () => {
             channel.removeEventListener('message', onMessage);
             channel.close();
             ac.abort();
         };
-    }, [veloxProjectId, applyPatch, startPolling]);
+    }, [veloxProjectId, applyPatch, startPolling, autoStartPolling]);
 
     const start = useCallback(() => {
         // Useful for "I just published in the dark editor; nudge the

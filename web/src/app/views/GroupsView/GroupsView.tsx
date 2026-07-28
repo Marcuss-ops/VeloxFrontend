@@ -187,6 +187,8 @@ const GroupsView: React.FC = () => {
                             key={`${v.platform_account_id}-${v.youtube_video_id}`}
                             video={v}
                             onOpenEditor={onOpenEditor}
+                            groupId={groupId}
+                            includeSubgroups={includeSubgroups}
                             isOpening={
                                 mintMutation.isPending &&
                                 mintMutation.variables?.youtube_video_id === v.youtube_video_id

@@ -12,6 +12,7 @@ import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useEditorSessionLiveUpdate } from '@/hooks/useEditorSessionLiveUpdate';
 import type { GroupYouTubeVideoEntry } from '@/types/youtubeGroups';
 
 type BadgeTone = 'neutral' | 'amber' | 'green' | 'red' | 'blue';
@@ -71,14 +72,30 @@ export interface GroupVideoCardProps {
     onOpenEditor: (video: GroupYouTubeVideoEntry) => void;
     /** Set while the click handler is awaiting the POST mint fallback. */
     isOpening?: boolean;
+    /** Group id needed by the live-update listener to locate the right react-query cache slice. */
+    groupId?: number | string;
+    /** Must match the listing call. */
+    includeSubgroups?: boolean;
 }
 
 export const GroupVideoCard: React.FC<GroupVideoCardProps> = ({
     video,
     onOpenEditor,
     isOpening = false,
+    groupId,
+    includeSubgroups = false,
 }) => {
-    const privacy = privacyBadge(video.privacy_status);
+    // Listen for cross-tab publish events emitted by the Dark Editor.
+    // The hook updates the react-query cache entry for this card
+    // immediately (status, actual_privacy, sync_status, thumbnail
+    // cache buster) without waiting for the 10s refetch interval.
+    useEditorSessionLiveUpdate({
+        veloxProjectId: video.velox_project_id,
+        groupId,
+        includeSubgroups,
+    });
+
+    const privacy = privacyBadge(video.actual_privacy ?? video.privacy_status);
     const editor = editorBadge(video.editor_status);
     const hasEditorUrl = !!video.editor_url;
 
