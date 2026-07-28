@@ -232,7 +232,7 @@ export function DocumentCropOverlay({
   }
 
   return (
-    <Group name="document-crop-overlay">
+    <Group name="export-exclude">
       <Rect {...leftRect} fill="rgba(0,0,0,0.65)" listening={false} />
       <Rect {...rightRect} fill="rgba(0,0,0,0.65)" listening={false} />
       <Rect {...topRect} fill="rgba(0,0,0,0.65)" listening={false} />

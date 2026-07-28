@@ -148,7 +148,11 @@ export default function EditorPage() {
 
         {showExportDialog && <ExportDialog canvasRef={canvasRef} />}
       {showAIDialog && <AIDialog />}
-      <FeedPreviewDialog isOpen={showFeedPreviewDialog} onClose={() => setFeedPreviewDialog(false)} />
+      <FeedPreviewDialog
+        isOpen={showFeedPreviewDialog}
+        onClose={() => setFeedPreviewDialog(false)}
+        canvasRef={canvasRef}
+      />
     </div>
   );
 }

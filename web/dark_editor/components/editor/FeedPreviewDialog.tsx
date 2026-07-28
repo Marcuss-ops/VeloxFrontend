@@ -6,14 +6,21 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Smartphone, Monitor, Eye, MoreVertical, Compass, Home, Clock } from 'lucide-react';
 import { mockCompetitors } from './FeedPreview/mockData';
+import { useEditorStore } from '@/stores/editorStore';
+import { exportStageToBlob } from '@/lib/canvasExport';
 
 
 interface FeedPreviewDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Konva stage ref from <Canvas canvasRef={...} /> — used to capture a
+   *  clean preview at the project logical dimensions, bypassing the
+   *  viewport canvas (which includes zoom/pan/overlay). Optional: when
+   *  omitted the dialog falls back to a loading state. */
+  canvasRef?: React.RefObject<any>;
 }
 
-export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialogProps) {
+export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPreviewDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
   const [videoTitle, setVideoTitle] = useState('AMISH STORIES: The Untold Truth of Secrets & Traditions');
@@ -21,22 +28,77 @@ export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialog
   const [viewCount, setViewCount] = useState('143K views');
   const [publishTime, setPublishTime] = useState('3 hours ago');
 
+  // Track the blob URL we hand to <img src=...> so we can revoke it on
+  // re-capture / close — otherwise we leak one URL per open.
+  const previewObjectUrlRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (isOpen) {
-      // Capture the canvas image from DOM
-      const canvas = document.querySelector('.canvas-container .konvajs-content canvas') as HTMLCanvasElement | null;
-      if (canvas) {
-        try {
-          const url = canvas.toDataURL('image/png');
-          setPreviewUrl(url);
-        } catch (e) {
-          console.error('Failed to capture canvas for feed preview', e);
-        }
+    if (!isOpen) {
+      // Clean up any lingering blob URL when the dialog closes.
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
       }
-    } else {
       setPreviewUrl(null);
+      return;
     }
-  }, [isOpen]);
+    const stage = canvasRef?.current?.getStage?.();
+    if (!stage) {
+      setPreviewUrl(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { canvasWidth, canvasHeight } = useEditorStore.getState();
+        // Reuse the canonical export helper so the preview hides
+        // .export-exclude nodes (grid/guides/transformer handles/crop
+        // overlay), neutralises stage position/scale, and produces a
+        // clean 1280x720 PNG. Mirrors what publishToYouTube sends to
+        // YouTube, so the in-app simulation matches the real output.
+        const result = await exportStageToBlob(
+          stage,
+          canvasWidth,
+          canvasHeight,
+          'png',
+          100,
+        );
+        if (cancelled) return;
+        if (!result) {
+          setPreviewUrl(null);
+          return;
+        }
+        // Replace any previous blob URL before assigning the new one so
+        // we never accumulate more than one live blob at a time.
+        if (previewObjectUrlRef.current) {
+          URL.revokeObjectURL(previewObjectUrlRef.current);
+        }
+        const url = URL.createObjectURL(result.blob);
+        previewObjectUrlRef.current = url;
+        setPreviewUrl(url);
+      } catch (e) {
+        console.error('Failed to capture canvas for feed preview', e);
+        if (!cancelled) setPreviewUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, canvasRef]);
+
+  // On unmount only (deps=[]), revoke any leftover blob URL so the
+  // page-navigation-away case doesn't leak a URL.createObjectURL
+  // allocation per session-open. The main effect's cleanup already
+  // handles the isOpen=true→false transition; the body of the main
+  // effect already revokes the previous URL before assigning a new one.
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
