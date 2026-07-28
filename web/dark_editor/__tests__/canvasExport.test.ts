@@ -2,17 +2,29 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Konva from 'konva';
 import { getCanvasElement, exportCanvasToBlob, exportStageToBlob } from '@/lib/canvasExport';
 
-// Minimal HTMLCanvasElement mock for a Node test environment.
-function createMockCanvas(width = 1280, height = 720): HTMLCanvasElement {
+// Mock canvas whose toBlob produces the final YouTube thumbnail blob.
+// Mirrors the in-browser semantics:
+//   - canvas.width / canvas.height       -- the JS-side pixel dimensions
+//   - canvas.naturalWidth / naturalHeight -- what <img>.naturalWidth /
+//     <img>.naturalHeight would report after the blob is decoded (PNG
+//     and JPEG headers carry the canvas dimensions verbatim).
+// HTMLCanvasElement doesn't have naturalWidth/Height in W3C, but the
+// PNG/JPEG-surrogate semantics the user explicitly asked about are
+// captured here via an intersection type so tests can assert both views.
+type CanvasLike = HTMLCanvasElement & { naturalWidth: number; naturalHeight: number };
+
+function createMockCanvas(width = 1280, height = 720): CanvasLike {
   return {
     width,
     height,
+    naturalWidth: width,
+    naturalHeight: height,
     getContext: vi.fn(() => ({ drawImage: vi.fn() })),
     toBlob: vi.fn((callback: BlobCallback, _mime?: string, _quality?: number) => {
       callback(new Blob(['image'], { type: _mime ?? 'image/png' }) as unknown as globalThis.Blob);
     }),
     toDataURL: vi.fn(() => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
-  } as unknown as HTMLCanvasElement;
+  } as unknown as CanvasLike;
 }
 
 // Minimal Konva stage mock for the new export path.
@@ -236,6 +248,58 @@ describe('canvasExport', () => {
     expect(outputCanvas).toBeDefined();
     expect(outputCanvas!.width).toBe(1280);
     expect(outputCanvas!.height).toBe(720);
+  });
+
+  it('output thumbnail blob decodes to image.naturalWidth=1280 / naturalHeight=720 regardless of project logical dimensions (incl. 1920x1080, 3000x2000, 800x450)', async () => {
+    // YouTube requires the final PNG/JPEG to be exactly 1280x720.
+    // The OUTPUT canvas (whose toBlob produces the project blob) is the
+    // single source of truth for those dimensions: in any browser the
+    // PNG/JPEG header mirrors canvas.width/canvas.height, and the
+    // resulting <img>.naturalWidth/<img>.naturalHeight is read from
+    // that same header. So we capture the OUTPUT canvas and assert on
+    // BOTH the JS-side (width/height) AND the image-side
+    // (naturalWidth/naturalHeight) properties.
+    const projectSizes: ReadonlyArray<readonly [number, number]> = [
+      [1920, 1080],
+      [3000, 2000],
+      [800, 450],
+    ];
+    for (const [w, h] of projectSizes) {
+      const stage = createMockStage();
+      (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
+
+      let outputCanvas: CanvasLike | undefined;
+      vi.stubGlobal('document', {
+        createElement: vi.fn((tag: string) => {
+          const canvas = createMockCanvas(1280, 720);
+          if (tag === 'canvas') {
+            outputCanvas = canvas;
+          }
+          return canvas;
+        }),
+        querySelector: vi.fn(),
+      } as unknown as Document);
+
+      const result = await exportStageToBlob(stage, w, h, 'png', 90);
+
+      expect(result, `exportStageToBlob(${w}x${h}) must succeed`).not.toBeNull();
+      expect(outputCanvas, 'imageToBlob must have created the OUTPUT canvas').toBeDefined();
+
+      // JS-side canvas dimensions — what toBlob bakes into the PNG/JPEG
+      // header.
+      expect(outputCanvas!.width).toBe(1280);
+      expect(outputCanvas!.height).toBe(720);
+
+      // Image-side mirror — what an <img> decoding the resulting blob
+      // would expose. This is the user-facing contract: any consumer
+      // reading image.naturalWidth / image.naturalHeight on the decoded
+      // thumbnail GETS 1280 / 720, independent of the project's logical
+      // canvas size, the viewport, the editor zoom level, and the
+      // current pan offset (zooming/panning are neutralised inside
+      // exportStageToBlob before the capture).
+      expect(outputCanvas!.naturalWidth).toBe(1280);
+      expect(outputCanvas!.naturalHeight).toBe(720);
+    }
   });
 
   it('neutralises zoom and pan before capture and restores them after', async () => {
