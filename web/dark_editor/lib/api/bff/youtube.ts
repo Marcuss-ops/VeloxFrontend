@@ -90,8 +90,16 @@ export interface PublishYouTubeEditorSessionResponse {
   published_at?: string | null;
   // Live-update additions (this commit):
   /** Editor session status at the moment the publish orchestrator
-   *  stamps the row. Always 'published' on a successful POST. */
-  status: string;
+   *  stamps the row. Always 'published' on a successful POST.
+   *  The literal union -- instead of the broader `string` -- is
+   *  the contract lock with the OpenAPI schema's
+   *  `status: { type: string, enum: [published] }` declared at
+   *  InstaeditLogin's api/openapi.yaml (YouTubeEditorSessionPublishResponse)
+   *  and the Go DTO `publishYouTubeEditorSessionResponse.Status`
+   *  (pkg/api/youtube_editor_sessions.go). Loosening this to `string`
+   *  will be caught at compile time by the contract test at
+   *  __tests__/youtubePublishContract.test.ts. */
+  status: 'published';
   /** YouTube-confirmed privacy after the videos.list read-back. */
   actual_privacy: string;
   /** Lifecycle marker for the drift reconciler (confirmed/drift/pending/failed). */
