@@ -102,13 +102,23 @@ export async function publishEditorSession(
   veloxProjectId: string,
   body: PublishYouTubeEditorSessionRequest
 ): Promise<PublishYouTubeEditorSessionResponse> {
-  return bffFetch<PublishYouTubeEditorSessionResponse>(
+  const response = await bffFetch<PublishYouTubeEditorSessionResponse>(
     `/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(veloxProjectId)}/publish`,
     {
       method: 'POST',
       body: JSON.stringify(body),
     }
   );
+
+  // Contract guard: the Groups card relies on this field for optimistic
+  // updates. A backend response that omits it would silently break the
+  // cross-SPA broadcast, so fail fast instead of propagating an undefined
+  // value.
+  if (!response || typeof response.status !== 'string') {
+    throw new Error('Contract error: publish response is missing the required status field');
+  }
+
+  return response;
 }
 
 // ------------------------------------------------------------------

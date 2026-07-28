@@ -214,4 +214,69 @@ describe('canvasExport', () => {
       'Unsupported thumbnail format: gif'
     );
   });
+
+  it('produces a 1280x720 thumbnail canvas regardless of input logical size', async () => {
+    const stage = createMockStage();
+    (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
+    let outputCanvas: HTMLCanvasElement | undefined;
+    vi.stubGlobal('document', {
+      createElement: vi.fn((tag: string) => {
+        const canvas = createMockCanvas(1280, 720);
+        if (tag === 'canvas') {
+          outputCanvas = canvas;
+        }
+        return canvas;
+      }),
+      querySelector: vi.fn(),
+    } as unknown as Document);
+
+    const result = await exportStageToBlob(stage, 3000, 2000, 'png', 90);
+
+    expect(result).not.toBeNull();
+    expect(outputCanvas).toBeDefined();
+    expect(outputCanvas!.width).toBe(1280);
+    expect(outputCanvas!.height).toBe(720);
+  });
+
+  it('neutralises zoom and pan before capture and restores them after', async () => {
+    const stage = createMockStage();
+    (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
+
+    await exportStageToBlob(stage, 1920, 1080, 'png', 90);
+
+    expect(stage.position).toHaveBeenCalledWith({ x: 0, y: 0 });
+    expect(stage.scale).toHaveBeenCalledWith({ x: 1, y: 1 });
+    expect(stage.toDataURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1080,
+        pixelRatio: 1,
+      }),
+    );
+    const stageState = (stage as unknown as { _state: { x: number; y: number; scaleX: number; scaleY: number } })._state;
+    expect(stageState.x).toBe(50);
+    expect(stageState.y).toBe(50);
+    expect(stageState.scaleX).toBe(1.5);
+    expect(stageState.scaleY).toBe(1.5);
+  });
+
+  it('hides grid, guides, transformer and crop overlays during export and restores them', async () => {
+    const stage = createMockStage();
+    const overlays = [
+      { name: 'grid', visible: vi.fn(() => true) },
+      { name: 'guides', visible: vi.fn(() => true) },
+      { name: 'crop', visible: vi.fn(() => true) },
+      { name: 'transformer', visible: vi.fn(() => true) },
+    ];
+    (stage.find as ReturnType<typeof vi.fn>).mockReturnValue(overlays);
+
+    await exportStageToBlob(stage, 1920, 1080, 'png', 90);
+
+    expect(stage.find).toHaveBeenCalledWith('.export-exclude');
+    for (const node of overlays) {
+      expect(node.visible.mock.calls).toEqual([[], [false], [true]]);
+    }
+  });
 });
