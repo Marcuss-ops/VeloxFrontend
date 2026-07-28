@@ -181,6 +181,43 @@ describe('PublishYouTubeEditorSessionResponse contract lock', () => {
     }
   });
 
+  it('every TS field optionality matches the OpenAPI required array', () => {
+    // STRICT optionality parity: TS `?` must match OpenAPI
+    // (not in `required:`) AND vice versa. The cross-repo
+    // contract lock is: TS `?` ↔ OpenAPI NOT in `required:`
+    // ↔ Go `omitempty`. Drift on any side fails the build.
+    //
+    // Schema context: `actual_privacy` + `youtube_sync_status`
+    // are server-side `omitempty` and not in OpenAPI `required:`
+    // → TS side marks them `?` (callers may receive `undefined`
+    // when the orchestrator's videos.list read-back hasn't
+    // completed). The 4 other fields are required on all 3 sides.
+    //
+    // OpenAPI's `nullable: true` is independent of `required:` —
+    // a required+nullable field IS required on the wire (the
+    // payload MUST include the key, possibly null). This check
+    // does not consult `nullable`; only the `required:` array
+    // drives the wire-shape contract.
+    const required = new Set(schema.required ?? []);
+    for (const [name, field] of tsFields.entries()) {
+      const oaOptional = !required.has(name);
+      const tsOptional = field.optional;
+      if (oaOptional !== tsOptional) {
+        // One-shot descriptive failure (the first mismatch tells
+        // the contributor exactly which field is wrong;
+        // subsequent drifts land in the next commit's run).
+        expect(
+          tsOptional,
+          `FIELD OPTIONALITY DRIFT: field '${name}': ` +
+            `TS optional=${tsOptional}, OpenAPI requires=${!oaOptional}. ` +
+            `Contract: TS \`?\` ↔ OpenAPI NOT in \`required:\` ↔ Go \`,omitempty\` ` +
+            `(all three sides must agree). Full OpenAPI required: [${Array.from(required).join(', ')}].`
+        ).toBe(!oaOptional);
+        return;
+      }
+    }
+  });
+
   it('specifically includes the `status` field on both sides', () => {
     expect(
       openAPIFields,

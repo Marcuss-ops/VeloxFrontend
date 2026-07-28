@@ -100,10 +100,20 @@ export interface PublishYouTubeEditorSessionResponse {
    *  will be caught at compile time by the contract test at
    *  __tests__/youtubePublishContract.test.ts. */
   status: 'published';
-  /** YouTube-confirmed privacy after the videos.list read-back. */
-  actual_privacy: string;
-  /** Lifecycle marker for the drift reconciler (confirmed/drift/pending/failed). */
-  youtube_sync_status: string;
+  /** YouTube-confirmed privacy after the videos.list read-back.
+   *  Optional: zero-value when the orchestrator's read-back hasn't
+   *  completed yet (or in the curated phantom-emission path that
+   *  reports `status=published` without a fresh videos.list poll).
+   *  See `Install OpenAPI ⇄ Go DTO ⇄ TS contract lock` — the
+   *  cross-repo contract test asserts OpenAPI NOT in
+   *  `required:` ↔ Go `omitempty` ↔ TS `?`. Drift on any side
+   *  fails the build in CI. */
+  actual_privacy?: string;
+  /** Lifecycle marker for the drift reconciler (confirmed/drift/pending/failed).
+   *  Optional: zero-value until the post-publish drift reconciler
+   *  reports a final state. See the optionality comment on
+   *  `actual_privacy` above — same contract. */
+  youtube_sync_status?: string;
 }
 
 export async function publishEditorSession(

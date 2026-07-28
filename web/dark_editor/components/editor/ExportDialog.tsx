@@ -470,10 +470,21 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       // listener (useEditorSessionLiveUpdate) applies the patch to
       // its react-query cache synchronously and kicks off a 5s/30s
       // short-poll to track the eventual drift reconciler stamp.
+      //
+      // OPTIONALITY COERCION: `actual_privacy` + `youtube_sync_status`
+      // are server-side `omitempty` (not in OpenAPI `required:`), so
+      // the publish response marks them `?` and `publishResult.X`
+      // may be `undefined` when the videos.list read-back hasn't
+      // completed. We coalesce to '' here to keep the broadcast
+      // payload's strict type guard happy; the listener's
+      // `payload.actual_privacy ?? video.privacy_status` fallback
+      // in GroupVideoCard picks up the empty string and falls through
+      // to the card's stored PrivacyStatus (desired UX). Mirrors
+      // the existing pattern at useEditorSessionLiveUpdate.ts:184-185.
       publishBroadcast({
         status: publishResult.status,
-        actual_privacy: publishResult.actual_privacy,
-        youtube_sync_status: publishResult.youtube_sync_status,
+        actual_privacy: publishResult.actual_privacy ?? '',
+        youtube_sync_status: publishResult.youtube_sync_status ?? '',
         youtube_video_id: publishResult.video_id,
         velox_project_id: projectId,
       });

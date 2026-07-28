@@ -189,6 +189,38 @@ describe('PublishYouTubeEditorSessionRequest contract lock', () => {
     }
   });
 
+  it('every TS field OPTIONALITY matches the OpenAPI required array', () => {
+    // STRICT optionality parity (mirrors the response test).
+    // The request side currently has every field marked optional
+    // on all 3 sides (no OpenAPI `required:` array, all Go fields
+    // have `,omitempty`, every TS field uses `?:`), so this check
+    // is currently a pass-through. It catches any future drift where
+    // one side flips a field to required without the other two
+    // following.
+    //
+    // NOTE: This it() runs alongside the looser
+    // "every TS field stays optional" guardrail it() below — that
+    // one enforces the all-optional-by-convention business rule for
+    // backward-compat with legacy 4-field callers; THIS one enforces
+    // the per-field optional ↔ required ↔ omitempty parity contract.
+    // Both can coexist; flipping one does not subsume the other.
+    const required = new Set(schema.required ?? []);
+    for (const [name, field] of tsFields.entries()) {
+      const oaOptional = !required.has(name);
+      const tsOptional = field.optional;
+      if (oaOptional !== tsOptional) {
+        expect(
+          tsOptional,
+          `FIELD OPTIONALITY DRIFT: field '${name}': ` +
+            `TS optional=${tsOptional}, OpenAPI requires=${!oaOptional}. ` +
+            `Contract: TS \`?\` ↔ OpenAPI NOT in \`required:\` ↔ Go \`,omitempty\` ` +
+            `(all three sides must agree). Full OpenAPI required: [${Array.from(required).join(', ')}].`
+        ).toBe(!oaOptional);
+        return;
+      }
+    }
+  });
+
   it('every TS field stays optional', () => {
     // The publish request is operator-typed — none of the fields are
     // strictly required. If the SPA ever flips a field to required
