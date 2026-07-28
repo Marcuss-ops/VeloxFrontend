@@ -6,9 +6,8 @@
 
 // HTTP infra lives in lib/api/httpClient.ts. We import the bits the
 // remaining client wrappers below still need (apiGet/Post/Put/
-// Delete/Upload + the requestManager singleton + the two base URLs).
+// Delete/Upload + the requestManager singleton + FOLDERS_API_BASE).
 import {
-  API_BASE,
   FOLDERS_API_BASE,
   apiGet,
   apiPost,
@@ -65,12 +64,13 @@ export type {
   DriveLink,
 };
 
-export function extractFilenameFromPath(pathOrUrl: string): string {
-  const withoutHash = pathOrUrl.split('#')[0] ?? '';
-  const withoutQuery = withoutHash.split('?')[0] ?? '';
-  const parts = withoutQuery.split('/').filter(Boolean);
-  return parts[parts.length - 1] ?? '';
-}
+// URL helpers live in lib/api/utils.ts — re-exported here for
+// back-compat so existing call sites (`@/lib/api`) keep working.
+export {
+  extractFilenameFromPath,
+  getTempFileUrl,
+  getProjectFileUrl,
+} from './api/utils';
 
 export async function uploadImage(file: File): Promise<UploadResponse> {
   const formData = new FormData();
@@ -134,13 +134,7 @@ export async function deleteProject(id: string): Promise<{ success: boolean }> {
   return apiDelete<{ success: boolean }>(`/api/projects/${id}`);
 }
 
-export function getTempFileUrl(filename: string): string {
-  return `${API_BASE}/temp/${filename}`;
-}
 
-export function getProjectFileUrl(projectId: string, filename: string): string {
-  return `${API_BASE}/projects/${projectId}/${filename}`;
-}
 
 
 
