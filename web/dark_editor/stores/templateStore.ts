@@ -19,7 +19,7 @@ export type {
   Template,
   TemplateVariable,
   TemplateCondition,
-} from '../lib/templateEngine';
+};
 
 export interface TemplateStore {
   templates: Template[];
