@@ -139,10 +139,18 @@ function parseTSInterface(): Map<string, TSField> {
     ) {
       continue;
     }
-    // Match `field_name: type` or `field_name?: type`
+    // Match `field_name: type` or `field_name?: type`. The capture
+    // group `(.+)$` greedily eats the trailing `;` (every TS field
+    // declaration ends in one); strip it so the captured type
+    // matches the actual TypeScript expression that future
+    // type-shape checks would regex-parse. Without this, a future
+    // 4th it() block (e.g. a type-shape mirror of the request test)
+    // would see type='string;' for `public_url: string;` and miss
+    // every allowlist branch.
     const m = line.match(/^(\w+?)(\?)?:\s*(.+)$/);
     if (m) {
-      fields.set(m[1], { type: m[3].trim(), optional: m[2] === '?' });
+      const type = m[3].trim().replace(/;$/, '');
+      fields.set(m[1], { type, optional: m[2] === '?' });
     }
   }
   return fields;
