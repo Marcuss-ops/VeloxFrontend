@@ -47,31 +47,21 @@ export * from './effects/textEffects';
 import { shapeEffectsRenderer } from './effects/shapeEffects';
 export * from './effects/shapeEffects';
 
-// Convenience functions
-export function applyTextShadow(text: string, font: string, color: string, shadow: TextShadow): HTMLCanvasElement {
-  return textEffectsRenderer.applyTextShadow(text, font, color, shadow);
-}
-
-export function applyTextStroke(text: string, font: string, color: string, stroke: TextStroke): HTMLCanvasElement {
-  return textEffectsRenderer.applyTextStroke(text, font, color, stroke);
-}
-
-export function applyTextGradient(text: string, font: string, gradient: TextGradient): HTMLCanvasElement {
-  return textEffectsRenderer.applyTextGradient(text, font, gradient);
-}
-
-export function applyTextCurve(text: string, font: string, color: string, curve: TextCurve): HTMLCanvasElement {
-  return textEffectsRenderer.applyTextCurve(text, font, color, curve);
-}
-
-export function applyDropShadow(width: number, height: number, fill: string, shadow: DropShadow): HTMLCanvasElement {
-  return shapeEffectsRenderer.applyDropShadow(width, height, fill, shadow);
-}
-
-export function applyShapeGradient(width: number, height: number, gradient: ShapeGradient): HTMLCanvasElement {
-  return shapeEffectsRenderer.applyShapeGradient(width, height, gradient);
-}
-
-export function applyTexture(width: number, height: number, fill: string, texture: Texture): HTMLCanvasElement {
-  return shapeEffectsRenderer.applyTexture(width, height, fill, texture);
-}
+// Convenience wrappers (applyTextShadow / applyTextStroke /
+// applyTextGradient / applyTextCurve / applyDropShadow /
+// applyShapeGradient / applyTexture) live in
+// lib/effects/appliers.ts. The wildcard re-export below forwards
+// them so any legacy `@/lib/advancedEffects` consumer keeps the
+// same import surface.
+//
+// After commits 1–5 of this refactor, advancedEffects.ts itself
+// carries no render code path: it is a structural barrel that
+// names where the seven sub-modules live so a maintainer can find
+// the moving parts without grepping. New code should import
+// directly from `@/lib/effects/<sub-module>` (or
+// `@/lib/effects/appliers` for the wrapper-only call surface).
+//
+// Sunset clause: once the legacy `@/lib/advancedEffects` callers
+// migrate to direct `@/lib/effects/<sub-module>` imports
+// (REFACTOR_PLAN §3.3), this file can be deleted entirely.
+export * from './effects/appliers';
