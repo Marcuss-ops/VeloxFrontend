@@ -33,7 +33,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Konva from 'konva';
 
 export interface UseCanvasStageArgs {
-  forwardedRef: React.Ref<any>;
+  forwardedRef?: React.Ref<any>;
   containerRef?: React.RefObject<HTMLDivElement>;
   zoom: number;
   offsetX: number;
@@ -41,28 +41,17 @@ export interface UseCanvasStageArgs {
   setZoom: (zoom: number) => void;
   setOffset: (x: number, y: number) => void;
   editingId: string | null;
-  snapToGrid: boolean;
-  gridSize: number;
 }
 
 export interface UseCanvasStageReturn {
-  stageRef: React.RefObject<Konva.Stage | null>;
+  stageRef: React.RefObject<Konva.Stage>;
   containerRef: React.RefObject<HTMLDivElement>;
   isPanning: boolean;
-  setIsPanning: React.Dispatch<React.SetStateAction<boolean>>;
-  panStartRef: React.RefObject<{
-    x: number;
-    y: number;
-    ox: number;
-    oy: number;
-  } | null>;
   guides: { v: number[]; h: number[] };
-  setGuides: React.Dispatch<React.SetStateAction<{ v: number[]; h: number[] }>>;
   handleStageDragStart: (e: Konva.KonvaEventObject<DragEvent>) => void;
   handleStageDragMove: (e: Konva.KonvaEventObject<DragEvent>) => void;
   handleStageDragEnd: () => void;
   handleWheel: (e: Konva.KonvaEventObject<WheelEvent>) => void;
-  snap: (value: number) => number;
 }
 
 export function useCanvasStage({
@@ -74,10 +63,8 @@ export function useCanvasStage({
   setZoom,
   setOffset,
   editingId,
-  snapToGrid,
-  gridSize,
 }: UseCanvasStageArgs): UseCanvasStageReturn {
-  const stageRef = useRef<Konva.Stage | null>(null);
+  const stageRef = useRef<Konva.Stage>(null);
   const internalContainerRef = useRef<HTMLDivElement>(null);
   const containerRef = externalContainerRef ?? internalContainerRef;
 
@@ -179,27 +166,14 @@ export function useCanvasStage({
     [zoom, offsetX, offsetY, setZoom, setOffset]
   );
 
-  const snap = useCallback(
-    (value: number) => {
-      if (!snapToGrid) return value;
-      const size = gridSize > 0 ? gridSize : 1;
-      return Math.round(value / size) * size;
-    },
-    [gridSize, snapToGrid]
-  );
-
   return {
     stageRef,
     containerRef,
     isPanning,
-    setIsPanning,
-    panStartRef,
     guides,
-    setGuides,
     handleStageDragStart,
     handleStageDragMove,
     handleStageDragEnd,
     handleWheel,
-    snap,
   };
 }

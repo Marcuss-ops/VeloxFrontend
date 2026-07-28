@@ -71,8 +71,6 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     setZoom,
     setOffset,
     editingId,
-    snapToGrid,
-    gridSize,
   });
 
   const transformerRef = useRef<Konva.Transformer>(null);
