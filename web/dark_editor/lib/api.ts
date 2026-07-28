@@ -17,11 +17,17 @@ import {
   apiUpload,
 } from './api/httpClient';
 
-// Types live in lib/api/types.ts. We import them so the function
-// signatures below can reference them locally, then re-export them
-// unchanged for back-compat with the 19 existing call sites that
-// import them via '@/lib/api'. (Following the refactor plan, new
-// code should import these directly from '@/lib/api/types'.)
+// Types live in lib/api/types.ts. We import all 17 here because the
+// `export type { ... }` block immediately below needs them in local
+// scope (the `export type { X } from './m'` form does NOT bind the
+// names locally — same TS2304 footgun we fixed in commit 1).
+//
+// Even though most of these types are no longer referenced by the
+// surviving client wrappers in api.ts itself, the back-compat barrel
+// must keep re-exporting all 17 names because 19 call sites
+// (e.g. app/DarkEditorHome.tsx's `import { type Project }`) import
+// them through '@/lib/api'. Following the refactor plan, new code
+// should import these directly from '@/lib/api/types'.
 import type {
   UploadResponse,
   FilterRequest,
@@ -85,28 +91,15 @@ export {
   getBackgroundRemovalStatus,
 } from './api/mediaClient';
 
-export async function listProjects(type?: string): Promise<Project[]> {
-  const query = type ? `?type=${encodeURIComponent(type)}` : '';
-  return apiGet<Project[]>(`/api/projects${query}`);
-}
-
-export async function getProject(id: string): Promise<Project> {
-  return apiGet<Project>(`/api/projects/${id}`);
-}
-
-export async function saveProject(project: {
-  id?: string;
-  name: string;
-  type?: string;
-  canvas_json: Record<string, unknown>;
-  preview_filename?: string;
-}): Promise<{ id: string; message: string }> {
-  return apiPost<{ id: string; message: string }>('/api/projects', project);
-}
-
-export async function deleteProject(id: string): Promise<{ success: boolean }> {
-  return apiDelete<{ success: boolean }>(`/api/projects/${id}`);
-}
+// Project client lives in lib/api/projectClient.ts — re-exported
+// here for back-compat so existing call sites (`@/lib/api`) keep
+// working.
+export {
+  listProjects,
+  getProject,
+  saveProject,
+  deleteProject,
+} from './api/projectClient';
 
 
 
