@@ -9,11 +9,14 @@
 # repos gate deploys on `go test` / `npm run validate`).
 #
 # Coverage (this file):
-#   1. Dark Editor package `npm ci` succeeds with the committed lockfile.
+#   1. Dark Editor package `npm install` succeeds (the repo's
+#      `web/.gitignore` excludes `package-lock.json` by design, so
+#      `npm ci` is not available — `npm install` is the cheaper-fail
+#      alternative).
 #   2. `npm run validate` (= `tsc --noEmit && vitest run && next lint --dir lib`)
 #      is green. This includes the contract test:
 #        web/dark_editor/__tests__/publishResponseContract.test.ts
-#   3. Main SPA `web/` package: `npm ci` + `npm run test` + `npm run build`
+#   3. Main SPA `web/` package: `npm install` + `npm run test` + `npm run build`
 #      (the contract test lives in the Dark Editor package, but the main
 #      SPA must also stay green).
 #
@@ -59,11 +62,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: web/dark_editor/package-lock.json
 
-      - name: Install deps (npm ci)
-        run: npm ci
+      - name: Install deps (npm install)
+        # web/.gitignore excludes package-lock.json by design, so
+        # `npm ci` is not available. `npm install` is the
+        # cheaper-fail alternative.
+        run: npm install --no-audit --no-fund
 
       - name: Validate (tsc + vitest + next lint)
         # `npm run validate` runs:
@@ -87,11 +91,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: web/package-lock.json
 
-      - name: Install deps (npm ci)
-        run: npm ci
+      - name: Install deps (npm install)
+        # web/.gitignore excludes package-lock.json by design, so
+        # `npm ci` is not available. `npm install` is the
+        # cheaper-fail alternative.
+        run: npm install --no-audit --no-fund
 
       - name: Run tests
         run: npm test
