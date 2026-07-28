@@ -37,66 +37,33 @@
  *     same-browser only; cross-tab within the same InstaEdit domain.
  */
 
-const BFF_BASE = ''; // same-origin; production deployments should host the editor under the BFF domain
-
-/** Read a cookie by name. */
-function getCookie(name: string): string {
-  if (typeof document === 'undefined') return '';
-  const prefix = name + '=';
-  const entries = document.cookie.split(';');
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length));
-    }
-  }
-  return '';
-}
-
-/** CSRF-aware JSON fetch. */
-async function bffFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const method = (options.method ?? 'GET').toUpperCase();
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...(options.headers as Record<string, string> || {}),
-  };
-
-  if (method !== 'GET' && method !== 'HEAD') {
-    const csrf = getCookie('csrf_token');
-    if (csrf) headers['X-CSRF-Token'] = csrf;
-    if (!headers['Content-Type'] && options.body) {
-      headers['Content-Type'] = 'application/json';
-    }
-  }
-
-  const url = `${BFF_BASE}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-  const response = await fetch(url, {
-    ...options,
-    method,
-    headers,
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    let message: string | undefined;
-    try {
-      const body = (await response.json()) as { error?: string; reason?: string };
-      if (body?.error && typeof body.error === 'string') message = body.error;
-      else if (body?.reason && typeof body.reason === 'string') message = body.reason;
-    } catch {
-      // ignore
-    }
-    throw new Error(message ?? response.statusText ?? `HTTP ${response.status}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return response.json() as Promise<T>;
-}
+// bffFetch CSRF-aware JSON fetch + BFF_BASE + getCookie + bffPost +
+// sha256Hex + POLL_INTERVAL_MS + POLL_MAX_ATTEMPTS live in
+// lib/api/bff/types.ts. We import the runtime helpers below so the
+// surviving domain functions (getMe, listSocialDestinations,
+// createVeloxProject, createVeloxJob, uploadMediaAsset,
+// updateEditorSessionThumbnail, publishEditorSession,
+// getEditorSessionByProject, pollEditorSessionUntilConfirmed,
+// publishBroadcast, saveEditorSessionDraft) still reach them.
+// `export` statements near the bottom forward them to any
+// `@/lib/api/bff` caller so the public API surface is unchanged.
+import {
+  BFF_BASE,
+  bffFetch,
+  bffPost,
+  getCookie,
+  sha256Hex,
+  POLL_INTERVAL_MS,
+  POLL_MAX_ATTEMPTS,
+} from './bff/types';
+// Two of the bff/*.ts shared types are referenced from the domain
+// functions still living below (pollEditorSessionUntilConfirmed
+// returns PollResult; publishBroadcast takes Omit<PublishBroadcastPayload,
+// 'emitted_at'> and constructs a PublishBroadcastPayload in its body).
+// We import them via `import type` so the public compile-time
+// contract stays intact — same TS2304 hygiene lesson learned in
+// the api.ts refactor.
+import type { PollResult, PublishBroadcastPayload } from './bff/types';
 
 // ------------------------------------------------------------------
 // Auth
@@ -193,14 +160,6 @@ export function createVeloxJob(body: CreateVeloxJobRequest): Promise<VeloxJob> {
 // Media upload (used by the dark editor to store thumbnails in
 // InstaEdit before publishing them to YouTube)
 // ------------------------------------------------------------------
-
-async function sha256Hex(blob: Blob): Promise<string> {
-  const buffer = await blob.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
 
 export interface PresignMediaResponse {
   asset_id: string;
@@ -389,23 +348,6 @@ export async function getEditorSessionByProject(
 // ultimately left on the row.
 // ------------------------------------------------------------------
 
-const POLL_INTERVAL_MS = 5_000;
-const POLL_MAX_ATTEMPTS = 6; // 6 × 5s = 30s total cap.
-
-export type PollResultStatus = 'confirmed' | 'timeout';
-
-export interface PollResult {
-  /** Final status of the polling loop. */
-  status: PollResultStatus;
-  /** Number of attempts performed (1..POLL_MAX_ATTEMPTS). */
-  attempts: number;
-  /** The last observed EditorSessionDetail. May differ from the
-   *  initial optimistic POST response if the reconciler fired. */
-  detail: EditorSessionDetail;
-  /** Resolves with detail + 'confirmed' when the early-stop condition
-   *  hit; resolves with detail + 'timeout' after POLL_MAX_ATTEMPTS. */
-}
-
 export async function pollEditorSessionUntilConfirmed(
   veloxProjectId: string,
   options: {
@@ -457,22 +399,6 @@ export async function pollEditorSessionUntilConfirmed(
  * (the listener side declares the same constant).
  */
 export const PUBLISH_CHANNEL_NAME = 'instaedit-publish';
-
-export interface PublishBroadcastPayload {
-  /** 'published' after the publish orchestrator stamps. */
-  status: string;
-  /** YouTube-confirmed privacy at the moment of publish. */
-  actual_privacy: string;
-  /** Lifecycle marker (confirmed/drift/pending/failed). */
-  youtube_sync_status: string;
-  /** The editor session id this update applies to. The listener
-   *  uses this to locate the cache entry to mutate. */
-  youtube_video_id: string;
-  /** velox_project_id for cross-tab debugging. */
-  velox_project_id: string;
-  /** ISO-8601 stamp for the listener to ignore stale events. */
-  emitted_at: string;
-}
 
 /**
  * publishBroadcast — fire a BroadcastChannel event so the main Vite
@@ -567,12 +493,17 @@ export async function saveEditorSessionDraft(
 }
 
 // ------------------------------------------------------------------
-// Helpers
+// Helpers (re-exports from lib/api/bff/types.ts for back-compat with
+// legacy `@/lib/api/bff` callers — the helpers themselves live next
+// to the wire-level type contract they ultimately serve).
 // ------------------------------------------------------------------
 
-function bffPost<T>(endpoint: string, body?: unknown): Promise<T> {
-  return bffFetch<T>(endpoint, {
-    method: 'POST',
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-}
+export {
+  BFF_BASE,
+  getCookie,
+  bffFetch,
+  bffPost,
+  sha256Hex,
+  POLL_INTERVAL_MS,
+  POLL_MAX_ATTEMPTS,
+};
