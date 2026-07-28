@@ -10,6 +10,7 @@ import { useEditorStore } from '@/stores/editorStore';
 import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorTemplates } from '@/hooks/useEditorTemplates';
+import { useSidebarState } from '@/hooks/useSidebarState';
 import { uploadImage } from '@/lib/api';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -43,15 +44,20 @@ const PRELOADED_ASSETS = [
 ];
 
 export default function EditorSidebar() {
-  const { selectedIds, addObject } = useEditorStore();
+  const { addObject } = useEditorStore();
   const objects = useObjectsArray();
   const { addToast, setUploading } = useUIStore();
 
-  const [sidebarTab, setSidebarTab] = useState<'design' | 'templates' | 'assets'>('design');
   const [customAssets, setCustomAssets] = useState<CustomAsset[]>([]);
-  const [sidebarPinned, setSidebarPinned] = useState(false);
-  const sidebarTimerRef = useRef<NodeJS.Timeout | null>(null);
   const customAssetInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    sidebarTab,
+    setSidebarTab,
+    sidebarPinned,
+    handleSidebarEnter,
+    handleSidebarLeave,
+  } = useSidebarState();
 
   const {
     templates,
@@ -72,33 +78,6 @@ export default function EditorSidebar() {
       console.error(e);
     }
   }, []);
-
-  // Auto-open sidebar when an object is selected, close after 4s idle.
-  useEffect(() => {
-    if (selectedIds.length > 0) {
-      setSidebarPinned(true);
-      if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current);
-      sidebarTimerRef.current = setTimeout(() => setSidebarPinned(false), 4000);
-    } else {
-      setSidebarPinned(false);
-      if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current);
-    }
-    return () => {
-      if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current);
-    };
-  }, [selectedIds]);
-
-  const handleSidebarEnter = () => {
-    if (sidebarTimerRef.current) clearTimeout(sidebarTimerRef.current);
-  };
-
-  const handleSidebarLeave = () => {
-    if (selectedIds.length > 0) {
-      sidebarTimerRef.current = setTimeout(() => setSidebarPinned(false), 4000);
-    } else {
-      setSidebarPinned(false);
-    }
-  };
 
   const handleAssetUpload = async (file: File) => {
     try {
