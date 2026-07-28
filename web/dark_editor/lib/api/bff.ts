@@ -41,11 +41,12 @@
 // sha256Hex live in lib/api/bff/types.ts (POLL_INTERVAL_MS +
 // POLL_MAX_ATTEMPTS also live there but are consumed inside
 // lib/api/bff/youtube.ts, not below). We import the runtime helpers
-// so the surviving domain functions (getMe, listSocialDestinations,
-// createVeloxProject, createVeloxJob, uploadMediaAsset,
-// updateEditorSessionThumbnail, publishBroadcast) still reach them.
-// `export` statements near the bottom forward them to any
-// `@/lib/api/bff` caller so the public API surface is unchanged.
+// so the surviving inline domain functions (listSocialDestinations,
+// uploadMediaAsset, updateEditorSessionThumbnail) still reach them.
+// (getMe, createVeloxProject, createVeloxJob, publishBroadcast moved
+// to bff/auth.ts + bff/projects.ts + bff/broadcast.ts respectively
+// — re-exported below for back-compat with legacy `@/lib/api/bff`
+// callers.)
 import {
   BFF_BASE,
   bffFetch,
@@ -53,13 +54,6 @@ import {
   getCookie,
   sha256Hex,
 } from './bff/types';
-// One bff/*.ts shared type is still referenced from the domain
-// function living below (publishBroadcast takes
-// Omit<PublishBroadcastPayload, 'emitted_at'> and constructs a
-// PublishBroadcastPayload in its body). We import it via
-// `import type` so the compile-time contract stays intact — same
-// TS2304 hygiene lesson learned in the api.ts refactor.
-import type { PublishBroadcastPayload } from './bff/types';
 
 // ------------------------------------------------------------------
 // Auth section lives in lib/api/bff/auth.ts (commit 2). The legacy
@@ -156,50 +150,11 @@ export async function updateEditorSessionThumbnail(
 }
 
 // ------------------------------------------------------------------
-// Cross-SPA BroadcastChannel — publish-success instant card update
+// Cross-SPA BroadcastChannel — publish-success instant card update.
+// Lives in lib/api/bff/broadcast.ts (commit 7 of the api-bff
+// refactor series; the FINAL structural commit). Re-exported below
+// for back-compat with legacy `@/lib/api/bff` callers.
 // ------------------------------------------------------------------
-
-/**
- * PUBLISH_CHANNEL_NAME — the BroadcastChannel name both the dark
- * editor (publisher) and the main Vite app (listener) MUST use.
- *
- * IMPORTANT: keep the name stable — a rename breaks the cross-SPA
- * contract. Documented in web/src/lib/broadcast/publishChannel.ts
- * (the listener side declares the same constant).
- */
-export const PUBLISH_CHANNEL_NAME = 'instaedit-publish';
-
-/**
- * publishBroadcast — fire a BroadcastChannel event so the main Vite
- * app's Groups card can apply the optimistic update synchronously
- * without polling.
- *
- * Defensive in headless/test environments: if BroadcastChannel is
- * undefined (Node, Vitest, JSDOM without polyfill), this is a no-op.
- * The POST response payload is the authoritative source of truth —
- * the broadcast is purely an optimization for the cross-tab UX.
- */
-export function publishBroadcast(payload: Omit<PublishBroadcastPayload, 'emitted_at'>): void {
-  if (typeof BroadcastChannel === 'undefined') {
-    return;
-  }
-  try {
-    const channel = new BroadcastChannel(PUBLISH_CHANNEL_NAME);
-    const full: PublishBroadcastPayload = {
-      ...payload,
-      emitted_at: new Date().toISOString(),
-    };
-    channel.postMessage(full);
-    // Immediately close — keep the channel pool clean across many
-    // publishes. The browser costs ~zero resources for a no-listener
-    // channel; the close is purely hygiene.
-    channel.close();
-  } catch {
-    // Defensive: BroadcastChannel can throw on some browsers when
-    // permissions for cross-origin frames are missing. The main
-    // SPA still has its 10s polling fallback.
-  }
-}
 
 // ------------------------------------------------------------------
 // Helpers (re-exports from lib/api/bff/types.ts for back-compat with
@@ -250,3 +205,9 @@ export {
   createVeloxProject,
   createVeloxJob,
 } from './bff/projects';
+
+export {
+  PUBLISH_CHANNEL_NAME,
+  publishBroadcast,
+  type PublishBroadcastPayload,
+} from './bff/broadcast';

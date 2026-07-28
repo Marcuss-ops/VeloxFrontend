@@ -188,26 +188,10 @@ export interface PollResult {
 }
 
 // ------------------------------------------------------------------
-// BroadcastChannel cross-SPA event payload (listener in
-// web/src/app/views/GroupsView reads from this constant's channel
-// name = `instaedit-publish`).
+// Cross-SPA BroadcastChannel payload lives in lib/api/bff/broadcast.ts
+// (PUBLISH_CHANNEL_NAME + PublishBroadcastPayload + publishBroadcast
+// — extracted in commit 7 of the api-bff refactor series).
 // ------------------------------------------------------------------
-
-export interface PublishBroadcastPayload {
-  /** 'published' after the publish orchestrator stamps. */
-  status: string;
-  /** YouTube-confirmed privacy at the moment of publish. */
-  actual_privacy: string;
-  /** Lifecycle marker (confirmed/drift/pending/failed). */
-  youtube_sync_status: string;
-  /** The editor session id this update applies to. The listener
-   *  uses this to locate the cache entry to mutate. */
-  youtube_video_id: string;
-  /** velox_project_id for cross-tab debugging. */
-  velox_project_id: string;
-  /** ISO-8601 stamp for the listener to ignore stale events. */
-  emitted_at: string;
-}
 
 // ------------------------------------------------------------------
 // Shared HTTP infrastructure (BFF base + CSRF-aware fetch)
