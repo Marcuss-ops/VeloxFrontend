@@ -764,7 +764,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
             setFormat={setFormat}
             quality={quality}
             setQuality={setQuality}
-            excludeFormats={['webp']}
           />
 
           {/* Thumbnail preview / download (optional, mirrors the

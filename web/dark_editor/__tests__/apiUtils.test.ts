@@ -25,10 +25,10 @@ describe('extractFilenameFromPath', () => {
 
 describe('URL helpers', () => {
   it('getTempFileUrl builds the temp URL', () => {
-    expect(getTempFileUrl('file.png')).toBe('/dark_editor_v2/temp/file.png');
+    expect(getTempFileUrl('file.png')).toBe('/api/v1/editor/temp/file.png');
   });
 
   it('getProjectFileUrl builds the project file URL', () => {
-    expect(getProjectFileUrl('p1', 'file.png')).toBe('/dark_editor_v2/projects/p1/file.png');
+    expect(getProjectFileUrl('p1', 'file.png')).toBe('/api/v1/editor/projects/p1/file.png');
   });
 });

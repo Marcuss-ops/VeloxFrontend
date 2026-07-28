@@ -27,16 +27,20 @@ export function getCanvasElement(): HTMLCanvasElement | null {
 const YOUTUBE_THUMBNAIL_WIDTH = 1280;
 const YOUTUBE_THUMBNAIL_HEIGHT = 720;
 
+/** Convert any legacy/accidental WebP request to JPEG so the produced
+ *  blob is always publishable on YouTube. */
+function canonicalFormat(format: string): string {
+  return format === 'webp' ? 'jpeg' : format;
+}
+
 function normalizeFormat(format: string): { mime: string; valid: boolean } {
-  switch (format) {
+  switch (canonicalFormat(format)) {
     case 'jpeg':
       return { mime: 'image/jpeg', valid: true };
     case 'png':
       return { mime: 'image/png', valid: true };
-    case 'webp':
-      return { mime: 'image/webp', valid: false };
     default:
-      return { mime: 'image/png', valid: true };
+      return { mime: 'image/png', valid: false };
   }
 }
 
@@ -153,8 +157,11 @@ export function exportCanvasToBlob(
   canvasWidth?: number,
   canvasHeight?: number
 ): Promise<ExportedBlob | null> {
+  // WebP is not accepted by YouTube; transparently produce JPEG instead.
+  const outputFormat = canonicalFormat(format);
+
   if (stage && canvasWidth != null && canvasHeight != null) {
-    return exportStageToBlob(stage, canvasWidth, canvasHeight, format, quality);
+    return exportStageToBlob(stage, canvasWidth, canvasHeight, outputFormat, quality);
   }
 
   // Legacy fallback — kept only for callers that still lack a stage ref.
@@ -163,7 +170,7 @@ export function exportCanvasToBlob(
     return Promise.resolve(null);
   }
 
-  const { mime, valid } = normalizeFormat(format);
+  const { mime, valid } = normalizeFormat(outputFormat);
   if (!valid) {
     return Promise.reject(new Error(`Unsupported thumbnail format: ${format}`));
   }

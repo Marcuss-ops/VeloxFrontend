@@ -179,4 +179,39 @@ describe('canvasExport', () => {
     expect(result?.blob).toBeInstanceOf(Blob);
     expect(result?.mime).toBe('image/png');
   });
+
+  it('converts webp format to jpeg before exporting', async () => {
+    const stage = createMockStage();
+    (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
+
+    const result = await exportCanvasToBlob('webp', 90, stage, 1920, 1080);
+
+    expect(stage.toDataURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mimeType: 'image/jpeg',
+      })
+    );
+    expect(result).not.toBeNull();
+    expect(result?.mime).toBe('image/jpeg');
+  });
+
+  it('rejects unsupported formats when a stage is provided', async () => {
+    const stage = createMockStage();
+    (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
+
+    await expect(exportCanvasToBlob('gif', 90, stage, 1920, 1080)).rejects.toThrow(
+      'Unsupported thumbnail format: gif'
+    );
+  });
+
+  it('rejects unsupported formats in the legacy fallback', async () => {
+    const mockCanvas = { toBlob: vi.fn() } as unknown as HTMLCanvasElement;
+    vi.stubGlobal('document', {
+      querySelector: vi.fn().mockReturnValue(mockCanvas),
+    } as unknown as Document);
+
+    await expect(exportCanvasToBlob('gif', 90)).rejects.toThrow(
+      'Unsupported thumbnail format: gif'
+    );
+  });
 });
