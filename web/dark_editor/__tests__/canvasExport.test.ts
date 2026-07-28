@@ -242,6 +242,75 @@ describe('canvasExport', () => {
     );
   });
 
+  it('exportCanvasToBlob legacy fallback: webp is canonicalised to image/jpeg before canvas.toBlob (no 400 from /media/presign)', async () => {
+    // The publish panel UI (FormatQualitySection) only exposes PNG and JPEG, so this
+    // legacy fallback path is only hit when a still-stage-unaware caller passes
+    // format='webp' programmatically. The lib MUST still canonicalise webp -> jpeg
+    // BEFORE calling canvas.toBlob(mime=...) so that the produced Blob.type is
+    // image/jpeg -- otherwise POST /media/presign would return HTTP 400
+    // "Unsupported thumbnail format" and the upload pipeline would abort.
+    const mockCanvas: HTMLCanvasElement = {
+      toBlob: vi.fn((callback: BlobCallback, mime?: string, quality?: number) => {
+        callback(
+          new Blob(['jpeg-bytes'], { type: mime ?? 'image/jpeg' }) as unknown as globalThis.Blob,
+        );
+      }),
+    } as unknown as HTMLCanvasElement;
+    vi.stubGlobal('document', {
+      querySelector: vi.fn().mockReturnValue(mockCanvas),
+      createElement: vi.fn(),
+    } as unknown as Document);
+
+    const result = await exportCanvasToBlob('webp', 90);
+
+    // 1. The mime passed INTO canvas.toBlob is image/jpeg (webp canonicalised).
+    const toBlobCalls = (mockCanvas.toBlob as ReturnType<typeof vi.fn>).mock.calls;
+    expect(toBlobCalls.length, 'canvas.toBlob should be invoked exactly once').toBe(1);
+    expect(toBlobCalls[0][1], 'webp must be canonicalised to image/jpeg BEFORE canvas.toBlob').toBe('image/jpeg');
+    // 2. Quality is forwarded (jpeg isn't png so q applies).
+    expect(toBlobCalls[0][2], 'jpeg quality (0.9) must be forwarded to canvas.toBlob').toBe(0.9);
+
+    // 3. The returned ExportedBlob (what callers hand to the upload pipeline):
+    expect(result, 'legacy fallback with webp must succeed and NOT throw Unsupported thumbnail format').not.toBeNull();
+    expect(result!.mime, 'returned ExportedBlob.mime must be image/jpeg').toBe('image/jpeg');
+    // result.blob.type is the field /media/presign reads from the multipart
+    // Content-Type -- this is THE assertion that prevents the 400.
+    expect(result!.blob.type, 'returned Blob.type must be image/jpeg -- POST /media/presign rejects image/webp with 400').toBe('image/jpeg');
+  });
+
+  it('exportStageToBlob("webp", ...): imageToBlob(canvas.toBlob) receives image/jpeg (not image/webp) -- POST /media/presign stays 200', async () => {
+    // The earlier "converts webp format to jpeg before exporting" test covers the
+    // stage.toDataURL(opts.mimeType) and the ExportedBlob.mime field. This test
+    // uppercases the SAME invariant on the actual Blob instance: the mime passed
+    // into canvas.toBlob() AND the resulting Blob.type are both image/jpeg. These
+    // are the values the upload pipeline actually reads from when POSTing the
+    // multipart payload to /media/presign -- if either were image/webp the server
+    // would respond 400 ("Unsupported thumbnail format").
+    const stage = createMockStage();
+    (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
+
+    // createMockCanvas.toBlob is already a vi.fn -- capture the canvas it
+    // returns and read its .mock.calls after the export resolves. No
+    // wrapping/replacement needed.
+    const stageCanvas = createMockCanvas(1280, 720);
+    vi.stubGlobal('document', {
+      createElement: vi.fn(() => stageCanvas),
+      querySelector: vi.fn(),
+    } as unknown as Document);
+
+    const result = await exportStageToBlob(stage, 1920, 1080, 'webp', 90);
+
+    expect(result, 'exportStageToBlob(webp) must return a Blob -- no Unsupported thumbnail format thrown').not.toBeNull();
+    // Mime forwarded into imageToBlob() -> canvas.toBlob() (canonicalised).
+    const toBlobCalls = (stageCanvas.toBlob as ReturnType<typeof vi.fn>).mock.calls;
+    expect(toBlobCalls.length, 'imageToBlob must call canvas.toBlob exactly once').toBe(1);
+    expect(toBlobCalls[0][1], 'imageToBlob must call canvas.toBlob with image/jpeg -- otherwise POST /media/presign returns 400').toBe('image/jpeg');
+    // ExportedBlob.mime descriptor.
+    expect(result!.mime, 'ExportedBlob.mime must reflect the canonicalised JPEG mime').toBe('image/jpeg');
+    // Actual Blob.type that the upload pipeline reads from the multipart Content-Type.
+    expect(result!.blob.type, 'Blob.type must be image/jpeg -- otherwise POST /media/presign returns 400').toBe('image/jpeg');
+  });
+
   it('produces a 1280x720 thumbnail canvas regardless of input logical size', async () => {
     const stage = createMockStage();
     (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
