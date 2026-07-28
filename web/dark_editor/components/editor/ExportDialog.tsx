@@ -31,6 +31,7 @@ import FormatQualitySection from './export/FormatQualitySection';
 import CanvasInfoSection from './export/CanvasInfoSection';
 import ExportFooter from './export/ExportFooter';
 import { useExportFormatQuality } from './export/useExportFormatQuality';
+import { SUGGESTED_LANGS, pickNextSuggestedLang } from './export/SuggestedLangs';
 import {
   uploadMediaAsset,
   updateEditorSessionThumbnail,
@@ -68,7 +69,7 @@ const PRIVACY_OPTIONS: Array<{
   },
 ];
 
-const SUGGESTED_LANGS = ['it', 'en', 'es', 'fr', 'de', 'pt'];
+
 
 interface TranslationRow {
   lang: string;
@@ -231,15 +232,14 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     setForm((prev) => ({
       ...prev,
       translations: [
-        ...prev.translations,
-        // Pick the first unused suggestion as the default lang code
-        // so the operator lands on a sensible row instead of an empty
-        // textbox they have to type into. Falls back to "" if every
-        // suggestion is already used.
-        {
-          lang: SUGGESTED_LANGS.find(
-            (l) => !prev.translations.some((t) => t.lang === l),
-          ) ?? '',
+        ...prev.translations,{
+          // Pick the first unused suggestion as the default lang code
+          // so the operator lands on a sensible row instead of an empty
+          // textbox they have to type into. Falls back to "" if every
+          // suggestion is already used. Logic lives in SuggestedLangs.
+          lang: pickNextSuggestedLang(
+            prev.translations.map((t) => t.lang),
+          ),
           title: '',
           description: '',
         },
