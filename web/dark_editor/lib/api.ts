@@ -105,37 +105,16 @@ export {
 
 
 
-export async function listPresets(): Promise<Preset[]> {
-  return apiGet<Preset[]>('/api/presets');
-}
-
-export async function getPreset(id: string): Promise<Preset> {
-  return apiGet<Preset>(`/api/presets/${id}`);
-}
-
-export async function savePreset(preset: {
-  name: string;
-  type: 'complete' | 'text';
-  description?: string;
-  objects?: Record<string, unknown>[];
-  textObjects?: Record<string, unknown>[];
-}): Promise<{ id: string; message: string }> {
-  return apiPost<{ id: string; message: string }>('/api/presets', preset);
-}
-
-export async function updatePreset(id: string, preset: {
-  name?: string;
-  type?: 'complete' | 'text';
-  description?: string;
-  objects?: Record<string, unknown>[];
-  textObjects?: Record<string, unknown>[];
-}): Promise<Preset> {
-  return apiPut<Preset>(`/api/presets/${id}`, preset);
-}
-
-export async function deletePreset(id: string): Promise<{ success: boolean }> {
-  return apiDelete<{ success: boolean }>(`/api/presets/${id}`);
-}
+// Preset client lives in lib/api/presetClient.ts — re-exported
+// here for back-compat so existing call sites (`@/lib/api`) keep
+// working.
+export {
+  listPresets,
+  getPreset,
+  savePreset,
+  updatePreset,
+  deletePreset,
+} from './api/presetClient';
 
 
 
