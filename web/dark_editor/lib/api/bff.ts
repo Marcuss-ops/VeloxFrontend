@@ -47,7 +47,6 @@
 import {
   BFF_BASE,
   bffFetch,
-  bffPost,
   getCookie,
   sha256Hex,
 } from './bff/types';
@@ -101,7 +100,7 @@ export {
   bffFetch,
   bffPost,
   sha256Hex,
-};
+} from './bff/types';
 
 // ------------------------------------------------------------------
 // Back-compat forwarders \u2014 commit-N re-exports of the per-domain
