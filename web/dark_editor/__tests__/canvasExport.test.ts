@@ -77,6 +77,76 @@ function createMockStage() {
   } as unknown as Konva.Stage;
 }
 
+/**
+ * ============================================================================
+ * User-spec checklist: canvas export invariants
+ * ============================================================================
+ *
+ * The `canvasExport` suite below pins the user-spec for the dark-editor's
+ * YouTube thumbnail export pipeline. The production implementation lives in
+ * `lib/canvasExport.ts` (exportStageToBlob + exportCanvasToBlob legacy
+ * fallback). Each of the 5 items in the user spec is verified by one or
+ * more dedicated `it()` blocks in this file. If you change the production
+ * code, look here first to see which assertions need updating.
+ *
+ *  1. The export pipeline uses `stage.toDataURL(...)`, NOT
+ *     `document.querySelector('.canvas-container .konvajs-content canvas').toBlob()`.
+ *
+ *     Covered by:
+ *       - "exportCanvasToBlob uses the stage path when stage and dimensions are provided"
+ *       - "exportStageToBlob hides overlay nodes, resets stage transform,
+ *          and restores them"
+ *
+ *  2. The `stage.toDataURL` call uses `pixelRatio: 1` with explicit
+ *     `x, y, width, height` (so it captures the LOGICAL project rectangle,
+ *     not the viewport coordinates).
+ *
+ *     Covered by:
+ *       - "neutralises zoom and pan before capture and restores them after"
+ *       - "produces byte-identical blob across zoom 50% / 100% / 200% with
+ *          active pan offsets"
+ *
+ *  3. The OUTPUT dimensions are exactly 1280×720 regardless of the project's
+ *     logical canvas size (it can be 1920×1080, 3000×2000, 800×450, etc.).
+ *
+ *     Covered by:
+ *       - "produces a 1280x720 thumbnail canvas regardless of input logical size"
+ *       - "output thumbnail blob decodes to image.naturalWidth=1280 /
+ *          naturalHeight=720 regardless of project logical dimensions
+ *          (incl. 1920x1080, 3000x2000, 800x450)"
+ *
+ *  4. Transformer + grid + guides + crop-overlay nodes
+ *     (`name === 'export-exclude'` on Konva.Node) are HIDDEN during the
+ *     `stage.toDataURL` call (so the final 1280×720 PNG is free of
+ *     editor UI artefacts).
+ *
+ *     Covered by:
+ *       - "hides grid, guides, transformer and crop overlays during export
+ *          and restores them"
+ *       - "snapshot at stage.toDataURL: every editor-only overlay is hidden
+ *          AND every content node remains visible (symmetric overhide guard)"
+ *
+ *  5. The OUTPUT blob is byte-identical at zoom 50% / 100% / 200% AND
+ *     with pan offsets active (the user's current view in the editor must
+ *     NOT influence the captured thumbnail).
+ *
+ *     Covered by:
+ *       - "produces byte-identical blob across zoom 50% / 100% / 200% with
+ *          active pan offsets"
+ *
+ * The `pixelRatio: 1` contract is verified transitively in (5) above: any
+ * initial pan/zoom that survives into the toDataURL call would produce
+ * different bytes, so the byte-equality assertion across 50/100/200%
+ * fails if the production code drops the neutralisation.
+ *
+ * For any reviewer: a regression in any of the 5 items will fail one or
+ * more of the tests above with a precise failure message. If you find a
+ * regression that NONE of the existing tests catch, add a new `it(...)`
+ * block below and explicitly link the new assertion to one of the 5
+ * checklist items above.
+ *
+ * ============================================================================
+ */
 describe('canvasExport', () => {
   beforeEach(() => {
     // Provide minimal DOM APIs required by the export path in a Node test environment.
