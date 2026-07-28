@@ -4,115 +4,19 @@
 // origin so the InstaEdit session cookie + CSRF double-submit are
 // preserved.
 
-const API_BASE = '/api/v1/editor';
-const FOLDERS_API_BASE = `${API_BASE}/api/folders`;
-
-function buildUrl(path: string): string {
-  if (path.startsWith('http')) return path;
-  return path.startsWith(API_BASE) ? path : `${API_BASE}${path}`;
-}
-
-/** Read a cookie by name. */
-function getCookie(name: string): string {
-  if (typeof document === 'undefined') return '';
-  const prefix = name + '=';
-  const entries = document.cookie.split(';');
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length));
-    }
-  }
-  return '';
-}
-
-async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const method = (options.method ?? 'GET').toUpperCase();
-  const csrfHeaders: Record<string, string> = {};
-  if (method !== 'GET' && method !== 'HEAD') {
-    const csrf = getCookie('csrf_token');
-    if (csrf) csrfHeaders['X-CSRF-Token'] = csrf;
-  }
-
-  const response = await fetch(buildUrl(path), {
-    ...options,
-    method,
-    headers: {
-      ...csrfHeaders,
-      ...options.headers,
-    },
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    let message = 'Request failed';
-    try {
-      const data = await response.json();
-      message = data.error || message;
-    } catch {
-      message = response.statusText || message;
-    }
-    throw new Error(message);
-  }
-
-  return response.json();
-}
-
-async function apiGet<T>(path: string, options?: RequestInit): Promise<T> {
-  return apiRequest<T>(path, { ...options, method: 'GET' });
-}
-
-async function apiPost<T>(path: string, body?: unknown, options?: RequestInit): Promise<T> {
-  return apiRequest<T>(path, {
-    ...options,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
-
-async function apiPut<T>(path: string, body?: unknown, options?: RequestInit): Promise<T> {
-  return apiRequest<T>(path, {
-    ...options,
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
-
-async function apiDelete<T>(path: string, options?: RequestInit): Promise<T> {
-  return apiRequest<T>(path, { ...options, method: 'DELETE' });
-}
-
-async function apiUpload<T>(path: string, formData: FormData, options?: RequestInit): Promise<T> {
-  return apiRequest<T>(path, { ...options, method: 'POST', body: formData });
-}
-
-// Request Manager to handle AbortControllers for concurrent requests
-class RequestManager {
-  private controllers = new Map<string, AbortController>();
-
-  getSignal(key: string): AbortSignal {
-    if (this.controllers.has(key)) {
-      this.controllers.get(key)!.abort();
-    }
-    const controller = new AbortController();
-    this.controllers.set(key, controller);
-    return controller.signal;
-  }
-
-  clear(key: string) {
-    this.controllers.delete(key);
-  }
-}
-
-const requestManager = new RequestManager();
+// HTTP infra lives in lib/api/httpClient.ts. We import the bits the
+// remaining client wrappers below still need (apiGet/Post/Put/
+// Delete/Upload + the requestManager singleton + the two base URLs).
+import {
+  API_BASE,
+  FOLDERS_API_BASE,
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  apiUpload,
+  requestManager,
+} from './api/httpClient';
 
 // Types live in lib/api/types.ts. We import them so the function
 // signatures below can reference them locally, then re-export them
