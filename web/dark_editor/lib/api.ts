@@ -114,99 +114,58 @@ class RequestManager {
 
 const requestManager = new RequestManager();
 
-export interface UploadResponse {
-  filename: string;
-  url: string;
-}
+// Types live in lib/api/types.ts. We import them so the function
+// signatures below can reference them locally, then re-export them
+// unchanged for back-compat with the 19 existing call sites that
+// import them via '@/lib/api'. (Following the refactor plan, new
+// code should import these directly from '@/lib/api/types'.)
+import type {
+  UploadResponse,
+  FilterRequest,
+  FilterResponse,
+  TransformRequest,
+  ExportRequest,
+  GenerateRequest,
+  GenerateResponse,
+  UpscaleRequest,
+  UpscaleResponse,
+  RemoveBgRequest,
+  RemoveBgResponse,
+  RemoveBgStatusResponse,
+  Project,
+  Preset,
+  ProjectFolder,
+  DriveGroup,
+  DriveFile,
+  DriveLink,
+} from './api/types';
 
-export interface FilterRequest {
-  filename: string;
-  filter_type: string;
-  value: number;
-}
-
-export interface FilterResponse {
-  filename: string;
-  url: string;
-}
+export type {
+  UploadResponse,
+  FilterRequest,
+  FilterResponse,
+  TransformRequest,
+  ExportRequest,
+  GenerateRequest,
+  GenerateResponse,
+  UpscaleRequest,
+  UpscaleResponse,
+  RemoveBgRequest,
+  RemoveBgResponse,
+  RemoveBgStatusResponse,
+  Project,
+  Preset,
+  ProjectFolder,
+  DriveGroup,
+  DriveFile,
+  DriveLink,
+};
 
 export function extractFilenameFromPath(pathOrUrl: string): string {
   const withoutHash = pathOrUrl.split('#')[0] ?? '';
   const withoutQuery = withoutHash.split('?')[0] ?? '';
   const parts = withoutQuery.split('/').filter(Boolean);
   return parts[parts.length - 1] ?? '';
-}
-
-export interface TransformRequest {
-  filename: string;
-  crop_box?: [number, number, number, number];
-  resize_dims?: [number, number];
-}
-
-export interface ExportRequest {
-  filename: string;
-  format: string;
-  quality: number;
-}
-
-export interface GenerateRequest {
-  prompt: string;
-  width?: number;
-  height?: number;
-  seed?: number;
-  steps?: number;
-}
-
-export interface GenerateResponse {
-  filename: string;
-  url: string;
-  prompt: string;
-}
-
-export interface UpscaleRequest {
-  filename: string;
-  scale?: number;
-  save_in_place?: boolean;
-}
-
-export interface UpscaleResponse {
-  filename: string;
-  url: string;
-  saved_at?: string;
-}
-
-export interface RemoveBgRequest {
-  filename: string;
-  model?: string;
-  output_format?: string;
-  async?: boolean;
-}
-
-export interface RemoveBgResponse {
-  filename?: string;
-  url?: string;
-  processing?: boolean;
-  task_id?: string;
-  error?: string;
-}
-
-export interface RemoveBgStatusResponse {
-  task_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  filename?: string;
-  url?: string;
-  error?: string;
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  type: string;
-  canvas_json: Record<string, unknown>;
-  preview_url: string;
-  created_at: string;
-  updated_at: string;
-  folder_id?: string | null;
 }
 
 export async function uploadImage(file: File): Promise<UploadResponse> {
@@ -279,17 +238,7 @@ export function getProjectFileUrl(projectId: string, filename: string): string {
   return `${API_BASE}/projects/${projectId}/${filename}`;
 }
 
-export interface Preset {
-  id: string;
-  name: string;
-  type: 'complete' | 'text';
-  description?: string;
-  objects?: Record<string, unknown>[];
-  textObjects?: Record<string, unknown>[];
-  previewUrl?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+
 
 export async function listPresets(): Promise<Preset[]> {
   return apiGet<Preset[]>('/api/presets');
@@ -323,12 +272,7 @@ export async function deletePreset(id: string): Promise<{ success: boolean }> {
   return apiDelete<{ success: boolean }>(`/api/presets/${id}`);
 }
 
-export interface ProjectFolder {
-  id: string;
-  name: string;
-  parent_id: string | null;
-  created_at?: string;
-}
+
 
 export async function listFolders(): Promise<ProjectFolder[]> {
   return apiGet<ProjectFolder[]>(FOLDERS_API_BASE, { cache: 'no-store' });
@@ -356,26 +300,7 @@ export async function assignProjectToFolder(projectId: string, folderId: string 
   return apiPut<{ success: boolean }>(`/api/projects/${projectId}/folder`, { folder_id: folderId });
 }
 
-export interface DriveGroup {
-  name: string;
-  folder_id?: string;
-  channels?: Array<{
-    id?: string;
-    channel?: string;
-    url?: string;
-    title?: string;
-    thumbnail?: string;
-  }>;
-}
 
-export interface DriveFile {
-  id: string;
-  name: string;
-  mimeType: string;
-  thumbnailLink?: string;
-  webViewLink?: string;
-  size?: number;
-}
 
 export async function getDriveGroups(): Promise<DriveGroup[]> {
   const data = await apiGet<{ groups: DriveGroup[] }>('/api/drive/groups');
@@ -405,15 +330,7 @@ export async function listDriveFolders(parentId?: string): Promise<Array<{ id: s
   return data.folders || [];
 }
 
-export interface DriveLink {
-  id: string;
-  name: string;
-  link: string;
-  parentId?: string;
-  language?: string;
-  createdAt?: number;
-  updatedAt?: number;
-}
+
 
 export async function getDriveLinks(): Promise<DriveLink[]> {
   const data = await apiGet<{ links: DriveLink[] }>('/api/drive/links');
