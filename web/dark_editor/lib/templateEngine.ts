@@ -1,4 +1,4 @@
-// lib/templateEngine.ts — Dark Editor\'s template-variable substitution engine.
+// lib/templateEngine.ts — Dark Editor's template-variable substitution engine.
 //
 // Originally the body of the `applyTemplate` + `batchApplyTemplate` actions
 // inside stores/templateStore.ts. They live here now so:
@@ -69,7 +69,7 @@ export interface Template {
 // ------------------------------------------------------------------
 
 /**
- * Deep-clone a template\'s objects and substitute `{{variableName}}` patterns
+ * Deep-clone a template's objects and substitute `{{variableName}}` patterns
  * in `text` and `fill` string fields with the values from `variables`.
  *
  * Pure function — no zustand closure, no side effects, headlessly reusable.
