@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCollaborationStore, User, Comment, Task } from '@/stores/collaborationStore';
 import { useEditorStore } from '@/stores/editorStore';
@@ -6,6 +8,7 @@ import { buildUsersById } from '@/lib/collaborationUsers';
 import { TaskCard } from './collab/TaskCard';
 import { getPriorityColor, getStatusColor } from './collab/colors';
 import { CommentSection } from './collab/CommentSection';
+import { UserPresence } from './collab/UserPresence';
 import { 
   Users, 
   MessageSquare, 
@@ -25,21 +28,18 @@ import {
 } from 'lucide-react';
 
 export default function CollaborationPanel() {
-  const { 
-    users, 
-    currentUser, 
-    comments, 
-    tasks, 
-    setCurrentUser, 
-    addUser, 
-    updateUser, 
-    addComment, 
-    addTask, 
-    updateTask, 
-    assignTask, 
-    getOnlineUsers, 
-    getTasksForUser, 
-    getTasksByStatus 
+  const {
+    users,
+    currentUser,
+    tasks,
+    setCurrentUser,
+    updateUser,
+    addTask,
+    updateTask,
+    assignTask,
+    getOnlineUsers,
+    getTasksForUser,
+    getTasksByStatus,
   } = useCollaborationStore();
   
   const { addToast } = useUIStore();
@@ -56,26 +56,6 @@ export default function CollaborationPanel() {
 
   const userTasks = currentUser ? getTasksForUser(currentUser.id) : [];
   const onlineUsers = getOnlineUsers();
-  
-  const handleAddUser = () => {
-    const name = prompt('Enter user name:');
-    const email = prompt('Enter user email:');
-    if (!name || !email) return;
-    
-    const color = `hsl(${Math.random() * 360}, 70%, 50%)`;
-    addUser({
-      id: Date.now().toString(),
-      name,
-      email,
-      color,
-      role: 'editor',
-    });
-    
-    addToast({
-      type: 'success',
-      message: `User ${name} added successfully`,
-    });
-  };
   
   const handleAddTask = () => {
     if (!taskTitle.trim() || !currentUser) return;
@@ -203,49 +183,7 @@ const getPriorityColor = (priority: string) => {
       
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {/* Users Tab */}
-        {activeTab === 'users' && (
-          <div className="space-y-3">
-            <div className="flex gap-2">
-              <button
-                onClick={handleAddUser}
-                className="flex-1 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-              >
-                <UserPlus className="w-4 h-4" />
-                Add User
-              </button>
-            </div>
-            
-            <div className="space-y-2">
-              <h4 className="text-xs font-medium text-slate-600 dark:text-slate-300">All Users</h4>
-              {users.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
-                      style={{ backgroundColor: user.color }}
-                    >
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">{user.name}</div>
-                      <div className="text-xs text-slate-500">{user.email}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      user.isOnline ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' :
-                      'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                    }`}>
-                      {user.isOnline ? 'Online' : 'Offline'}
-                    </span>
-                    <span className="text-xs text-slate-500">{user.role}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {activeTab === 'users' && <UserPresence />}
         
         {activeTab === 'comments' && <CommentSection />}
 
