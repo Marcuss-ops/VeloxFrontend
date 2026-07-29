@@ -5,14 +5,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Smartphone, Monitor, Eye, MoreVertical, Compass, Home, Clock } from 'lucide-react';
+import { mockCompetitors } from './FeedPreview/mockData';
+import { useEditorStore } from '@/stores/editorStore';
+import { exportStageToBlob } from '@/lib/canvasExport';
 
 
 interface FeedPreviewDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Konva stage ref from <Canvas canvasRef={...} /> — used to capture a
+   *  clean preview at the project logical dimensions, bypassing the
+   *  viewport canvas (which includes zoom/pan/overlay). Optional: when
+   *  omitted the dialog falls back to a loading state. */
+  canvasRef?: React.RefObject<any>;
 }
 
-export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialogProps) {
+export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPreviewDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
   const [videoTitle, setVideoTitle] = useState('AMISH STORIES: The Untold Truth of Secrets & Traditions');
@@ -20,53 +28,77 @@ export default function FeedPreviewDialog({ isOpen, onClose }: FeedPreviewDialog
   const [viewCount, setViewCount] = useState('143K views');
   const [publishTime, setPublishTime] = useState('3 hours ago');
 
-  useEffect(() => {
-    if (isOpen) {
-      // Capture the canvas image from DOM
-      const canvas = document.querySelector('.canvas-container .konvajs-content canvas') as HTMLCanvasElement | null;
-      if (canvas) {
-        try {
-          const url = canvas.toDataURL('image/png');
-          setPreviewUrl(url);
-        } catch (e) {
-          console.error('Failed to capture canvas for feed preview', e);
-        }
-      }
-    } else {
-      setPreviewUrl(null);
-    }
-  }, [isOpen]);
+  // Track the blob URL we hand to <img src=...> so we can revoke it on
+  // re-capture / close — otherwise we leak one URL per open.
+  const previewObjectUrlRef = useRef<string | null>(null);
 
-  // Mock competitor videos for desktop grid
-  const mockCompetitors = [
-    {
-      id: 1,
-      thumbnail: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=500&auto=format&fit=crop&q=60',
-      title: 'Why I Left the Amish Community - Inside Story',
-      channel: 'True Stories Documentaries',
-      views: '1.2M views',
-      time: '1 year ago',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60'
-    },
-    {
-      id: 2,
-      thumbnail: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=500&auto=format&fit=crop&q=60',
-      title: 'Surviving 24 Hours in a Remote Forest with Nothing',
-      channel: 'Wilderness Survival',
-      views: '654K views',
-      time: '2 weeks ago',
-      avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&auto=format&fit=crop&q=60'
-    },
-    {
-      id: 3,
-      thumbnail: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=500&auto=format&fit=crop&q=60',
-      title: 'The Silent Life: Inside a Modern Monastery',
-      channel: 'Spirit Quest',
-      views: '98K views',
-      time: '5 days ago',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=60'
+  useEffect(() => {
+    if (!isOpen) {
+      // Clean up any lingering blob URL when the dialog closes.
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+      setPreviewUrl(null);
+      return;
     }
-  ];
+    const stage = canvasRef?.current?.getStage?.();
+    if (!stage) {
+      setPreviewUrl(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { canvasWidth, canvasHeight } = useEditorStore.getState();
+        // Reuse the canonical export helper so the preview hides
+        // .export-exclude nodes (grid/guides/transformer handles/crop
+        // overlay), neutralises stage position/scale, and produces a
+        // clean 1280x720 PNG. Mirrors what publishToYouTube sends to
+        // YouTube, so the in-app simulation matches the real output.
+        const result = await exportStageToBlob(
+          stage,
+          canvasWidth,
+          canvasHeight,
+          'png',
+          100,
+        );
+        if (cancelled) return;
+        if (!result) {
+          setPreviewUrl(null);
+          return;
+        }
+        // Replace any previous blob URL before assigning the new one so
+        // we never accumulate more than one live blob at a time.
+        if (previewObjectUrlRef.current) {
+          URL.revokeObjectURL(previewObjectUrlRef.current);
+        }
+        const url = URL.createObjectURL(result.blob);
+        previewObjectUrlRef.current = url;
+        setPreviewUrl(url);
+      } catch (e) {
+        console.error('Failed to capture canvas for feed preview', e);
+        if (!cancelled) setPreviewUrl(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, canvasRef]);
+
+  // On unmount only (deps=[]), revoke any leftover blob URL so the
+  // page-navigation-away case doesn't leak a URL.createObjectURL
+  // allocation per session-open. The main effect's cleanup already
+  // handles the isOpen=true→false transition; the body of the main
+  // effect already revokes the previous URL before assigning a new one.
+  useEffect(() => {
+    return () => {
+      if (previewObjectUrlRef.current) {
+        URL.revokeObjectURL(previewObjectUrlRef.current);
+        previewObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useUIStore } from '@/stores/uiStore';
+import { useEditorStore } from '@/stores/editorStore';
 import { exportCanvasToBlob } from '@/lib/canvasExport';
 
 export interface UseExportOperationProps {
@@ -14,6 +15,8 @@ export interface UseExportOperationProps {
   onSubmitToVelox?: (blob: Blob, filename: string, externalDestinationId: string) => Promise<{ jobId: string }>;
   /** Callback invoked when the exported image should be published as a YouTube thumbnail. */
   onPublishThumbnail?: (blob: Blob, filename: string) => Promise<void>;
+  /** Canvas ref that exposes getStage() — used by the Konva Stage API export path. */
+  canvasRef?: React.RefObject<any>;
 }
 
 export interface UseExportOperationReturn {
@@ -22,6 +25,10 @@ export interface UseExportOperationReturn {
   exportedBlob: Blob | null;
   exportedFilename: string;
   handleExport: () => Promise<void>;
+  /** Direct export: renders the canvas and returns {blob, filename} without
+   *  touching React state. Use this when you need the blob synchronously
+   *  in the same async flow (e.g. publish) to avoid ref-mirror races. */
+  exportCanvas: () => Promise<{ blob: Blob; filename: string } | null>;
   triggerDownload: (blob: Blob, filename: string) => void;
   resetExportState: () => void;
 }
@@ -35,6 +42,7 @@ export function useExportOperation({
   externalDestinationId,
   onSubmitToVelox,
   onPublishThumbnail,
+  canvasRef,
 }: UseExportOperationProps): UseExportOperationReturn {
   const { addToast } = useUIStore();
 
@@ -62,24 +70,33 @@ export function useExportOperation({
     setExportedFilename('');
   }, []);
 
+  const exportCanvas = useCallback(async (): Promise<{ blob: Blob; filename: string } | null> => {
+    const stage = canvasRef?.current?.getStage?.();
+    const { canvasWidth, canvasHeight } = useEditorStore.getState();
+    const result = await exportCanvasToBlob(format, quality, stage, canvasWidth, canvasHeight);
+    if (!result) return null;
+    const extension = format === 'jpeg' ? 'jpg' : format;
+    const filename = `${projectName || 'image'}.${extension}`;
+    return { blob: result.blob, filename };
+  }, [canvasRef, format, quality, projectName]);
+
   const handleExport = useCallback(async () => {
     setIsProcessing(true);
     setExportComplete(false);
 
     try {
-      const result = await exportCanvasToBlob(format, quality);
-      if (!result) {
+      const exported = await exportCanvas();
+      if (!exported) {
         addToast({ type: 'error', message: 'Canvas not found' });
         return;
       }
 
-      const extension = format === 'jpeg' ? 'jpg' : format;
-      const filename = `${projectName || 'image'}.${extension}`;
-      setExportedBlob(result.blob);
+      const { blob, filename } = exported;
+      setExportedBlob(blob);
       setExportedFilename(filename);
 
       if (externalDestinationId && onSubmitToVelox) {
-        const { jobId } = await onSubmitToVelox(result.blob, filename, externalDestinationId);
+        const { jobId } = await onSubmitToVelox(blob, filename, externalDestinationId);
         addToast({
           type: 'success',
           message: `Queued as Velox artifact (job ${jobId})`,
@@ -89,20 +106,20 @@ export function useExportOperation({
       }
 
       if (onPublishThumbnail) {
-        await onPublishThumbnail(result.blob, filename);
+        await onPublishThumbnail(blob, filename);
         addToast({ type: 'success', message: 'Thumbnail saved to InstaEdit' });
         setExportComplete(true);
         return;
       }
 
       if (!uploadToDriveEnabled) {
-        triggerDownload(result.blob, filename);
+        triggerDownload(blob, filename);
         addToast({ type: 'success', message: 'Image exported successfully' });
         setExportComplete(true);
         return;
       }
 
-      const upload = await handleDriveUpload(result.blob, filename);
+      const upload = await handleDriveUpload(blob, filename);
       if (upload.success) {
         addToast({ type: 'success', message: 'Export and Drive upload complete' });
         setExportComplete(true);
@@ -115,15 +132,13 @@ export function useExportOperation({
     }
   }, [
     addToast,
-    format,
-    quality,
-    projectName,
-    uploadToDriveEnabled,
-    handleDriveUpload,
-    triggerDownload,
+    exportCanvas,
     externalDestinationId,
     onSubmitToVelox,
     onPublishThumbnail,
+    uploadToDriveEnabled,
+    handleDriveUpload,
+    triggerDownload,
   ]);
 
   return {
@@ -132,6 +147,7 @@ export function useExportOperation({
     exportedBlob,
     exportedFilename,
     handleExport,
+    exportCanvas,
     triggerDownload,
     resetExportState,
   };

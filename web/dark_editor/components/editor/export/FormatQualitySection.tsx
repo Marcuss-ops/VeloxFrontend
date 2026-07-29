@@ -13,7 +13,6 @@ import { Slider } from '@/components/ui/Slider';
 const FORMATS = [
   { value: 'png', label: 'PNG - Lossless', description: 'Best for graphics with transparency' },
   { value: 'jpeg', label: 'JPEG - Compressed', description: 'Best for photos, smaller file size' },
-  { value: 'webp', label: 'WebP - Modern', description: 'Best for web, good compression' },
 ];
 
 export interface FormatQualitySectionProps {

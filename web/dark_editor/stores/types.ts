@@ -1,6 +1,33 @@
-// Canonical type definitions for the dark_editor Zustand stores.
-// Kept here so that the per-slice modules can type their StateCreator against
-// the combined state without circular imports.
+// stores/types.ts — CanvasObject domain type. Extracted from
+// stores/editorStore.ts (commit 1/4 of the editor-store-slices refactor
+// series). Lives at the top of stores/ so the slice files can import
+// the type without a circular dependency through editorStore.ts (which
+// wraps the slice creators).
+
+// Template system types (used by stores/template/library.ts).
+// Originally co-located with the pre-refactor templateStore.ts;
+// extracted here so the template slice files stay acyclic.
+
+export interface TemplateVariable {
+  id: string;
+  name: string;
+  type: 'text' | 'color' | 'number';
+  defaultValue: string;
+  placeholder?: string;
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'text' | 'complete' | 'partial';
+  objects: CanvasObject[];
+  variables: TemplateVariable[];
+  createdAt: number;
+  updatedAt: number;
+  category?: string;
+  tags?: string[];
+}
 
 export type CanvasObject = {
   id: string;
@@ -37,14 +64,15 @@ export type CanvasObject = {
     saturation: number;
     blur: number;
   };
-  // Censorship & Translation
-  censoredText?: string;
-  useCensorship?: boolean;
-  // Focus/Defocus & Pixelation
-  blur?: number;
-  sharpen?: number;
-  pixelation?: number;
-  // Advanced Text Effects
+  // NEW: Censorship & Translation
+  censoredText?: string; // Censored version of text
+  useCensorship?: boolean; // Toggle censorship on/off
+  // NEW: Focus/Defocus & Pixelation
+  blur?: number; // Blur intensity (0 = no effect)
+  sharpen?: number; // Sharpen intensity (0 = no effect)
+  pixelation?: number; // Pixel size (0 = no effect)
+
+  // NEW: Advanced Text Effects
   textShadow?: {
     offsetX: number;
     offsetY: number;
@@ -65,7 +93,8 @@ export type CanvasObject = {
     radius: number;
     direction: 'up' | 'down';
   };
-  // Shape & Image Effects
+
+  // NEW: Shape & Image Effects
   dropShadow?: {
     offsetX: number;
     offsetY: number;
@@ -83,7 +112,7 @@ export type CanvasObject = {
     type: 'none' | 'noise' | 'grain' | 'paper' | 'metal';
     intensity: number;
   };
-  // Image Fills for Clipping Masks
+  // NEW: Image Fills for Clipping Masks
   imageFill?: {
     src: string;
     scale: number;
@@ -99,35 +128,5 @@ export type CanvasObject = {
   };
   cropPathPoints?: number[];
   feather?: number;
-  processing?: boolean;
+  processing?: boolean; // NEW: Processing state for AI actions
 };
-
-export interface TemplateVariable {
-  id: string;
-  name: string;
-  type: 'text' | 'color' | 'image' | 'number';
-  defaultValue: string | number;
-  placeholder?: string;
-}
-
-export interface TemplateCondition {
-  id: string;
-  variableId: string;
-  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
-  value: string | number;
-}
-
-export interface Template {
-  id: string;
-  name: string;
-  description?: string;
-  type: 'complete' | 'text' | 'dynamic';
-  objects: CanvasObject[];
-  variables?: TemplateVariable[];
-  conditions?: TemplateCondition[];
-  previewUrl?: string;
-  createdAt: number;
-  updatedAt: number;
-  category?: string;
-  tags?: string[];
-}

@@ -27,7 +27,8 @@ export function useProjectSave(canvasRef: React.RefObject<any>) {
 
       if (shouldUpdatePreview) {
         try {
-          const previewFile = await captureEditorCanvasPreviewFile();
+          const stage = canvasRef.current?.getStage?.();
+          const previewFile = await captureEditorCanvasPreviewFile(stage);
           if (previewFile) {
             const uploaded = await uploadImage(previewFile);
             previewFilename = uploaded.filename;

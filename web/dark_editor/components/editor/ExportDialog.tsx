@@ -521,8 +521,8 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
       // short-poll to track the eventual drift reconciler stamp.
       publishBroadcast({
         status: publishResult.status,
-        actual_privacy: publishResult.actual_privacy,
-        youtube_sync_status: publishResult.youtube_sync_status,
+        actual_privacy: publishResult.actual_privacy ?? '',
+        youtube_sync_status: publishResult.youtube_sync_status ?? '',
         youtube_video_id: publishResult.video_id,
         velox_project_id: projectId,
       });

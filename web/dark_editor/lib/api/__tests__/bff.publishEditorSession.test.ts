@@ -159,4 +159,21 @@ describe('publishEditorSession (extended payload)', () => {
         expect((sent.payload as Record<string, unknown>).youtube_video_id).toBe('yt_abc');
         expect((sent.payload as Record<string, unknown>).status).toBe('published');
     });
+
+    it('throws a contract error when the publish response is missing the status field', async () => {
+        (globalThis as unknown as { fetch: typeof fetch }).fetch = (async () => {
+            return new Response(
+                JSON.stringify({
+                    public_url: 'https://youtu.be/abc',
+                    video_id: 'yt_abc',
+                    privacy_status: 'public',
+                }),
+                { status: 200, headers: { 'content-type': 'application/json' } }
+            );
+        }) as unknown as typeof fetch;
+
+        await expect(
+            publishEditorSession('proj_123', { title: 'Ciao', privacy_status: 'public' })
+        ).rejects.toThrow('Contract error: publish response is missing the required status field');
+    });
 });

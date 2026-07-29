@@ -1,0 +1,145 @@
+# .github/workflows/integration-fast.yml — VeloxFrontend CI fast gate
+#
+# This is the PRODUCTION-DEPLOY-GATING workflow for VeloxFrontend. The
+# contract test (web/dark_editor/__tests__/publishResponseContract.test.ts)
+# is the load-bearing check: it locks the publish response shape against
+# the vendored OpenAPI schema at web/dark_editor/api/openapi.yaml, which
+# in turn mirrors InstaeditLogin/api/openapi.yaml. Run the same logical
+# gate on InstaeditLogin via integration-fast.yml there (mirror — both
+# repos gate deploys on `go test` / `npm run validate`).
+#
+# Coverage (this file):
+#   1. Dark Editor package `npm install` succeeds (the repo's
+#      `web/.gitignore` excludes `package-lock.json` by design, so
+#      `npm ci` is not available — `npm install` is the cheaper-fail
+#      alternative).
+#   2. `npm run validate` (= `tsc --noEmit && vitest run && next lint --dir lib`)
+#      is green. This includes the contract test:
+#        web/dark_editor/__tests__/publishResponseContract.test.ts
+#   3. Main SPA `web/` package: `npm install` + `npm run test` + `npm run build`
+#      (the contract test lives in the Dark Editor package, but the main
+#      SPA must also stay green).
+#
+# The contract test reads:
+#   - web/dark_editor/api/openapi.yaml (vendored copy of InstaeditLogin's
+#     OpenAPI; the test navigates to components.schemas.YouTubeEditorSessionPublishResponse)
+#   - web/dark_editor/lib/api/bff/youtube.ts (the TS interface)
+# Go counterpart: pkg/api/youtube_editor_sessions_contract_test.go in
+# InstaeditLogin (reads InstaeditLogin/api/openapi.yaml directly + reflects
+# on the publishYouTubeEditorSessionResponse DTO).
+
+name: integration-fast
+
+# Least-privilege: checkout + build + test don't need write or
+# deploy scopes. The default GITHUB_TOKEN has PR / deployment scopes
+# but we explicitly gate contents: read to make the intent obvious
+# to reviewers.
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel any in-flight run for the same ref when a new commit is
+# pushed — saves ~3 min of runner time per redundant push.
+concurrency:
+  group: integration-fast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dark-editor:
+    name: Dark Editor (contract test + vitest + tsc + lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/dark_editor
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check OpenAPI vendored copy is in sync with InstaeditLogin
+        # The contract test reads web/dark_editor/api/openapi.yaml
+        # (a vendored copy of InstaeditLogin/api/openapi.yaml). If
+        # someone modifies the canonical without re-running
+        # `make sync-openapi`, this step catches it before the
+        # contract test itself runs.
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_OPENAPI_URL: https://raw.githubusercontent.com/Marcuss-ops/InstaeditLogin/main/api/openapi.yaml
+        run: |
+          set -euo pipefail
+          VENDORED="web/dark_editor/api/openapi.yaml"
+          if [[ ! -f "$VENDORED" ]]; then
+            echo "ERROR: vendored copy missing: $VENDORED"
+            echo "Run \`make sync-openapi\` locally and re-push."
+            exit 1
+          fi
+          # Find the marker line (defined inline in
+          # scripts/sync-openapi-from-instaeditlogin.sh) and strip
+          # everything before + including it. The vendored header
+          # is intentionally NOT byte-identical with the canonical.
+          MARKER_LINE=$(grep -n 'END_VENDORED_HEADER' "$VENDORED" | head -1 | cut -d: -f1)
+          if [[ -z "$MARKER_LINE" ]]; then
+            echo "ERROR: vendored copy is missing the END_VENDORED_HEADER marker — re-run \`make sync-openapi\`"
+            exit 1
+          fi
+          tail -n +$((MARKER_LINE + 1)) "$VENDORED" > /tmp/vendored-body
+          if ! curl -fsSL "$GITHUB_OPENAPI_URL" -o /tmp/canonical; then
+            echo "ERROR: failed to fetch canonical $GITHUB_OPENAPI_URL"
+            exit 1
+          fi
+          if diff -q /tmp/vendored-body /tmp/canonical > /dev/null; then
+            echo "OpenAPI vendored copy matches canonical ($(wc -l < /tmp/canonical) lines)"
+          else
+            echo "ERROR: vendored OpenAPI is out of sync with canonical."
+            echo "Run \`make sync-openapi\` locally and re-push."
+            diff /tmp/vendored-body /tmp/canonical | head -50
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps (npm install)
+        # web/.gitignore excludes package-lock.json by design, so
+        # `npm ci` is not available. `npm install` is the
+        # cheaper-fail alternative.
+        run: npm install --no-audit --no-fund
+
+      - name: Validate (tsc + vitest + next lint)
+        # `npm run validate` runs:
+        #   tsc --noEmit && vitest run && next lint --dir lib
+        # which exercises the contract test along with the rest of
+        # the Dark Editor suite. If the vendored OpenAPI drifts from
+        # InstaeditLogin's canonical, OR the TS interface drops the
+        # `status` field that the SPA's BroadcastChannel listener
+        # depends on, this step fails.
+        run: npm run validate
+
+  web-spa:
+    name: Web SPA (vitest + tsc + vite build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps (npm install)
+        # web/.gitignore excludes package-lock.json by design, so
+        # `npm ci` is not available. `npm install` is the
+        # cheaper-fail alternative.
+        run: npm install --no-audit --no-fund
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build

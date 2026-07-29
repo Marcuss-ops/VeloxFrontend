@@ -71,7 +71,7 @@ describe('getEditorSessionByProject', () => {
         expect(result.youtube_sync_status).toBe('confirmed');
         expect(result.youtube_updated_at).toBe('2026-07-27T10:00:00Z');
         // Verify the URL pattern (path-only; query string is empty for this endpoint).
-        const calledUrl = fetchSpy.mock.calls[0][0] as string;
+        const calledUrl = (fetchSpy.mock.calls[0] as unknown[])[0] as string;
         expect(calledUrl).toContain('/api/v1/youtube/editor-sessions/by-project/proj_123');
         expect(calledUrl).not.toContain('?');
     });
@@ -94,7 +94,7 @@ describe('getEditorSessionByProject', () => {
         (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchSpy as unknown as typeof fetch;
 
         await getEditorSessionByProject('proj/with spaces');
-        const url = fetchSpy.mock.calls[0][0] as string;
+        const url = (fetchSpy.mock.calls[0] as unknown[])[0] as string;
         expect(url).toContain(encodeURIComponent('proj/with spaces'));
     });
 });
