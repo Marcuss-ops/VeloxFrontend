@@ -64,6 +64,7 @@ export interface AutoSaveDraftInput {
     default_audio_language: string;
     translations: Record<string, { title: string; description: string }>;
     desired_privacy: 'public' | 'unlisted' | 'private';
+    publish_at?: string | null;
   };
   /** When true, auto-save is paused (e.g. publish is currently in flight). */
   paused?: boolean;

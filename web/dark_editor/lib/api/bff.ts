@@ -539,6 +539,8 @@ export interface YouTubeEditorSessionDraftRequest {
   default_audio_language?: string;
   translations?: Record<string, YouTubeTranslation>;
   desired_privacy?: 'public' | 'unlisted' | 'private';
+  /** ISO-8601 UTC timestamp. Only sent when scheduling; null/absent = publish immediately. */
+  publish_at?: string | null;
 }
 
 export interface YouTubeEditorSessionDraftResponse {

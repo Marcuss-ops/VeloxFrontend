@@ -5,7 +5,7 @@ import { Group, Rect, Text, TextPath } from 'react-konva';
 import { censorText } from '@/lib/textCensorship';
 import { resolveFontFamily, useImageLoader } from './utils';
 
-export interface RenderTextLayerArgs {
+export interface TextLayerProps {
   obj: import('@/stores/editorStore').CanvasObject;
   commonProps: any;
   shadowProps: any;
@@ -35,13 +35,13 @@ export interface RenderTextLayerArgs {
  * `#ffffff` for plain text fills). The marker renderer uses a
  * different default (`#3b82f6`) \u2014 see marker.tsx.
  */
-export function renderTextLayer({
+export function TextLayer({
   obj,
   commonProps,
   shadowProps,
   editingId,
   handleTextDblClick,
-}: RenderTextLayerArgs) {
+}: TextLayerProps) {
   const rawText = obj.text || '';
   const maybeCensored = obj.useCensorship ? censorText(rawText) : rawText;
   const displayText = obj.allCaps ? maybeCensored.toUpperCase() : maybeCensored;

@@ -1,8 +1,8 @@
 'use client';
 
 import { renderMediaLayer } from './renderers/media';
-import { renderTextLayer } from './renderers/text';
-import { renderMarkerLayer } from './renderers/marker';
+import { TextLayer } from './renderers/text';
+import { MarkerLayer } from './renderers/marker';
 import type { CanvasObject } from '@/stores/editorStore';
 
 export interface ObjectRendererProps {
@@ -54,16 +54,20 @@ export function ObjectRenderer({
     case 'image':
       return renderMediaLayer({ obj, commonProps, shadowProps });
     case 'text':
-      return renderTextLayer({
-        obj,
-        commonProps,
-        shadowProps,
-        editingId,
-        handleTextDblClick,
-      });
+      return (
+        <TextLayer
+          obj={obj}
+          commonProps={commonProps}
+          shadowProps={shadowProps}
+          editingId={editingId}
+          handleTextDblClick={handleTextDblClick}
+        />
+      );
     case 'rect':
     case 'circle':
-      return renderMarkerLayer({ obj, commonProps, shadowProps });
+      return (
+        <MarkerLayer obj={obj} commonProps={commonProps} shadowProps={shadowProps} />
+      );
     default:
       return null;
   }

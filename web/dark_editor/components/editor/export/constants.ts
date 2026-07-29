@@ -22,6 +22,8 @@ export interface FormState {
   defaultAudioLanguage: string;
   translations: TranslationRow[];
   privacyStatus: PrivacyStatus;
+  /** Local datetime string (datetime-local input value). Empty = publish immediately. */
+  publishAt: string;
 }
 
 export const EMPTY_FORM: FormState = {
@@ -32,6 +34,7 @@ export const EMPTY_FORM: FormState = {
   defaultAudioLanguage: '',
   translations: [],
   privacyStatus: 'public',
+  publishAt: '',
 };
 
 /**

@@ -4,7 +4,7 @@ import React from 'react';
 import { Circle, Rect } from 'react-konva';
 import { useImageLoader } from './utils';
 
-export interface RenderMarkerLayerArgs {
+export interface MarkerLayerProps {
   obj: import('@/stores/editorStore').CanvasObject;
   commonProps: any;
   shadowProps: any;
@@ -28,11 +28,11 @@ export interface RenderMarkerLayerArgs {
  * case. The text renderer uses a different default (white)
  * \u2014 see text.tsx.
  */
-export function renderMarkerLayer({
+export function MarkerLayer({
   obj,
   commonProps,
   shadowProps,
-}: RenderMarkerLayerArgs) {
+}: MarkerLayerProps) {
   // Per-renderer fillProps: marker default is blue (#3b82f6),
   // matching the pre-refactor ObjectRenderer rect/circle case.
   const imageFillElement = useImageLoader(obj.imageFill?.src);

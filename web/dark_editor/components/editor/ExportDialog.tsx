@@ -22,6 +22,10 @@ import ExportFooter from './export/ExportFooter';
 import MetadataFields from './export/MetadataFields';
 import TranslationsList from './export/TranslationsList';
 import PrivacySelector from './export/PrivacySelector';
+import ScheduleSelector, {
+  isScheduleInPast,
+  localToUTC,
+} from './export/ScheduleSelector';
 import { useExportFormatQuality } from './export/useExportFormatQuality';
 import {
   EMPTY_FORM,
@@ -132,6 +136,10 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
           ])
       ),
       desired_privacy: form.privacyStatus,
+      publish_at:
+        form.publishAt && !isScheduleInPast(form.publishAt)
+          ? localToUTC(form.publishAt)
+          : null,
     },
   });
 
@@ -325,6 +333,15 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
       return;
     }
 
+    // Validate scheduling: past dates are rejected client-side.
+    if (form.publishAt && isScheduleInPast(form.publishAt)) {
+      toast.addToast(
+        'error',
+        'La data di pubblicazione deve essere nel futuro.',
+      );
+      return;
+    }
+
     // B-3: mirror the backend's YouTubePublishOptions.Validate invariant
     // client-side so we don't burn a 400 round-trip on a preventable
     // mistake. Translations require default_language.
@@ -419,10 +436,20 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
         );
       }
 
+      // Resolve privacy + scheduling: when publish_at is set, the
+      // backend requires privacy_status=private. We force it here so
+      // the operator doesn't get a confusing 400 from the server.
+      const utcPublishAt =
+        form.publishAt && !isScheduleInPast(form.publishAt)
+          ? localToUTC(form.publishAt)
+          : null;
+      const effectivePrivacy = utcPublishAt ? 'private' : form.privacyStatus;
+
       const payload: PublishYouTubeEditorSessionRequest = {
         title: form.title.trim(),
         description: form.description.trim(),
-        privacy_status: form.privacyStatus,
+        privacy_status: effectivePrivacy,
+        publish_at: utcPublishAt,
         tags: tagsArray,
         default_language: form.defaultLanguage.trim() || undefined,
         default_audio_language: form.defaultAudioLanguage.trim() || undefined,
@@ -446,7 +473,7 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
         velox_project_id: projectId,
       });
 
-      // Step 5b: success \u2192 clear local draft + toast + stay on
+      // Step 5b: success → clear local draft + toast + stay on
       // /editor/{id}. We deliberately do NOT redirect the operator to
       // a dashboard: the panel closes, the editor URL stays the same,
       // and a confirmation toast appears.
@@ -455,10 +482,24 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
       } catch {
         // ignore localStorage errors on cleanup
       }
-      toast.addToast(
-        'success',
-        'Pubblicato su YouTube. Il video \u00e8 ora visibile secondo la privacy scelta.',
-      );
+      if (utcPublishAt) {
+        const scheduleDate = new Date(form.publishAt);
+        const scheduleLabel = isNaN(scheduleDate.getTime())
+          ? utcPublishAt
+          : scheduleDate.toLocaleString('it-IT', {
+              dateStyle: 'short',
+              timeStyle: 'short',
+            });
+        toast.addToast(
+          'success',
+          `Pubblicazione programmata per ${scheduleLabel}. Il video resterà privato fino all'orario indicato.`,
+        );
+      } else {
+        toast.addToast(
+          'success',
+          'Pubblicato su YouTube. Il video è ora visibile secondo la privacy scelta.',
+        );
+      }
       handleClose();
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
@@ -480,12 +521,17 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
     toast,
   ]);
 
+  const isScheduling =
+    form.publishAt.length > 0 && !isScheduleInPast(form.publishAt);
+
   const footerProcessing = isProcessing || isPublishing;
   const footerLabel = footerProcessing
     ? isPublishing
       ? 'Pubblicazione\u2026'
       : 'Elaborazione thumbnail\u2026'
-    : 'Pubblica';
+    : isScheduling
+      ? 'Programma'
+      : 'Pubblica';
 
   const draftDirty = draftLoaded && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
 
@@ -528,8 +574,22 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
             />
 
             <PrivacySelector
-              value={form.privacyStatus}
+              value={isScheduling ? 'private' : form.privacyStatus}
               onChange={(v) => updateForm({ privacyStatus: v })}
+            />
+
+            {isScheduling && (
+              <div className="flex items-center gap-2 rounded-md bg-amber-500/[0.08] border border-amber-500/20 px-3 py-2">
+                <span className="text-xs font-medium text-amber-300">
+                  ⚠️ La programmazione richiede Privacy = Privato.
+                  L&apos;impostazione è stata forzata automaticamente.
+                </span>
+              </div>
+            )}
+
+            <ScheduleSelector
+              value={form.publishAt}
+              onChange={(v) => updateForm({ publishAt: v })}
             />
           </section>
 
