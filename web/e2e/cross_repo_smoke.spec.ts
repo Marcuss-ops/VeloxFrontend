@@ -48,6 +48,33 @@ function registerApiMocks(
     page: Page,
     capturedJobs: { post: CapturedJobPost },
 ) {
+    // ----------------------- SESSION GATE -------------------------
+    // GET /api/v1/youtube/editor-sessions/by-project/{velox_project_id}
+    // Il Dark Editor chiama questo endpoint prima di montare il canvas.
+    // Deve restituire una sessione valida con status=editing per procedere.
+    page.route('**/api/v1/youtube/editor-sessions/by-project/**', async (route) => {
+        if (route.request().method() === 'GET') {
+            await route.fulfill({
+                json: {
+                    id: 'mock-session-id',
+                    workspace_id: 42,
+                    platform_account_id: 999,
+                    youtube_video_id: 'mock-video-id',
+                    velox_project_id: PROJECT_ID,
+                    source_thumbnail_url: '',
+                    thumbnail_media_id: null,
+                    desired_privacy: 'private',
+                    publish_at: null,
+                    status: 'editing',
+                    created_at: '2024-01-01T00:00:00Z',
+                    updated_at: '2024-01-01T00:00:00Z',
+                },
+            });
+            return;
+        }
+        await route.fallback();
+    });
+
     // ----- Catch-alls for dark_editor's own Go backend endpoints that are
     //       NOT part of the cross-repo pipeline but are mounted via siblings
     //       of useSocialDestinations: useDriveIntegration fetches groups,

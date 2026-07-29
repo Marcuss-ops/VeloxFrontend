@@ -20,6 +20,11 @@ export function useProjectLoader(projectId: string): UseProjectLoaderReturn {
   const { addToast } = useUIStore();
 
   const loadProject = useCallback(async () => {
+    if (!projectId) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 

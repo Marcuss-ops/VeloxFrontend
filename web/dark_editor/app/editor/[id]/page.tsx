@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Home, Upload } from 'lucide-react';
+import { AlertTriangle, Home, Lock, Upload, XCircle } from 'lucide-react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -12,6 +12,7 @@ import { useProjectLoader } from '@/hooks/useProjectLoader';
 import { useProjectSave } from '@/hooks/useProjectSave';
 import { useDragDropUpload } from '@/hooks/useDragDropUpload';
 import { useKeyboard } from '@/hooks/useKeyboard';
+import { useYouTubeSessionGate, redirectToInstaEdit } from '@/hooks/useYouTubeSessionGate';
 import EditorSidebar from '@/components/editor/sidebar/EditorSidebar';
 import ToolbarDock from './components/ToolbarDock';
 import ExportDialog from '@/components/editor/ExportDialog';
@@ -36,12 +37,124 @@ function generateRandomName() {
   return `${randomAdj}-${randomNoun}-${randomNumber}`;
 }
 
+function SessionGateError({ projectId }: { projectId: string }) {
+  return (
+    <div className="h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+      <div className="max-w-md text-center space-y-6">
+        <div className="mx-auto w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center">
+          <XCircle className="w-8 h-8 text-rose-400" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Sessione non trovata</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Il progetto <code className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-xs font-mono">{projectId}</code> non
+            corrisponde a una sessione di editing YouTube autorizzata. Torna a InstaEdit Social per
+            selezionare un video modificabile.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => redirectToInstaEdit('/dashboard-channels')}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors"
+          >
+            Vai alla Dashboard
+          </button>
+          <button
+            onClick={() => redirectToInstaEdit('/')}
+            className="text-sm text-slate-400 hover:text-white underline underline-offset-2 transition-colors"
+          >
+            Torna a InstaEdit Social
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SessionBlocked() {
+  return (
+    <div className="h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+      <div className="max-w-md text-center space-y-6">
+        <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+          <Lock className="w-8 h-8 text-amber-400" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Pubblicazione in corso</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            La miniatura è in fase di pubblicazione su YouTube. Il canvas non è modificabile
+            finché la pubblicazione non è completata.
+          </p>
+        </div>
+        <button
+          onClick={() => redirectToInstaEdit('/dashboard-channels')}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-sm hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+        >
+          Torna alla Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SessionReadonly({ youtubeVideoId }: { youtubeVideoId: string }) {
+  const publicUrl = `https://www.youtube.com/watch?v=${youtubeVideoId}`;
+  return (
+    <div className="h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+      <div className="max-w-md text-center space-y-6">
+        <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+          <AlertTriangle className="w-8 h-8 text-emerald-400" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Video già pubblicato</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Questo video è già stato pubblicato. La sessione è in modalità sola lettura.
+          </p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <a
+            href={publicUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors"
+          >
+            Vedi su YouTube ↗
+          </a>
+          <button
+            onClick={() => redirectToInstaEdit('/dashboard-channels')}
+            className="text-sm text-slate-400 hover:text-white underline underline-offset-2 transition-colors"
+          >
+            Torna alla Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SessionGateLoading() {
+  return (
+    <div className="h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-slate-500 dark:text-slate-400">Verifica sessione YouTube...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function EditorPage() {
   const params = useParams();
   const router = useRouter();
   const projectId = params.id as string;
 
-  const { loading, error } = useProjectLoader(projectId);
+  // Gate di sessione: verifica che il progetto corrisponda a una
+  // sessione YouTube autorizzata PRIMA di caricare il canvas.
+  const gate = useYouTubeSessionGate(projectId);
+
+  // Il progetto Velox viene caricato SOLO dopo che il gate ha dato
+  // l'ok (authorized).
+  const shouldLoadProject = gate.state === 'authorized';
+  const { loading, error } = useProjectLoader(shouldLoadProject ? projectId : '');
   useKeyboard();
   const canvasRef = useRef<any>(null);
   useProjectSave(canvasRef);
@@ -63,6 +176,40 @@ export default function EditorPage() {
     }
   };
 
+  // Gate di sessione — controlli PRIMA di mostrare il canvas
+  // Redirect per utente non autenticato: usa useEffect per evitare
+  // side effect durante il render (React 18 StrictMode compat).
+  useEffect(() => {
+    if (gate.state === 'unauthorized') {
+      redirectToInstaEdit('/dashboard-channels');
+    }
+  }, [gate.state]);
+
+  if (gate.state === 'loading') {
+    return <SessionGateLoading />;
+  }
+
+  if (gate.state === 'unauthorized') {
+    return <SessionGateLoading />;
+  }
+
+  if (gate.state === 'not_found') {
+    return <SessionGateError projectId={projectId} />;
+  }
+
+  if (gate.state === 'blocked') {
+    return <SessionBlocked />;
+  }
+
+  if (gate.state === 'readonly') {
+    return <SessionReadonly youtubeVideoId={gate.session.youtube_video_id} />;
+  }
+
+  if (gate.state === 'error') {
+    return <SessionGateError projectId={projectId} />;
+  }
+
+  // Solo dopo il gate: carica progetto e canvas
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
