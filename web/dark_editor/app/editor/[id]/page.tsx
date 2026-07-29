@@ -151,13 +151,14 @@ export default function EditorPage() {
   // sessione YouTube autorizzata PRIMA di caricare il canvas.
   const gate = useYouTubeSessionGate(projectId);
 
-  // Il progetto Velox viene caricato SOLO dopo che il gate ha dato
-  // l'ok per una sessione modificabile (editable_editing o
-  // editable_failed). Gli stati readonly_* e not_found bloccano il
-  // caricamento del Canvas e mostrano invece i banner dedicati.
-  const shouldLoadProject =
-    gate.state === 'editable_editing' || gate.state === 'editable_failed';
-  const { loading, error } = useProjectLoader(shouldLoadProject ? projectId : '');
+  // Il loader riceve direttamente lo stato del gate e decide se
+  // fetchare (editable_* o readonly_*) oppure no (loading,
+  // not_found, unauthorized, error). Esponde inoltre `readonly: true`
+  // per gli stati readonly_* — usato dal banner read-only che verrà
+  // montato in Azione 4. Per ora le branch statiche readonly_*
+  // (SessionBlocked / SessionReadonly) sotto short-circuitano il
+  // loader, quindi il flag è solo cablato ma non ancora consumato.
+  const { loading, error, readonly } = useProjectLoader(gate, projectId);
   useKeyboard();
   const canvasRef = useRef<any>(null);
   useProjectSave(canvasRef);
