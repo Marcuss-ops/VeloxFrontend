@@ -44,6 +44,26 @@ import {
 
 const DRAFT_STORAGE_PREFIX = 'instaedit:publish-draft:';
 
+// ─── Client-side validation helpers (mirror backend YouTubePublishOptions.Validate) ───
+
+const YT_TAGS_MAX = 30;
+const YT_TAGS_CHARS_MAX = 500;
+const BCP47_MAX_LEN = 35;
+
+/** Light BCP-47 sanity check: at least one ASCII letter, no forbidden chars. */
+function isBCP47Plausible(code: string): boolean {
+  if (!code) return true; // empty = skip validation
+  if (code.length > BCP47_MAX_LEN) return false;
+  let hasLetter = false;
+  for (const ch of code) {
+    if (ch === '/' || ch === '\\' || ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+      return false;
+    }
+    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) hasLetter = true;
+  }
+  return hasLetter;
+}
+
 interface ExportDialogProps {
   isOpen?: boolean;
   onClose?: () => void;
@@ -340,6 +360,40 @@ export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
         'La data di pubblicazione deve essere nel futuro.',
       );
       return;
+    }
+
+    // Validate tags: max 30 items, max 500 chars total (incl. commas).
+    if (tagsArray.length > YT_TAGS_MAX) {
+      toast.addToast(
+        'error',
+        `Troppi tag: ${tagsArray.length} (massimo ${YT_TAGS_MAX}).`,
+      );
+      return;
+    }
+    const tagsTotalChars = tagsArray.join(',').length;
+    if (tagsTotalChars > YT_TAGS_CHARS_MAX) {
+      toast.addToast(
+        'error',
+        `I tag superano i ${YT_TAGS_CHARS_MAX} caratteri totali (${tagsTotalChars}). Riduci il numero o la lunghezza dei tag.`,
+      );
+      return;
+    }
+
+    // Validate BCP-47 language codes.
+    if (form.defaultLanguage && !isBCP47Plausible(form.defaultLanguage)) {
+      toast.addToast('error', `Lingua principale "${form.defaultLanguage}" non sembra un codice BCP-47 valido.`);
+      return;
+    }
+    if (form.defaultAudioLanguage && !isBCP47Plausible(form.defaultAudioLanguage)) {
+      toast.addToast('error', `Lingua audio "${form.defaultAudioLanguage}" non sembra un codice BCP-47 valido.`);
+      return;
+    }
+    for (const t of form.translations) {
+      const lang = t.lang.trim();
+      if (lang && !isBCP47Plausible(lang)) {
+        toast.addToast('error', `Codice lingua traduzione "${lang}" non sembra un BCP-47 valido.`);
+        return;
+      }
     }
 
     // B-3: mirror the backend's YouTubePublishOptions.Validate invariant
