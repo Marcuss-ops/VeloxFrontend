@@ -552,6 +552,8 @@ export interface YouTubeEditorSessionDraftResponse {
   draft_default_audio_language: string;
   draft_translations: Record<string, YouTubeTranslation>;
   draft_desired_privacy: string;
+  /** ISO-8601 UTC. Only set when the operator scheduled a future publish. */
+  draft_publish_at: string | null;
   draft_updated_at: string;
 }
 
