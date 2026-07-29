@@ -181,11 +181,26 @@ export default function EditorPage() {
   };
 
   // Gate di sessione — controlli PRIMA di mostrare il canvas
-  // Redirect per utente non autenticato: usa useEffect per evitare
-  // side effect durante il render (React 18 StrictMode compat).
+  // Redirect via useEffect (NON durante il render) per React 18
+  // StrictMode compat. Due redirect distinti:
+  //   - 401 unauthorized → /login (utente non autenticato, redirect
+  //     immediato perché la pagina è inutile senza sessione)
+  //   - 404 not_found    → /dashboard-channels (sessione inesistente
+  //     o non dell'utente). Mostra SessionGateError per ~3s per dare
+  //     tempo all'utente di leggere il projectId + cliccare "Vai alla
+  //     Dashboard"; poi auto-redirect. Il cleanup clearTimeout annulla
+  //     l'auto-redirect se il gate cambia stato prima dello scadere
+  //     (es. retry che sposta da not_found a editing).
   useEffect(() => {
     if (gate.state === 'unauthorized') {
-      redirectToInstaEdit('/dashboard-channels');
+      redirectToInstaEdit('/login');
+      return;
+    }
+    if (gate.state === 'not_found') {
+      const t = setTimeout(() => {
+        redirectToInstaEdit('/dashboard-channels');
+      }, 3000);
+      return () => clearTimeout(t);
     }
   }, [gate.state]);
 
