@@ -152,8 +152,11 @@ export default function EditorPage() {
   const gate = useYouTubeSessionGate(projectId);
 
   // Il progetto Velox viene caricato SOLO dopo che il gate ha dato
-  // l'ok (authorized).
-  const shouldLoadProject = gate.state === 'authorized';
+  // l'ok per una sessione modificabile (editable_editing o
+  // editable_failed). Gli stati readonly_* e not_found bloccano il
+  // caricamento del Canvas e mostrano invece i banner dedicati.
+  const shouldLoadProject =
+    gate.state === 'editable_editing' || gate.state === 'editable_failed';
   const { loading, error } = useProjectLoader(shouldLoadProject ? projectId : '');
   useKeyboard();
   const canvasRef = useRef<any>(null);
@@ -197,11 +200,11 @@ export default function EditorPage() {
     return <SessionGateError projectId={projectId} />;
   }
 
-  if (gate.state === 'blocked') {
+  if (gate.state === 'readonly_publishing') {
     return <SessionBlocked />;
   }
 
-  if (gate.state === 'readonly') {
+  if (gate.state === 'readonly_published') {
     return <SessionReadonly youtubeVideoId={gate.session.youtube_video_id} />;
   }
 
