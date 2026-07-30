@@ -1,21 +1,30 @@
 /**
- * Navbar — dock trasparente stile Google Flow
+ * Navbar — dock moderno con Lucide icons
  *
- * - Solo icone, niente label (tranne logo)
- * - Sfondo glass/blur
+ * - Sfondo glass/blur premium con gradient border
  * - Scompare scroll giù, riappare scroll su
+ * - Indicatore attivo animato
+ * - Lucide icons invece di Material Symbols
  */
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { 
+    Sparkles,
+    LayoutDashboard, 
+    SquarePen, 
+    Calendar,
+    BarChart3,
+    Folder
+} from 'lucide-react';
 import { APP_ROUTES } from '../routes';
 
 const NAV_ITEMS = [
-    { href: APP_ROUTES.dashboard, icon: 'grid_view', label: 'Canali' },
-    { href: APP_ROUTES.content, icon: 'edit_square', label: 'Contenuti' },
-    { href: APP_ROUTES.calendar, icon: 'calendar_month', label: 'Calendario' },
-    { href: APP_ROUTES.analytics, icon: 'analytics', label: 'Analytics' },
-    { href: APP_ROUTES.drive, icon: 'folder', label: 'Media' },
+    { href: APP_ROUTES.dashboard, icon: LayoutDashboard, label: 'Canali' },
+    { href: APP_ROUTES.content, icon: SquarePen, label: 'Contenuti' },
+    { href: APP_ROUTES.calendar, icon: Calendar, label: 'Calendario' },
+    { href: APP_ROUTES.analytics, icon: BarChart3, label: 'Analytics' },
+    { href: APP_ROUTES.drive, icon: Folder, label: 'Media' },
 ];
 
 function isActive(path: string, currentPath: string): boolean {
@@ -47,93 +56,60 @@ export const Navbar: React.FC = () => {
 
     return (
         <nav
-            style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                height: 56,
-                padding: '0 24px',
-                background: 'rgba(6, 4, 14, 0.75)',
-                backdropFilter: 'blur(28px)',
-                WebkitBackdropFilter: 'blur(28px)',
-                borderBottom: '1px solid rgba(139, 92, 246, 0.08)',
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                zIndex: 100,
-                transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: visible ? 'translateY(0)' : 'translateY(-100%)',
-            }}
+            className={`
+                fixed top-0 left-0 right-0 z-[100] h-14
+                flex items-center justify-between px-6
+                bg-slate-950/70 backdrop-blur-2xl
+                border-b border-purple-500/10
+                transition-transform duration-300 ease-out
+                ${visible ? 'translate-y-0' : '-translate-y-full'}
+            `}
         >
+            {/* Gradient glow orl */}
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent" />
+
             {/* Logo */}
             <Link
                 to={APP_ROUTES.dashboard}
                 title="InstaEdit"
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    textDecoration: 'none',
-                    color: '#ffffff',
-                }}
+                className="flex items-center gap-2 no-underline text-white group"
             >
-                <span
-                    className="material-symbols-rounded"
-                    style={{ fontSize: 22, fontWeight: 500, color: '#c084fc' }}
-                >
-                    auto_awesome
-                </span>
-                <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.2px', color: '#f1f5f9' }}>
+                <div className="relative">
+                    <Sparkles className="size-5 text-purple-400 group-hover:text-purple-300 transition-colors" />
+                    <div className="absolute -inset-1 bg-purple-500/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <span className="text-sm font-semibold tracking-tight text-slate-100">
                     InstaEdit
                 </span>
-                </Link>
+            </Link>
 
-            {/* Icone nav */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    borderLeft: '1px solid #1a1a1a',
-                    paddingLeft: 6,
-                    marginLeft: 2,
-                }}>
+            {/* Nav items */}
+            <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5 border-l border-white/5 pl-2 ml-2">
                     {NAV_ITEMS.map(item => {
                         const active = isActive(item.href, location.pathname);
+                        const Icon = item.icon;
+
                         return (
                             <Link
                                 key={item.href}
                                 to={item.href}
                                 title={item.label}
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 8,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    textDecoration: 'none',
-                                    color: active ? '#c084fc' : 'rgba(148,163,184,0.60)',
-                                    background: active ? 'rgba(192,132,252,0.12)' : 'transparent',
-                                    transition: 'all 0.15s',
-                                }}
-                                onMouseEnter={e => {
-                                    if (!active) {
-                                        (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
-                                        (e.currentTarget as HTMLElement).style.color = '#e2e8f0';
+                                className={`
+                                    relative size-9 rounded-lg
+                                    flex items-center justify-center
+                                    no-underline
+                                    transition-all duration-200
+                                    ${active 
+                                        ? 'text-purple-300 bg-purple-500/15' 
+                                        : 'text-slate-500 hover:text-slate-200 hover:bg-white/5'
                                     }
-                                }}
-                                onMouseLeave={e => {
-                                    if (!active) {
-                                        (e.currentTarget as HTMLElement).style.background = 'transparent';
-                                        (e.currentTarget as HTMLElement).style.color = 'rgba(148,163,184,0.60)';
-                                    }
-                                }}
+                                `}
                             >
-                                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>
-                                    {item.icon}
-                                </span>
+                                {active && (
+                                    <span className="absolute inset-0 rounded-lg ring-1 ring-purple-500/30" />
+                                )}
+                                <Icon className="size-[18px]" />
                             </Link>
                         );
                     })}

@@ -6,6 +6,7 @@
  */
 
 import React, { memo, useCallback, useMemo } from 'react';
+import { Video } from 'lucide-react';
 import { CalendarEvent } from '@/lib/api';
 
 interface CalendarDayCellProps {
@@ -75,8 +76,8 @@ const EventItem = memo<{
                 onEventClick(event);
             }}
         >
-            <div className="flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs text-purple-400">video_file</span>
+            <div className="flex items-center gap-1.5">
+                <Video className="size-3 text-purple-400 shrink-0" />
                 <span className="truncate">{event.title}</span>
             </div>
             {clipBadges.length > 0 && (

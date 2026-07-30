@@ -6,6 +6,7 @@
  */
 
 import React, { memo } from 'react';
+import { Video } from 'lucide-react';
 import { CalendarEvent } from '@/lib/api';
 
 // --- Memoized Day Cell Component ---
@@ -58,8 +59,8 @@ const CalendarDayCell = memo<CalendarDayCellProps>(({
                             onEventClick(event);
                         }}
                     >
-                        <div className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-xs text-purple-400">video_file</span>
+                        <div className="flex items-center gap-1.5">
+                            <Video className="size-3 text-purple-400 shrink-0" />
                             <span className="truncate">{event.title}</span>
                         </div>
                         <div className="flex gap-1 mt-1">

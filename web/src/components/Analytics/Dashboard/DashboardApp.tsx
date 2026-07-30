@@ -1,4 +1,5 @@
 import React from 'react';
+import { Terminal, RefreshCw } from 'lucide-react';
 import { useDashboardData } from './useDashboardData';
 import { DashboardTabs } from './DashboardTabs';
 import { DashboardQueueTab } from './DashboardQueueTab';
@@ -11,7 +12,7 @@ import { DashboardTab } from './types';
 
 // Loading skeleton
 const SkeletonCard: React.FC = () => (
-    <div className="animate-pulse rounded-xl border border-border-dark bg-card-dark p-5">
+    <div className="animate-pulse rounded-xl border border-white/10 bg-slate-900/50 p-5">
         <div className="h-3 bg-white/5 rounded w-1/3 mb-3"></div>
         <div className="h-8 bg-white/5 rounded w-1/2"></div>
     </div>
@@ -54,19 +55,19 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({ initialTab = 'coda',
             {/* Page Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-violet-400 bg-clip-text text-transparent">
                         Dashboard
                     </h1>
-                    <p className="text-text-secondary mt-1">Monitoraggio real-time dello stato del sistema</p>
+                    <p className="text-slate-400 mt-1">Monitoraggio real-time dello stato del sistema</p>
                 </div>
                 <div className="flex items-center gap-4">
                     {/* Remote Showlog Link */}
                     <a
                         href="/showlog"
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-border-dark text-xs font-medium text-text-secondary hover:text-primary hover:border-primary/30 transition-colors"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/60 border border-white/10 text-xs font-medium text-slate-400 hover:text-purple-300 hover:border-purple-500/30 transition-colors"
                         title="Apri Showlog remoto: inserisci IP worker e vedi ultimi 500 log"
                     >
-                        <span className="material-symbols-rounded text-[16px]">terminal</span>
+                        <Terminal className="size-4" />
                         Showlog remoto
                     </a>
 
@@ -77,7 +78,7 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({ initialTab = 'coda',
                             Connessione persa
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border-dark text-xs font-medium text-text-secondary">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-white/10 text-xs font-medium text-slate-400">
                             <span className="size-2 rounded-full bg-green-500 animate-pulse" />
                             System Online
                         </div>
@@ -86,12 +87,10 @@ export const DashboardApp: React.FC<DashboardAppProps> = ({ initialTab = 'coda',
                     {/* Refresh Button */}
                     <button
                         onClick={refresh}
-                        className="p-2 rounded-lg hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors group"
+                        className="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-colors group"
                         title="Aggiorna dati"
                     >
-                        <span className={`material-symbols-rounded group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`}>
-                            sync
-                        </span>
+                        <RefreshCw className={`size-4 group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
             </div>

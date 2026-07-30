@@ -5,6 +5,7 @@
  */
 
 import React, { memo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Search, X, RefreshCw, Loader2 } from 'lucide-react';
 
 interface CalendarToolbarProps {
     monthName: string;
@@ -42,58 +43,54 @@ export const CalendarToolbar = memo<CalendarToolbarProps>(({
     }, [onSearchChange]);
 
     return (
-        <div className="h-12 border-b border-white/10 flex items-center justify-between px-6 bg-white/5 backdrop-blur-xl">
+        <div className="h-12 border-b border-white/10 flex items-center justify-between px-6 bg-white/[0.03] backdrop-blur-xl">
             <div className="flex items-center gap-4">
                 {/* Month Navigation */}
-                <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-1 backdrop-blur-sm">
+                <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1 backdrop-blur-sm">
                     <button 
                         onClick={onPrevMonth}
-                        className="px-2 py-0.5 hover:bg-white/10 rounded text-white/60 transition-colors"
+                        className="p-1.5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
                         aria-label="Previous month"
                     >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-                        </svg>
+                        <ChevronLeft className="size-3.5" />
                     </button>
-                    <span className="text-xs font-semibold px-2 text-white/80">
+                    <span className="text-xs font-semibold px-2 text-white/80 min-w-[100px] text-center">
                         {monthName} {year}
                     </span>
                     <button 
                         onClick={onNextMonth}
-                        className="px-2 py-0.5 hover:bg-white/10 rounded text-white/60 transition-colors"
+                        className="p-1.5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
                         aria-label="Next month"
                     >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-                        </svg>
+                        <ChevronRight className="size-3.5" />
                     </button>
                 </div>
 
                 {/* Today Button */}
                 <button 
                     onClick={onToday}
-                    className="text-xs font-medium text-white/60 hover:text-white border border-white/10 px-3 py-1 bg-white/5 rounded-lg backdrop-blur-sm transition-colors"
+                    className="text-xs font-medium text-white/60 hover:text-white border border-white/10 px-3 py-1 bg-white/5 rounded-xl backdrop-blur-sm transition-colors"
                 >
                     Today
                 </button>
                 
                 {/* Search Input */}
                 <div className="relative">
-                    <span className="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-white/30 text-sm">search</span>
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-white/30" />
                     <input
                         type="text"
                         placeholder="Search projects..."
                         value={searchQuery}
                         onChange={handleSearchChange}
-                        className="bg-white/5 border border-white/10 rounded-lg pl-7 pr-7 py-1 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50 w-48"
+                        className="bg-white/5 border border-white/10 rounded-xl pl-8 pr-8 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 w-48 transition-all"
                     />
                     {(searchQuery || hasActiveSearch) && (
                         <button
                             onClick={onClearSearch}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
                             aria-label="Clear search"
                         >
-                            <span className="material-symbols-outlined text-xs">close</span>
+                            <X className="size-3" />
                         </button>
                     )}
                 </div>
@@ -102,14 +99,14 @@ export const CalendarToolbar = memo<CalendarToolbarProps>(({
             {/* Status */}
             <div className="flex items-center gap-3 text-xs text-white/40">
                 {loading && (
-                    <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm animate-spin">sync</span>
+                    <span className="flex items-center gap-1.5">
+                        <RefreshCw className="size-3 animate-spin" />
                         Loading...
                     </span>
                 )}
                 {isSearching && (
-                    <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">search</span>
+                    <span className="flex items-center gap-1.5">
+                        <Loader2 className="size-3 animate-spin" />
                         Searching...
                     </span>
                 )}

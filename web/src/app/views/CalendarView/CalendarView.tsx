@@ -6,6 +6,7 @@
  */
 
 import React, { Suspense, lazy } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useCalendarView } from './hooks';
 import { CalendarHeader } from './components/CalendarHeader';
 import { CalendarGrid } from './components/CalendarGrid';
@@ -67,7 +68,7 @@ export const CalendarView: React.FC = () => {
             {showModal && (
                 <Suspense fallback={
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-                        <span className="material-symbols-outlined text-white animate-spin text-4xl">sync</span>
+                        <Loader2 className="size-8 text-white animate-spin" />
                     </div>
                 }>
                     <CalendarModal
