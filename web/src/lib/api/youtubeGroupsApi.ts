@@ -13,29 +13,6 @@ import type {
     GroupYouTubeVideosResponse,
 } from '@/types/youtubeGroups';
 
-// ------------------------------------------------------------------
-// Groups list (for landing page)
-// ------------------------------------------------------------------
-
-export interface GroupSummary {
-    id: number;
-    name: string;
-    parent_group_id?: number | null;
-}
-
-export interface GroupsListResponse {
-    groups: GroupSummary[];
-}
-
-/** GET /api/v1/groups — list all groups in the workspace. */
-export async function listGroups(): Promise<GroupsListResponse> {
-    return apiGet<GroupsListResponse>('/api/v1/groups');
-}
-
-// ------------------------------------------------------------------
-// Group YouTube videos
-// ------------------------------------------------------------------
-
 /**
  * GET /api/v1/groups/{group_id}/youtube/videos
  * Returns the private/unlisted/processed videos across every YouTube
@@ -82,7 +59,6 @@ export async function createYouTubeEditorSession(
 }
 
 export const youtubeGroupsApi = {
-    listGroups,
     listGroupYouTubeVideos,
     createYouTubeEditorSession,
 } as const;

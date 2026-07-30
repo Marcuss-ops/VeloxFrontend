@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.instaedit.org/api/:path*"
+    },
+    {
+      "source": "/dark_editor_v2/:path*",
+      "destination": "https://dev.instaedit.org/dark_editor_v2/:path*"
+    },
+    {
+      "source": "/((?!assets/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
