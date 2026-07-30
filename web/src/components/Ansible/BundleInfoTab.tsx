@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { AlertCircle, ChevronRight, Clock, Folder, RefreshCw } from 'lucide-react';
 import { bundleApi } from '../../lib/api';
 
 // Types
@@ -124,7 +125,7 @@ export const BundleInfoTab: React.FC = () => {
         return (
             <div className="bg-card-dark border border-border-dark rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <span className="material-symbols-rounded text-red-400">error</span>
+                    <AlertCircle className="size-12 text-red-400" />
                     <h3 className="text-lg font-bold text-text-primary">Bundle Info</h3>
                 </div>
                 <div className="text-red-400 text-sm">{error}</div>
@@ -151,7 +152,7 @@ export const BundleInfoTab: React.FC = () => {
                         <span className="material-symbols-rounded text-primary text-[24px]">inventory_2</span>
                         <h3 className="text-lg font-bold text-text-primary">Bundle Info</h3>
                         {refreshing && (
-                            <span className="material-symbols-rounded text-primary animate-spin text-[16px] ml-2">sync</span>
+                            <RefreshCw className="size-4 animate-spin" />
                         )}
                     </div>
                     <button
@@ -159,7 +160,7 @@ export const BundleInfoTab: React.FC = () => {
                         className="p-2 rounded-lg hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
                         title="Aggiorna"
                     >
-                        <span className="material-symbols-rounded text-[20px]">refresh</span>
+                        <RefreshCw className="size-5 " />
                     </button>
                 </div>
             </div>
@@ -197,7 +198,7 @@ export const BundleInfoTab: React.FC = () => {
                 {/* Metadata Row */}
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-muted mb-6 pb-4 border-b border-border-dark">
                     <div className="flex items-center gap-1.5">
-                        <span className="material-symbols-rounded text-[14px]">schedule</span>
+                        <Clock className="size-6 text-slate-400" />
                         <span>Creato: {formatDate(bundleInfo.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -205,7 +206,7 @@ export const BundleInfoTab: React.FC = () => {
                         <span className="font-mono">SHA256: {bundleInfo.sha256}...</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                        <span className="material-symbols-rounded text-[14px]">folder</span>
+                        <Folder className="size-12 text-slate-600" />
                         <span>{bundleInfo.top_dirs?.length || 0} cartelle principali</span>
                     </div>
                 </div>
@@ -230,9 +231,7 @@ export const BundleInfoTab: React.FC = () => {
                     <div className="mt-6 pt-4 border-t border-border-dark">
                         <details className="group">
                             <summary className="flex items-center gap-2 cursor-pointer text-sm text-text-secondary hover:text-text-primary">
-                                <span className="material-symbols-rounded text-[16px] group-open:rotate-90 transition-transform">
-                                    chevron_right
-                                </span>
+                                <ChevronRight className="size-4 " />
                                 <span>Manifest dettagliato</span>
                             </summary>
                             <pre className="mt-3 p-3 bg-black/30 rounded-lg text-xs text-text-muted overflow-x-auto font-mono">

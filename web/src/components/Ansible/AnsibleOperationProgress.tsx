@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { X } from 'lucide-react';
 import { AnsibleRun } from './types';
 import { SummaryEvent, AnimatedDots, SummaryEventLine, stripAnsi, formatDuration } from './AnsibleProgressSteps';
 
@@ -336,7 +337,7 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
                             onClick={onClose}
                             className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                         >
-                            <span className="material-symbols-rounded text-slate-400">close</span>
+                            <X className="size-4 " />
                         </button>
                     </div>
                 </div>

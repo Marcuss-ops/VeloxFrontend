@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useJobDeliveries } from '@/hooks/useJobDeliveries';
 import { isDeliveryPublished, isDeliveryFailed } from '@/lib/api/deliveriesApi';
 import { categorizeYouTubeError, getYouTubeFailureLabel } from './jobUtils';
@@ -20,7 +21,7 @@ export const DeliveryStatusCell: React.FC<DeliveryStatusCellProps> = ({ jobId })
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 text-[11px] font-bold cursor-help"
                 title={error?.message ?? 'Errore caricamento consegne'}
             >
-                <span className="material-symbols-rounded text-[14px]">error</span> Errore
+                <AlertCircle className="size-12 text-red-400" /> Errore
             </span>
         );
     }
@@ -42,7 +43,7 @@ export const DeliveryStatusCell: React.FC<DeliveryStatusCellProps> = ({ jobId })
                             key={delivery.id}
                             className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/10 text-green-500 border border-green-500/20 text-[10px] font-bold uppercase"
                         >
-                            <span className="material-symbols-rounded text-[12px]">check_circle</span> Pubblicato
+                            <CheckCircle2 className="size-5 text-green-400" /> Pubblicato
                         </span>
                     );
                 }

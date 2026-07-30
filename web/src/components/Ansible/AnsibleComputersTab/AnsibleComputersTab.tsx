@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Plus, Search } from 'lucide-react';
 import { AnsibleComputer, ActionCapability } from '../types';
 import { runAnsibleAction, testAnsibleSSH, deleteAnsibleComputer, useCapabilities } from './hooks/useAnsibleComputers';
 import { ComputerList } from './components/ComputerList';
@@ -183,7 +184,7 @@ export const AnsibleComputersTab: React.FC<AnsibleComputersTabProps> = ({ comput
                             fontWeight: 600,
                         }}
                     >
-                        <span className="material-symbols-rounded" style={{ fontSize: 18 }}>add</span>
+                        <Plus className="size-4 " />
                         Aggiungi Computer
                     </button>
                 </div>
@@ -204,10 +205,7 @@ export const AnsibleComputersTab: React.FC<AnsibleComputersTabProps> = ({ comput
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: '1 1 auto' }}>
                     {/* Search */}
                     <div style={{ position: 'relative', flex: '1 1 180px', maxWidth: 280 }}>
-                        <span className="material-symbols-rounded" style={{
-                            position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-                            color: '#475569', fontSize: 20, pointerEvents: 'none',
-                        }}>search</span>
+                        <Search className="size-4 " />
                         <input
                             type="text"
                             placeholder="Cerca computer..."

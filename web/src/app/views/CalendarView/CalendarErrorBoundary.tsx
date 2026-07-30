@@ -6,6 +6,7 @@
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertCircle } from 'lucide-react';
 
 interface CalendarErrorBoundaryState {
     hasError: boolean;
@@ -46,7 +47,7 @@ export class CalendarErrorBoundary extends Component<CalendarErrorBoundaryProps,
             return (
                 <div className="h-full flex items-center justify-center bg-[#0a0a0f]">
                     <div className="text-center p-8 bg-white/5 border border-red-500/20 rounded-2xl max-w-md">
-                        <span className="material-symbols-outlined text-4xl text-red-400 mb-4">error</span>
+                        <AlertCircle className="size-12 text-red-400" />
                         <h2 className="text-lg font-bold text-white mb-2">Calendar Error</h2>
                         <p className="text-sm text-white/60 mb-4">
                             Something went wrong loading the calendar.

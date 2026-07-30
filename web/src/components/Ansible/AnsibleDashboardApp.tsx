@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Terminal } from 'lucide-react';
 import { useAnsibleComputers } from './AnsibleComputersTab/hooks/useAnsibleComputers';
 import { AnsibleComputersTab } from './AnsibleComputersTab/AnsibleComputersTab';
 import { AnsibleShellTab } from './AnsibleShellTab';
@@ -193,7 +194,7 @@ export const AnsibleDashboardApp: React.FC = () => {
                                 {/* Shell Terminal */}
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
-                                        <span className="material-symbols-rounded text-primary">terminal</span>
+                                        <Terminal className="size-[18px] text-emerald-400" />
                                         <h3 className="text-lg font-semibold text-text-primary">Comandi SSH</h3>
                                     </div>
                                     <AnsibleShellTab

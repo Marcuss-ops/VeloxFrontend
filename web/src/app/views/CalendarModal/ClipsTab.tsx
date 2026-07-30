@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { Folder, RefreshCw } from 'lucide-react';
 import { ClipThumbnail } from './ClipThumbnail';
 import type { VideoClip, DriveFolderLite, DriveGroup, ClipType } from './types';
 
@@ -52,7 +53,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
         if (loadingClipSubfolders) {
             return (
                 <div className="flex items-center justify-center py-3">
-                    <span className="material-symbols-outlined text-white/30 animate-spin">sync</span>
+                    <RefreshCw className="size-4 animate-spin" />
                 </div>
             );
         }
@@ -99,7 +100,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
 
                 {loadingStockSubfolders ? (
                     <div className="flex items-center justify-center py-4">
-                        <span className="material-symbols-outlined text-white/30 animate-spin">sync</span>
+                        <RefreshCw className="size-4 animate-spin" />
                     </div>
                 ) : stockSubfolders.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
@@ -112,7 +113,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                                 }`}
                             >
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="material-symbols-outlined text-blue-400 text-sm">folder</span>
+                                    <Folder className="size-12 text-slate-600" />
                                     <span className="text-[10px] font-bold text-white truncate flex-1">{folder.name}</span>
                                 </div>
                                 <div className="text-[8px] text-white/40">

@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { ExternalLink, Eye, FileText, Film, RefreshCw, Trash2, Video, X } from 'lucide-react';
 import type { VideoClip, DriveFile } from './types';
 import { fetchDriveFiles } from './types';
 
@@ -52,7 +53,7 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                         </div>
                     </div>
                     <button onClick={onClose} className="text-white/60 hover:text-white text-sm">
-                        <span className="material-symbols-outlined">close</span>
+                        <X className="size-4 " />
                     </button>
                 </header>
 
@@ -61,14 +62,14 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                         {/* Video Preview */}
                         <div className="space-y-3">
                             <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-sm">movie</span>
+                                <Film className="size-5 text-primary" />
                                 Anteprima Video
                             </h3>
                             <div className="aspect-video bg-black/50 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
                                 {clip.thumbnail ? (
                                     <img src={clip.thumbnail} alt={clip.name} className="w-full h-full object-cover" />
                                 ) : (
-                                    <span className="material-symbols-outlined text-white/20 text-4xl">video_file</span>
+                                    <Video className="size-3 text-purple-400" />
                                 )}
                             </div>
                             {clip.duration && (
@@ -103,7 +104,7 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                                         }}
                                         className="flex items-center gap-2 px-4 py-3 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded-lg text-xs font-bold transition-colors w-full justify-center"
                                     >
-                                        <span className="material-symbols-outlined text-sm">visibility</span>
+                                        <Eye className="size-[18px] " />
                                         Carica Audio
                                     </button>
                                 )}
@@ -112,7 +113,7 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                             {/* Text Files */}
                             <div>
                                 {textContentLoading ? (
-                                    <div className="flex items-center justify-center py-4"><span className="material-symbols-outlined text-white/30 animate-spin">sync</span></div>
+                                    <div className="flex items-center justify-center py-4"><RefreshCw className="size-4 animate-spin" /></div>
                                 ) : textContent ? (
                                     <div className="space-y-2">
                                         <pre className="text-[11px] text-white/80 whitespace-pre-wrap max-h-48 overflow-y-auto bg-black/30 p-3 rounded-lg">{textContent}</pre>
@@ -139,7 +140,7 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                                         }}
                                         className="flex items-center gap-2 px-4 py-3 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg text-xs font-bold transition-colors w-full justify-center"
                                     >
-                                        <span className="material-symbols-outlined text-sm">description</span>
+                                        <FileText className="size-4 " />
                                         Carica File Testo
                                     </button>
                                 )}
@@ -154,7 +155,7 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                             File nella stessa cartella
                         </h3>
                         {loading ? (
-                            <div className="flex items-center justify-center py-4"><span className="material-symbols-outlined text-white/30 animate-spin">sync</span></div>
+                            <div className="flex items-center justify-center py-4"><RefreshCw className="size-4 animate-spin" /></div>
                         ) : files.length > 0 ? (
                             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                                 {files.slice(0, 12).map(file => (
@@ -197,7 +198,7 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                             }}
                             className="mt-3 flex items-center gap-2 px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 rounded-lg text-xs font-bold transition-colors"
                         >
-                            <span className="material-symbols-outlined text-sm">refresh</span>
+                            <RefreshCw className="size-5 " />
                             Carica file cartella
                         </button>
                     </div>
@@ -208,11 +209,11 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                     <div className="text-[10px] text-white/40">Drive ID: {clip.driveId}</div>
                     <div className="flex items-center gap-2">
                         <a href={`https://drive.google.com/file/d/${clip.driveId}/view`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded-lg text-xs font-bold transition-colors">
-                            <span className="material-symbols-outlined text-sm">open_in_new</span>
+                            <ExternalLink className="size-4 " />
                             Apri in Drive
                         </a>
                         <button onClick={() => handleRemoveClip(clip.id, clip.type)} className="flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-xs font-bold transition-colors">
-                            <span className="material-symbols-outlined text-sm">delete</span>
+                            <Trash2 className="size-4 " />
                             Rimuovi
                         </button>
                     </div>

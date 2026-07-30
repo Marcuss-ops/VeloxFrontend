@@ -14,6 +14,7 @@
  */
 
 import React from 'react';
+import { Film, Info } from 'lucide-react';
 import { TitleSelectionModal } from '@/components/shared/TitleSelectionModal';
 import type { CalendarModalProps, CalendarEvent as CalendarEventType } from './types';
 import { useCalendarState } from './useCalendarState';
@@ -151,7 +152,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                             activeTab === 'info' ? 'text-purple-400 border-purple-400' : 'text-white/50 border-transparent hover:text-white/70'
                         }`}
                     >
-                        <span className="material-symbols-outlined text-sm mr-1 inline-block">info</span>
+                        <Info className="size-4 " />
                         Info
                     </button>
                     <button
@@ -160,7 +161,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                             activeTab === 'clips' ? 'text-green-400 border-green-400' : 'text-white/50 border-transparent hover:text-white/70'
                         }`}
                     >
-                        <span className="material-symbols-outlined text-sm mr-1 inline-block">movie</span>
+                        <Film className="size-5 text-primary" />
                         Clips
                     </button>
                 </div>

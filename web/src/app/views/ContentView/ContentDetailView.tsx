@@ -6,6 +6,7 @@
  */
 
 import React, { Suspense } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useParams, Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { APP_ROUTES } from '@/app/routes';
 
@@ -40,7 +41,7 @@ export const ContentDetailView: React.FC = () => {
                     to={APP_ROUTES.content}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
-                    <span className="material-symbols-rounded text-lg">arrow_back</span>
+                    <ArrowLeft className="size-[18px] " />
                 </Link>
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-white">

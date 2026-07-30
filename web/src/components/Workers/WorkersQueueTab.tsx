@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eraser, Eye, Trash2 } from 'lucide-react';
 import { Job } from './types';
 import { jobsApi } from '../../lib/api';
 
@@ -57,14 +58,14 @@ export const WorkersQueueTab: React.FC<WorkersQueueTabProps> = ({ jobs, onRefres
                         disabled={selected.size === 0}
                         className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                        <span className="material-symbols-rounded text-[16px]">delete_sweep</span>
+                        <Eraser className="size-4 " />
                         Elimina Selezionati{selected.size > 0 && ` (${selected.size})`}
                     </button>
                     <button
                         onClick={cleanupAll}
                         className="px-4 py-2 bg-surface hover:bg-[#252525] text-text-secondary hover:text-text-primary border border-[#333] rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2"
                     >
-                        <span className="material-symbols-rounded text-[16px]">delete_forever</span>
+                        <Trash2 className="size-4 " />
                         Svuota Coda
                     </button>
                 </div>
@@ -129,7 +130,7 @@ export const WorkersQueueTab: React.FC<WorkersQueueTabProps> = ({ jobs, onRefres
                                     <td className="p-4 text-right">
                                         <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
                                             className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors">
-                                            <span className="material-symbols-rounded text-[18px]">visibility</span>
+                                            <Eye className="size-[18px] " />
                                         </a>
                                     </td>
                                 </tr>

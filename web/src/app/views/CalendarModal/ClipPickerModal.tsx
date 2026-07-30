@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { Film, RefreshCw } from 'lucide-react';
 import type { DriveFile, ClipType } from './types';
 
 interface ClipPickerModalProps {
@@ -36,7 +37,7 @@ export const ClipPickerModal: React.FC<ClipPickerModalProps> = ({
                 <div className="p-4 overflow-y-auto">
                     {loading && (
                         <div className="flex items-center justify-center py-6 text-white/50 text-sm">
-                            <span className="material-symbols-outlined animate-spin mr-2">sync</span>
+                            <RefreshCw className="size-4 animate-spin" />
                             Loading clips...
                         </div>
                     )}
@@ -55,7 +56,7 @@ export const ClipPickerModal: React.FC<ClipPickerModalProps> = ({
                                         {file.thumbnailLink ? (
                                             <img src={file.thumbnailLink} alt={file.name} className="w-full h-full object-cover" />
                                         ) : (
-                                            <span className="material-symbols-outlined text-white/30 text-lg">movie</span>
+                                            <Film className="size-5 text-primary" />
                                         )}
                                     </div>
                                     <div className="text-[10px] font-semibold text-white truncate">{file.name}</div>

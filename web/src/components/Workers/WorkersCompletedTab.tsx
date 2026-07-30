@@ -1,4 +1,5 @@
 import React from 'react';
+import { CloudUpload, Eye } from 'lucide-react';
 import { Job } from './types';
 import { formatDateTime, getVideoName } from './jobUtils';
 import { DeliveryStatusCell } from './DeliveryStatusCell';
@@ -54,7 +55,7 @@ export const WorkersCompletedTab: React.FC<WorkersCompletedTabProps> = ({ jobs }
                                         <div className="flex items-center flex-wrap gap-2">
                                             {driveSuccess && (
                                                 <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 text-[10px] font-bold uppercase">
-                                                    <span className="material-symbols-rounded text-[12px]">cloud_upload</span> Drive OK
+                                                    <CloudUpload className="size-3 " /> Drive OK
                                                 </span>
                                             )}
                                             <DeliveryStatusCell jobId={jid} />
@@ -65,7 +66,7 @@ export const WorkersCompletedTab: React.FC<WorkersCompletedTabProps> = ({ jobs }
                                             {driveLink && (
                                                 <a href={driveLink} target="_blank" rel="noreferrer"
                                                     className="inline-flex items-center gap-1 px-2 py-1 bg-violet-500/10 text-violet-400 rounded text-xs hover:bg-violet-500/20">
-                                                    <span className="material-symbols-rounded text-[14px]">cloud_upload</span> Drive
+                                                    <CloudUpload className="size-3 " /> Drive
                                                 </a>
                                             )}
                                             <DeliveryOutputCell jobId={jid} />
@@ -74,7 +75,7 @@ export const WorkersCompletedTab: React.FC<WorkersCompletedTabProps> = ({ jobs }
                                     <td className="p-4 text-right">
                                         <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
                                             className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors">
-                                            <span className="material-symbols-rounded text-[18px]">visibility</span>
+                                            <Eye className="size-[18px] " />
                                         </a>
                                     </td>
                                 </tr>

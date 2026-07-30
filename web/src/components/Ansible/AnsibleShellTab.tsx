@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Terminal } from 'lucide-react';
 import { AnsibleComputer, AnsibleRun } from './types';
 import { runAnsibleShell } from './AnsibleComputersTab/hooks/useAnsibleComputers';
 
@@ -310,7 +311,7 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
                     disabled={executing || !command.trim()}
                     className="px-4 py-2 bg-primary hover:bg-primary-dark disabled:bg-slate-800 text-white rounded-lg font-bold text-sm transition-all flex items-center gap-2"
                 >
-                    <span className="material-symbols-rounded text-[18px]">terminal</span>
+                    <Terminal className="size-[18px] text-emerald-400" />
                     Esegui
                 </button>
             </form>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronRight } from 'lucide-react';
 
 interface FileItemProps {
     name: string;
@@ -41,9 +42,7 @@ export const FileItem: React.FC<FileItemProps> = ({ name, type, size_formatted, 
                 </span>
             )}
             {isFolder && (
-                <span className="material-symbols-rounded text-text-muted text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">
-                    chevron_right
-                </span>
+                <ChevronRight className="size-4 " />
             )}
         </div>
     );

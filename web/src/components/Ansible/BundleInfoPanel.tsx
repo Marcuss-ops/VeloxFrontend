@@ -1,4 +1,5 @@
 import React from 'react';
+import { AlertCircle, AlertTriangle, ChevronRight, FileText, HelpCircle, RefreshCw, Settings, Terminal, X } from 'lucide-react';
 import { SectionBadge, SectionCard, SectionStatus } from './BundleInfoPanel/sections';
 
 // Types
@@ -101,7 +102,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
         return (
             <div className="bg-card-dark border border-red-500/30 rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-4">
-                    <span className="material-symbols-rounded text-red-400">error</span>
+                    <AlertCircle className="size-12 text-red-400" />
                     <h3 className="text-lg font-bold text-text-primary">Bundle Explorer</h3>
                 </div>
                 <div className="text-red-400 text-sm">{error}</div>
@@ -154,7 +155,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                                 className="p-2 rounded-lg hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
                                 title="Aggiorna info"
                             >
-                                <span className="material-symbols-rounded">refresh</span>
+                                <RefreshCw className="size-5 " />
                             </button>
                         </div>
                     </div>
@@ -279,7 +280,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                                 <span className="text-text-secondary">src/ &rarr; codice principale</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
-                                <span className="material-symbols-rounded text-amber-400">settings</span>
+                                <Settings className="size-4 " />
                                 <span className="text-text-secondary">config/ &rarr; configurazioni</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
@@ -291,11 +292,11 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                                 <span className="text-text-secondary">assets/ &rarr; risorse</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
-                                <span className="material-symbols-rounded text-violet-400">terminal</span>
+                                <Terminal className="size-[18px] text-emerald-400" />
                                 <span className="text-text-secondary">scripts/ &rarr; utility</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
-                                <span className="material-symbols-rounded text-red-400">description</span>
+                                <FileText className="size-4 " />
                                 <span className="text-text-secondary">logs/ &rarr; log runtime</span>
                             </div>
                         </div>
@@ -362,7 +363,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                             </div>
                         ) : (
                             <div className="text-amber-400 text-sm flex items-center gap-2">
-                                <span className="material-symbols-rounded">warning</span>
+                                <AlertTriangle className="size-4 " />
                                 <span>venv non incluso nel bundle</span>
                             </div>
                         )}
@@ -422,7 +423,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                                     <span className="material-symbols-rounded text-slate-400 text-[16px]">{item.icon}</span>
                                     <span className="text-sm text-text-secondary">{item.name}</span>
                                 </div>
-                                <span className="material-symbols-rounded text-slate-400 text-[16px]">help</span>
+                                <HelpCircle className="size-4 " />
                             </div>
                         ))}
                     </div>
@@ -449,7 +450,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                                     <span className="material-symbols-rounded text-slate-400 text-[16px]">{item.icon}</span>
                                     <span className="text-sm text-text-secondary">{item.name}</span>
                                 </div>
-                                <span className="material-symbols-rounded text-slate-400 text-[16px]">help</span>
+                                <HelpCircle className="size-4 " />
                             </div>
                         ))}
                     </div>
@@ -520,7 +521,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                             onClick={() => setRegenerateResult(null)}
                             className="opacity-70 hover:opacity-100"
                         >
-                            <span className="material-symbols-rounded text-[18px]">close</span>
+                            <X className="size-4 " />
                         </button>
                     </div>
                 </div>
@@ -530,7 +531,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
             {bundleInfo.manifest && (
                 <details className="bg-card-dark border border-border-dark rounded-xl group">
                     <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer text-sm text-text-secondary hover:text-text-primary">
-                        <span className="material-symbols-rounded text-[16px] group-open:rotate-90 transition-transform">chevron_right</span>
+                        <ChevronRight className="size-4 " />
                         <span>Manifest Completo (JSON)</span>
                     </summary>
                     <pre className="p-4 text-xs text-text-muted overflow-x-auto font-mono border-t border-border-dark">

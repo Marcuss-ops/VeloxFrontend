@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { ArrowLeft, Upload } from 'lucide-react';
 import { useParams, Link } from 'react-router-dom';
 import { APP_ROUTES } from '@/app/routes';
 
@@ -19,7 +20,7 @@ export const PublishView: React.FC = () => {
                     to={`${APP_ROUTES.content}/${contentId}`}
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
                 >
-                    <span className="material-symbols-rounded text-lg">arrow_back</span>
+                    <ArrowLeft className="size-[18px] " />
                 </Link>
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-white">Pubblica</h1>
@@ -28,7 +29,7 @@ export const PublishView: React.FC = () => {
             </div>
 
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-16 text-center">
-                <span className="material-symbols-rounded text-5xl text-slate-600">publish</span>
+                <Upload className="size-12 text-slate-600" />
                 <h2 className="mt-4 text-lg font-medium text-slate-300">Publishing</h2>
                 <p className="mt-1 max-w-md text-sm text-slate-500">
                     Il flusso di pubblicazione sarà disponibile a breve.

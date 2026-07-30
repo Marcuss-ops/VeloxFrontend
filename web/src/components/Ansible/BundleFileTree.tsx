@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight, Home } from 'lucide-react';
+import { ChevronRight, Home, RefreshCw } from 'lucide-react';
 
 // Types
 interface BundleFile {
@@ -73,9 +73,7 @@ const FileItem: React.FC<{
                 </span>
             )}
             {isFolder && (
-                <span className="material-symbols-rounded text-text-muted text-[16px] opacity-0 group-hover:opacity-100 transition-opacity">
-                    chevron_right
-                </span>
+                <ChevronRight className="size-4 " />
             )}
         </div>
     );
@@ -101,7 +99,7 @@ export const BundleFileTree: React.FC<BundleFileTreeProps> = ({
             <div className="px-4 py-3 border-b border-border-dark flex items-center justify-between">
                 <Breadcrumb path={currentPath} onNavigate={onNavigate} />
                 {filesLoading && (
-                    <span className="material-symbols-rounded text-primary animate-spin text-[20px]">sync</span>
+                    <RefreshCw className="size-4 animate-spin" />
                 )}
             </div>
             <div className="max-h-[400px] overflow-y-auto">

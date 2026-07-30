@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Clock, Eye, RotateCcw } from 'lucide-react';
 import { Job } from './types';
 import { formatDateTime, getVideoName, categorizeYouTubeError, toISODateTime } from './jobUtils';
 import { jobsApi } from '../../lib/api';
@@ -107,7 +108,7 @@ export const WorkersErrorsTab: React.FC<WorkersErrorsTabProps> = ({ jobs, onRefr
 
             {/* Auto-cleanup info bar */}
             <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50 text-xs text-slate-400">
-                <span className="material-symbols-rounded text-[14px] text-slate-500">schedule</span>
+                <Clock className="size-6 text-slate-400" />
                 <span>Prossima auto-pulizia tra: <span className="font-mono text-slate-300">{nextCleanup}</span></span>
                 <span className="text-slate-600">•</span>
                 <span>Errori mantenuti per 24h</span>
@@ -164,11 +165,11 @@ export const WorkersErrorsTab: React.FC<WorkersErrorsTabProps> = ({ jobs, onRefr
                                         <div className="flex items-center justify-end gap-2">
                                             <button onClick={() => retry(jid)}
                                                 className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-text-primary text-xs font-medium border border-white/10 transition-colors flex items-center gap-1">
-                                                <span className="material-symbols-rounded text-[14px]">replay</span> Retry
+                                                <RotateCcw className="size-3.5 " /> Retry
                                             </button>
                                             <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
                                                 className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors">
-                                                <span className="material-symbols-rounded text-[18px]">visibility</span>
+                                                <Eye className="size-[18px] " />
                                             </a>
                                         </div>
                                     </td>

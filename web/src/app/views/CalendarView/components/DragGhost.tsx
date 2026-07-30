@@ -6,6 +6,7 @@
  */
 
 import React, { memo } from 'react';
+import { Video } from 'lucide-react';
 import { CalendarEvent } from '@/lib/api';
 
 interface DragGhostProps {
@@ -33,7 +34,7 @@ export const DragGhost = memo<DragGhostProps>(({ event, position, isVisible }) =
         >
             <div className="bg-gradient-to-r from-purple-500/40 to-violet-500/40 text-white text-[10px] font-medium p-2 rounded-lg border-l-2 border-purple-400 shadow-lg shadow-purple-500/30 backdrop-blur-sm">
                 <div className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs text-purple-300">video_file</span>
+                    <Video className="size-3 text-purple-400" />
                     <span className="truncate max-w-[120px]">{event.title}</span>
                 </div>
                 <div className="flex gap-1 mt-1">

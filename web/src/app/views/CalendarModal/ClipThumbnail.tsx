@@ -5,6 +5,7 @@
  */
 
 import React, { useEffect, useRef } from 'react';
+import { Video } from 'lucide-react';
 
 interface VideoClip {
     id: string;
@@ -69,7 +70,7 @@ export const ClipThumbnail: React.FC<ClipThumbnailProps> = React.memo(
                         <img src={clip.thumbnail} alt={clip.name} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                            <span className="material-symbols-outlined text-white/20 text-sm">video_file</span>
+                            <Video className="size-3 text-purple-400" />
                         </div>
                     )}
                     {clip.duration && (

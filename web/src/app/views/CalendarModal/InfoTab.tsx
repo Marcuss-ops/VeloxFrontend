@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { Eye, FileText, Link, RefreshCw, X } from 'lucide-react';
 import type { YouTubeGroup, DriveGroup } from './types';
 
 interface InfoTabProps {
@@ -88,7 +89,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                                 size={Math.max(t.length, 5)}
                             />
                             <button onClick={() => setTitles(prev => prev.filter((_, i) => i !== idx))} className="text-amber-500/50 hover:text-red-400 transition-colors">
-                                <span className="material-symbols-outlined text-sm">close</span>
+                                <X className="size-4 " />
                             </button>
                         </div>
                     ))}
@@ -99,7 +100,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
             <section className="p-4 bg-white/5 rounded-xl border border-white/10">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm">visibility</span>
+                        <Eye className="size-[18px] " />
                         Social Group
                     </h3>
                     {selectedDriveGroup && (
@@ -111,7 +112,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
 
                 {loadingGroups ? (
                     <div className="flex items-center justify-center py-4">
-                        <span className="material-symbols-outlined text-white/30 animate-spin">sync</span>
+                        <RefreshCw className="size-4 animate-spin" />
                     </div>
                 ) : (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
@@ -151,7 +152,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
             <section className="p-4 bg-white/5 rounded-xl border border-white/10 relative">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-green-400 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm">description</span>
+                        <FileText className="size-4 " />
                         Script / Note
                     </h3>
                     <div className="flex items-center gap-2">
@@ -188,7 +189,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
             <section className="p-4 bg-white/5 rounded-xl border border-white/10 relative">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-red-400 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-sm">visibility</span>
+                        <Eye className="size-[18px] " />
                         Source Link
                     </h3>
                     <div className="flex items-center gap-2">
@@ -234,10 +235,10 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                     <div className="space-y-2">
                         {youtubeLinks.map((link, idx) => (
                             <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
-                                <span className="material-symbols-outlined text-red-400 text-sm">link</span>
+                                <Link className="size-4 text-green-400" />
                                 <a href={link} target="_blank" rel="noopener noreferrer" className="flex-1 text-[11px] text-blue-400 hover:text-blue-300 truncate">{link}</a>
                                 <button onClick={() => setYoutubeLinks(prev => prev.filter((_, i) => i !== idx))} className="text-white/30 hover:text-red-400 transition-colors">
-                                    <span className="material-symbols-outlined text-xs">close</span>
+                                    <X className="size-4 " />
                                 </button>
                             </div>
                         ))}

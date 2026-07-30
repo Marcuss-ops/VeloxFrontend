@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown } from 'lucide-react';
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -77,9 +78,7 @@ const MiniCalendar: React.FC = () => {
                     marginBottom: showCalendar ? 8 : 0,
                 }}
             >
-                <span className="material-symbols-rounded" style={{ fontSize: 22, fontWeight: 400 }}>
-                    {showCalendar ? 'expand_less' : 'expand_more'}
-                </span>
+                {showCalendar ? <ChevronUp className="size-[22px]" /> : <ChevronDown className="size-[22px]" />}
             </button>
             
             {/* Calendar Popup */}
@@ -117,7 +116,7 @@ const MiniCalendar: React.FC = () => {
                                 alignItems: 'center',
                             }}
                         >
-                            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>chevron_left</span>
+                            <ChevronLeft className="size-4 " />
                         </button>
                         <span style={{
                             fontSize: 11,
@@ -139,7 +138,7 @@ const MiniCalendar: React.FC = () => {
                                 alignItems: 'center',
                             }}
                         >
-                            <span className="material-symbols-rounded" style={{ fontSize: 16 }}>chevron_right</span>
+                            <ChevronRight className="size-4 " />
                         </button>
                     </div>
                     

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ArrowRight, PauseCircle, RefreshCw, StopCircle, X } from 'lucide-react';
 import { Job, Worker } from './types';
 import { getWorkerDisplay, formatDuration, getVideoName } from './jobUtils';
 import { jobsApi } from '../../lib/api';
@@ -41,7 +42,7 @@ export const WorkersExecutionTab: React.FC<WorkersExecutionTabProps> = ({ jobs, 
                         onClick={stopAll}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 transition-colors"
                     >
-                        <span className="material-symbols-rounded text-[16px]">stop_circle</span>
+                        <StopCircle className="size-4 " />
                         Interrompi tutti
                     </button>
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
@@ -57,7 +58,7 @@ export const WorkersExecutionTab: React.FC<WorkersExecutionTabProps> = ({ jobs, 
             {jobs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center border-2 border-dashed border-[#1f1f1f] rounded-xl bg-card-dark/50">
                     <div className="size-16 rounded-full bg-surface flex items-center justify-center mb-4 text-[#333]">
-                        <span className="material-symbols-rounded text-[32px]">pause_circle</span>
+                        <PauseCircle className="size-8 " />
                     </div>
                     <h3 className="text-text-primary font-bold text-lg mb-1">Nessun job in esecuzione</h3>
                     <p className="text-text-secondary text-sm max-w-sm">
@@ -91,7 +92,7 @@ export const WorkersExecutionTab: React.FC<WorkersExecutionTabProps> = ({ jobs, 
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-3">
                                         <div className="size-12 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400 shrink-0">
-                                            <span className="material-symbols-rounded animate-spin text-[24px]" style={{ animationDuration: '2s' }}>autorenew</span>
+                                            <RefreshCw className="size-6 " />
                                         </div>
                                         <div className="min-w-0">
                                             <h4 className="text-text-primary font-bold text-sm truncate max-w-[160px]" title={vid}>{vid}</h4>
@@ -131,12 +132,12 @@ export const WorkersExecutionTab: React.FC<WorkersExecutionTabProps> = ({ jobs, 
                                 <div className="flex items-center justify-end gap-3">
                                     <button onClick={() => stopOne(jid)}
                                         className="text-xs font-semibold text-red-400 hover:text-red-500 transition-colors flex items-center gap-1">
-                                        <span className="material-symbols-rounded text-[16px]">close</span>
+                                        <X className="size-4 " />
                                         Annulla
                                     </button>
                                     <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
                                         className="text-xs font-semibold text-text-primary hover:text-violet-400 transition-colors flex items-center gap-1">
-                                        Dettagli <span className="material-symbols-rounded text-[14px]">arrow_forward</span>
+                                        Dettagli <ArrowRight className="size-3.5 " />
                                     </a>
                                 </div>
                             </div>

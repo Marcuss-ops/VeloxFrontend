@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { AlertCircle, Bell, Home, Loader2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Bell, ChevronRight, ExternalLink, Film, Home, Loader2, RefreshCw, Share2 } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useVeloxJobDetail } from './hooks/useVeloxJobDetail';
 import { getDeliveryEventTimeline } from '@/lib/api/veloxApi';
@@ -90,7 +90,7 @@ const DeliveryRow: React.FC<{ delivery: VeloxDelivery; index: number; destinatio
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 hover:underline w-fit"
         >
-          <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+          <ExternalLink className="size-4 " />
           Visualizza sul social
         </a>
       )}
@@ -124,7 +124,7 @@ const DeliveryEventTimeline: React.FC<{ status: string }> = ({ status }) => {
             <span>{event.label}</span>
           </div>
           {idx < events.length - 1 && events[idx + 1]?.key !== 'failed' && (
-            <span className="text-slate-600 material-symbols-outlined text-[14px]">chevron_right</span>
+            <ChevronRight className="size-4 " />
           )}
         </React.Fragment>
       ))}
@@ -182,7 +182,7 @@ export const VeloxJobDetailView: React.FC = () => {
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800/80 px-6 py-4 bg-white dark:bg-slate-900/50">
         <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-primary">movie</span>
+          <Film className="size-5 text-primary" />
           <h2 className="text-lg font-bold leading-tight tracking-tight">Job Detail</h2>
         </div>
         <div className="flex items-center gap-6">
@@ -201,7 +201,7 @@ export const VeloxJobDetailView: React.FC = () => {
             <Home className="size-[18px]" />
             Dashboard
           </button>
-          <span className="text-slate-300 dark:text-slate-600 material-symbols-outlined text-[16px]">chevron_right</span>
+          <ChevronRight className="size-4 " />
           <span className="text-slate-900 dark:text-slate-100 truncate max-w-xs" title={job.id}>
             Job {job.id.slice(0, 12)}...
           </span>
@@ -220,7 +220,7 @@ export const VeloxJobDetailView: React.FC = () => {
             onClick={() => refresh()}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium w-fit"
           >
-            <span className="material-symbols-outlined text-[18px]">refresh</span>
+            <RefreshCw className="size-5 " />
             Aggiorna
           </button>
         </div>
@@ -248,7 +248,7 @@ export const VeloxJobDetailView: React.FC = () => {
         <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">share</span>
+              <Share2 className="size-5 text-primary" />
               Stato Pubblicazione
             </h3>
             <span className="text-xs text-slate-500 font-medium">{deliveries.length} destinazioni</span>
@@ -278,7 +278,7 @@ export const VeloxJobDetailView: React.FC = () => {
             to="/analytics"
             className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-primary transition-colors"
           >
-            <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            <ArrowLeft className="size-[18px] " />
             Torna alla dashboard
           </Link>
         </div>
