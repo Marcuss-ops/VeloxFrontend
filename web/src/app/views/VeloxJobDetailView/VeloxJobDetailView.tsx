@@ -148,7 +148,7 @@ export const VeloxJobDetailView: React.FC = () => {
       <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <span className="material-symbols-outlined text-[48px] text-primary animate-spin">progress_activity</span>
-          <span className="text-slate-400">Caricamento job Velox...</span>
+          <span className="text-slate-400">Caricamento job...</span>
         </div>
       </div>
     );
@@ -182,7 +182,7 @@ export const VeloxJobDetailView: React.FC = () => {
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800/80 px-6 py-4 bg-white dark:bg-slate-900/50">
         <div className="flex items-center gap-4">
           <span className="material-symbols-outlined text-primary">movie</span>
-          <h2 className="text-lg font-bold leading-tight tracking-tight">Velox Job Detail</h2>
+          <h2 className="text-lg font-bold leading-tight tracking-tight">Job Detail</h2>
         </div>
         <div className="flex items-center gap-6">
           <button className="relative text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors">

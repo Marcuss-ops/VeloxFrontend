@@ -34,7 +34,7 @@ export function useVeloxJobDetail(jobId: string | undefined): UseVeloxJobDetailR
       setDetail(data);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Impossibile caricare i dettagli del job Velox');
+      setError(err instanceof Error ? err.message : 'Impossibile caricare i dettagli del job');
     } finally {
       setLoading(false);
     }

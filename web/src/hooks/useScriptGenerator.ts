@@ -311,11 +311,11 @@ export function useScriptGenerator(
                 const requestPromise = (async () => {
                     try {
                         const job = await veloxApi.createJob(payload);
-                        appendLog(`🌐 Job Velox creato: ${job.id}`);
+                        appendLog(`🌐 Job InstaEdit creato: ${job.id}`);
                         return { status: 200, body: { ok: true, job_id: job.id }, rawText: '' };
                     } catch (e: unknown) {
-                        const message = e instanceof Error ? e.message : 'Errore durante la creazione del job Velox';
-                        appendLog(`⚠️ Creazione job Velox fallita: ${message}`);
+                        const message = e instanceof Error ? e.message : 'Errore durante la creazione del job InstaEdit';
+                        appendLog(`⚠️ Creazione job InstaEdit fallita: ${message}`);
                         return { status: 500, body: { ok: false, error: message }, rawText: message };
                     }
                 })();
