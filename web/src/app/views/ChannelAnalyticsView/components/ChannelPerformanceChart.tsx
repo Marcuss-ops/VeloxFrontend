@@ -4,9 +4,9 @@
  * Revenue). The metric selector is local React state; the chart
  * swaps dataset + label on every change.
  *
- * Uses raw chart.js to mirror existing app conventions (FinanceChart,
- * installed via package.json). Chart.register(...registerables) is
- * idempotent so duplicate registrations across views are a no-op.
+ * Uses raw chart.js (installed via package.json).
+ * Chart.register(...registerables) is idempotent so duplicate
+ * registrations across views are a no-op.
  */
 
 import { useEffect, useRef, useState } from 'react';

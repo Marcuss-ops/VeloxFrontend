@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronRight, Home } from 'lucide-react';
 
 interface BreadcrumbProps {
     path: string;

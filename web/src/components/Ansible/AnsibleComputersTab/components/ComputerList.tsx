@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { User, X } from 'lucide-react';
 import { AnsibleComputer, AnsibleComputerAvailability } from '../../types';
 
 function formatRelativeTime(isoString: string): string {

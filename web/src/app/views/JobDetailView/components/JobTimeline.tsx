@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { AlertCircle, Link, Terminal, Upload } from 'lucide-react';
 import {
     JobDetailData,
     JobEvent,
@@ -22,7 +23,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-[#0c1017] border border-slate-700 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
                 <div className="px-5 py-3 flex items-center justify-between bg-slate-800/50 dark:bg-slate-900/50 border-b border-slate-700/50">
                     <h3 className="font-semibold text-white flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px] text-emerald-400">terminal</span>
+                        <Terminal className="size-[18px] text-emerald-400" />
                         Processing Log
                     </h3>
                     <div className="flex gap-2">
@@ -62,7 +63,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
             {(job.status === 'ERROR' || job.status === 'FAILED') && (job.error || job.error_message) && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4">
                     <div className="flex items-start gap-3">
-                        <span className="material-symbols-outlined text-red-400">error</span>
+                        <AlertCircle className="size-12 text-red-400" />
                         <div className="flex-1">
                             <h4 className="font-semibold text-red-400 mb-1">Errore durante l'elaborazione</h4>
                             <p className="text-sm text-red-300">{job.error || job.error_message}</p>
@@ -75,14 +76,14 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
             {job.last_upload_result && (
                 <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px] text-slate-400">upload</span>
+                        <Upload className="size-[18px] text-slate-400" />
                         Upload Results
                     </h4>
                     <div className="flex flex-col gap-2">
 
                         {asString(job.last_upload_result.video_url) && (
                             <div className="flex items-center gap-2 text-sm">
-                                <span className="material-symbols-outlined text-green-400 text-[16px]">link</span>
+                                <Link className="size-4 text-green-400" />
                                 <span>URL:</span>
                                 <a
                                     href={asString(job.last_upload_result.video_url)}

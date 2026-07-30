@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 
 interface RegenerateToastProps {
     ok: boolean;
@@ -25,7 +26,7 @@ export const RegenerateToast: React.FC<RegenerateToastProps> = ({ ok, message, o
                     onClick={onClose}
                     className="opacity-70 hover:opacity-100"
                 >
-                    <span className="material-symbols-rounded text-[18px]">close</span>
+                    <X className="size-5" />
                 </button>
             </div>
         </div>

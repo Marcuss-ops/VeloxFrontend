@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { AlertCircle, BarChart3, Bell, ChevronRight, Film, Home, Loader2 } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { APP_ROUTES } from '../../routes';
 import { statusConfig } from '../utils/jobDetail';
@@ -31,7 +32,7 @@ export const JobDetailView: React.FC = () => {
         return (
             <div className="flex items-center justify-center h-full">
                 <div className="flex flex-col items-center gap-4">
-                    <span className="material-symbols-rounded text-[48px] text-primary animate-spin">progress_activity</span>
+                    <Loader2 className="size-12 text-purple-400 animate-spin" />
                     <span className="text-slate-400">Caricamento dettagli job...</span>
                 </div>
             </div>
@@ -42,7 +43,7 @@ export const JobDetailView: React.FC = () => {
         return (
             <div className="flex items-center justify-center h-full">
                 <div className="flex flex-col items-center gap-4 text-center">
-                    <span className="material-symbols-rounded text-[48px] text-red-400">error</span>
+                    <AlertCircle className="size-12 text-red-400" />
                     <span className="text-slate-400">{error}</span>
                     <button
                         onClick={() => navigate(-1)}
@@ -87,14 +88,14 @@ export const JobDetailView: React.FC = () => {
                             <Home className="size-[18px]" />
                             Dashboard
                         </a>
-                        <span className="text-slate-300 dark:text-slate-600 material-symbols-outlined text-[16px]">chevron_right</span>
+                        <ChevronRight className="size-4" />
                         <a
                             className="text-slate-500 dark:text-slate-400 hover:text-primary transition-colors cursor-pointer"
                             onClick={() => navigate('/analytics?tab=queue')}
                         >
                             Queue
                         </a>
-                        <span className="text-slate-300 dark:text-slate-600 material-symbols-outlined text-[16px]">chevron_right</span>
+                        <ChevronRight className="size-4" />
                         <span className="text-slate-900 dark:text-slate-100">Job #{jobId?.slice(0, 6)}...</span>
                     </div>
 
@@ -115,7 +116,7 @@ export const JobDetailView: React.FC = () => {
                             to={`${APP_ROUTES.contentJobDetail}/${jobId}`}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium"
                         >
-                            <span className="material-symbols-outlined text-[18px]">movie</span>
+                            <Film className="size-[18px]" />
                             Stato job
                         </Link>
                     </div>

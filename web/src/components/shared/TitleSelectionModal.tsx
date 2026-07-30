@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Check, Folder, MousePointer, Plus, Search, SearchX, X } from 'lucide-react';
 import { 
     Categories, 
     loadCategories, 
@@ -66,7 +67,7 @@ const TitleItem = React.memo<{
                     </div>
                     {showCategory && category && (
                         <div className="text-[10px] text-white/40 mt-1 flex items-center gap-1">
-                            <span className="material-symbols-outlined text-xs">folder</span>
+                            <Folder className="size-4" />
                             {category}
                         </div>
                     )}
@@ -80,14 +81,14 @@ const TitleItem = React.memo<{
                     className="absolute top-2 right-2 w-7 h-7 bg-amber-500 hover:bg-amber-400 rounded-full flex items-center justify-center shadow-lg shadow-amber-500/30 transition-all z-10"
                     title="Aggiungi titolo"
                 >
-                    <span className="material-symbols-outlined text-white text-sm">add</span>
+                    <Plus className="size-4" />
                 </button>
             )}
             
             {/* Selected indicator */}
             {isSelected && (
                 <div className="absolute top-2 right-2 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
-                    <span className="material-symbols-outlined text-white text-xs">check</span>
+                    <Check className="size-4" />
                 </div>
             )}
         </div>
@@ -204,7 +205,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                         onClick={() => onOpenChange(false)}
                         className="p-2 text-white/50 hover:text-white transition-colors rounded-lg hover:bg-white/10"
                     >
-                        <span className="material-symbols-outlined">close</span>
+                        <X className="size-5" />
                     </button>
                 </header>
 
@@ -233,7 +234,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                                         onClick={() => removeTitle(title)}
                                         className="text-white/50 hover:text-white ml-1"
                                     >
-                                        <span className="material-symbols-outlined text-xs">close</span>
+                                        <X className="size-5" />
                                     </button>
                                 </div>
                             ))}
@@ -244,7 +245,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                 {/* Search */}
                 <div className="px-5 py-3 border-b border-white/10">
                     <div className="relative">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">search</span>
+                        <Search className="size-4" />
                         <input
                             type="text"
                             placeholder="Cerca titolo..."
@@ -263,7 +264,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                         <div className="p-4">
                             {filteredTitles.length === 0 ? (
                                 <div className="text-center py-8 text-white/40">
-                                    <span className="material-symbols-outlined text-3xl mb-2 block opacity-30">search_off</span>
+                                    <SearchX className="size-8" />
                                     Nessun titolo trovato
                                 </div>
                             ) : (
@@ -334,7 +335,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                                         </div>
                                     ) : (
                                         <div className="text-center py-12 text-white/30">
-                                            <span className="material-symbols-outlined text-4xl mb-3 block opacity-30">touch_app</span>
+                                            <MousePointer className="size-10" />
                                             <span className="text-sm">Seleziona una categoria</span>
                                         </div>
                                     )}

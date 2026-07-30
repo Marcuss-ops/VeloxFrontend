@@ -8,6 +8,7 @@
  */
 
 import React, { useMemo } from 'react';
+import { AlertCircle, Bell, Home, Loader2 } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useVeloxJobDetail } from './hooks/useVeloxJobDetail';
 import { getDeliveryEventTimeline } from '@/lib/api/veloxApi';
