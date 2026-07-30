@@ -20,8 +20,8 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
     return (
         <>
             {/* Processing Log - Modern Design */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-[#0c1017] border border dark:border rounded-2xl overflow-hidden shadow-lg">
-                <div className="px-5 py-3 flex items-center justify-between bg-card/50 dark:bg-card/50 border-b border/50">
+            <div className="bg-gradient-to-br from-slate-900 to-[#0c1017] border rounded-2xl overflow-hidden shadow-lg">
+                <div className="px-5 py-3 flex items-center justify-between bg-card/50 border-b border/50">
                     <h3 className="font-semibold text-white flex items-center gap-2">
                         <Terminal className="size-[18px] text-emerald-400" />
                         Processing Log
@@ -74,7 +74,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
 
             {/* Upload Results */}
             {job.last_upload_result && (
-                <div className="bg-white dark:bg-card/50 border border dark:border rounded-xl p-4">
+                <div className="bg-card/50 border rounded-xl p-4">
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
                         <Upload className="size-[18px] text-muted-foreground" />
                         Upload Results

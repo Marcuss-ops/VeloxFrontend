@@ -61,19 +61,19 @@ export const JobDetailView: React.FC = () => {
     const statusInfo = statusConfig[job.status] || statusConfig.PENDING;
 
     return (
-        <div className="min-h-screen bg-background-light dark:bg-background-dark">
+        <div className="min-h-screen bg-background">
             {/* Header */}
-            <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border dark:border/80 px-6 py-4 bg-white dark:bg-card/50">
+            <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border/80 px-6 py-4 bg-card/50">
                 <div className="flex items-center gap-4">
                     <BarChart3 className="size-5 text-purple-400" />
                     <h2 className="text-lg font-bold leading-tight tracking-tight">Analytics Dashboard</h2>
                 </div>
                 <div className="flex items-center gap-6">
-                    <button className="relative text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-slate-100 transition-colors">
+                    <button className="relative text-muted-foreground hover:text-foreground transition-colors">
                         <Bell className="size-5" />
                         <span className="absolute top-0 right-0 size-2 bg-primary rounded-full"></span>
                     </button>
-                    <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border dark:border bg-white/30 dark:bg-muted" />
+                    <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border bg-muted" />
                 </div>
             </header>
 
@@ -82,7 +82,7 @@ export const JobDetailView: React.FC = () => {
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center flex-wrap gap-2 text-sm font-medium">
                         <a
-                            className="text-muted-foreground dark:text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+                            className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
                             onClick={() => navigate('/analytics')}
                         >
                             <Home className="size-[18px]" />
@@ -90,13 +90,13 @@ export const JobDetailView: React.FC = () => {
                         </a>
                         <ChevronRight className="size-4" />
                         <a
-                            className="text-muted-foreground dark:text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                            className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                             onClick={() => navigate('/analytics?tab=queue')}
                         >
                             Queue
                         </a>
                         <ChevronRight className="size-4" />
-                        <span className="text-foreground dark:text-slate-100">Job #{jobId?.slice(0, 6)}...</span>
+                        <span className="text-foreground">Job #{jobId?.slice(0, 6)}...</span>
                     </div>
 
                     {/* Title and Status */}
