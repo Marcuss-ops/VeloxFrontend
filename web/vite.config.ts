@@ -67,7 +67,7 @@ export default defineConfig(({ command }) => ({
                     'vendor': ['react', 'react-dom'],
                     'query': ['@tanstack/react-query'],
                     'ui': ['clsx', 'tailwind-merge', 'class-variance-authority'],
-                    'radix': ['@radix-ui/react-tabs', '@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tooltip']
+                    'radix': ['@radix-ui/react-dialog', '@radix-ui/react-select']
                 }
             }
         }
