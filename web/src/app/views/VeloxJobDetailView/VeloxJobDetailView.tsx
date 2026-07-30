@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { AlertCircle, ArrowLeft, Bell, ChevronRight, ExternalLink, Film, Home, Loader2, RefreshCw, Share2 } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Bell, ChevronRight, ExternalLink, Film, Home, Loader2, RefreshCw, Share2, Hourglass, CheckCircle2, Upload, ListOrdered, KeyRound, BadgeCheck, HelpCircle, XCircle, Flag, Clock } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useVeloxJobDetail } from './hooks/useVeloxJobDetail';
 import { getDeliveryEventTimeline } from '@/lib/api/veloxApi';
@@ -18,28 +18,28 @@ import type { SocialDestination } from '@/lib/api/socialDestinationsApi';
 
 const statusBadge = (status: string) => {
   const normalized = (status || 'UNKNOWN').toUpperCase();
-  const configs: Record<string, { label: string; color: string; bg: string; icon: string; animate: boolean }> = {
-    PENDING: { label: 'In attesa', color: 'text-slate-300', bg: 'bg-slate-500/10 border-slate-500/20', icon: 'hourglass_empty', animate: false },
-    PROCESSING: { label: 'Rendering', color: 'text-primary', bg: 'bg-primary/10 border-primary/20', icon: 'movie', animate: true },
-    SUCCEEDED: { label: 'Completato', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20', icon: 'check_circle', animate: false },
-    FAILED: { label: 'Fallito', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: 'error', animate: false },
-    CANCELLED: { label: 'Annullato', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20', icon: 'cancel', animate: false },
-    DEAD: { label: 'Dead letter', color: 'text-red-500', bg: 'bg-red-600/10 border-red-600/20', icon: 'report', animate: false },
+  const configs: Record<string, { label: string; color: string; bg: string; icon: React.ElementType; animate: boolean }> = {
+    PENDING: { label: 'In attesa', color: 'text-slate-300', bg: 'bg-slate-500/10 border-slate-500/20', icon: Hourglass, animate: false },
+    PROCESSING: { label: 'Rendering', color: 'text-primary', bg: 'bg-primary/10 border-primary/20', icon: Film, animate: true },
+    SUCCEEDED: { label: 'Completato', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20', icon: CheckCircle2, animate: false },
+    FAILED: { label: 'Fallito', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: AlertCircle, animate: false },
+    CANCELLED: { label: 'Annullato', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20', icon: XCircle, animate: false },
+    DEAD: { label: 'Dead letter', color: 'text-red-500', bg: 'bg-red-600/10 border-red-600/20', icon: Flag, animate: false },
   };
-  return configs[normalized] || { label: status, color: 'text-slate-300', bg: 'bg-slate-500/10 border-slate-500/20', icon: 'help', animate: false };
+  return configs[normalized] || { label: status, color: 'text-slate-300', bg: 'bg-slate-500/10 border-slate-500/20', icon: HelpCircle, animate: false };
 };
 
 const deliveryStatusBadge = (status: string) => {
   const normalized = (status || 'UNKNOWN').toUpperCase();
-  const configs: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-    PUBLISHED: { label: 'Pubblicato', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20', icon: 'check_circle' },
-    PUBLISHING: { label: 'In pubblicazione', color: 'text-primary', bg: 'bg-primary/10 border-primary/20', icon: 'publish' },
-    QUEUED: { label: 'In coda', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: 'queue' },
-    FAILED: { label: 'Pubblicazione fallita', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: 'error' },
-    BLOCKED_AUTH: { label: 'Bloccato (auth)', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20', icon: 'key_off' },
-    ARTIFACT_VERIFIED: { label: 'Verificato', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: 'verified' },
+  const configs: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
+    PUBLISHED: { label: 'Pubblicato', color: 'text-green-400', bg: 'bg-green-500/10 border-green-500/20', icon: CheckCircle2 },
+    PUBLISHING: { label: 'In pubblicazione', color: 'text-primary', bg: 'bg-primary/10 border-primary/20', icon: Upload },
+    QUEUED: { label: 'In coda', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20', icon: ListOrdered },
+    FAILED: { label: 'Pubblicazione fallita', color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/20', icon: AlertCircle },
+    BLOCKED_AUTH: { label: 'Bloccato (auth)', color: 'text-orange-400', bg: 'bg-orange-500/10 border-orange-500/20', icon: KeyRound },
+    ARTIFACT_VERIFIED: { label: 'Verificato', color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20', icon: BadgeCheck },
   };
-  return configs[normalized] || { label: status, color: 'text-slate-300', bg: 'bg-slate-500/10 border-slate-500/20', icon: 'help' };
+  return configs[normalized] || { label: status, color: 'text-slate-300', bg: 'bg-slate-500/10 border-slate-500/20', icon: HelpCircle };
 };
 
 const formatDate = (value: string | undefined) => {
@@ -50,6 +50,7 @@ const formatDate = (value: string | undefined) => {
 
 const DeliveryRow: React.FC<{ delivery: VeloxDelivery; index: number; destination?: SocialDestination }> = ({ delivery, index, destination }) => {
   const badge = deliveryStatusBadge(delivery.status);
+  const Icon = badge.icon;
   const displayLabel = destination?.label || destination?.external_destination_id || delivery.externalDestinationId;
   const displayProvider = destination?.provider;
   return (
@@ -65,7 +66,7 @@ const DeliveryRow: React.FC<{ delivery: VeloxDelivery; index: number; destinatio
           </span>
         </div>
         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold ${badge.bg} ${badge.color}`}>
-          <span className="material-symbols-outlined text-[14px]">{badge.icon}</span>
+          <Icon className="size-3.5" />
           {badge.label}
         </span>
       </div>
@@ -108,26 +109,29 @@ const DeliveryEventTimeline: React.FC<{ status: string }> = ({ status }) => {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {events.map((event, idx) => (
-        <React.Fragment key={event.key}>
-          <div
-            className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-medium transition-colors ${
-              event.active
-                ? 'bg-primary/10 border-primary/30 text-primary'
-                : event.completed
-                  ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                  : 'bg-slate-700/30 border-slate-700/50 text-slate-500'
-            }`}
-            title={event.completed ? 'Completato' : event.active ? 'In corso' : 'In attesa'}
-          >
-            <span className="material-symbols-outlined text-[14px]">{event.icon}</span>
-            <span>{event.label}</span>
-          </div>
-          {idx < events.length - 1 && events[idx + 1]?.key !== 'failed' && (
-            <ChevronRight className="size-4 " />
-          )}
-        </React.Fragment>
-      ))}
+      {events.map((event, idx) => {
+        const EventIcon = event.icon;
+        return (
+          <React.Fragment key={event.key}>
+            <div
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-xs font-medium transition-colors ${
+                event.active
+                  ? 'bg-primary/10 border-primary/30 text-primary'
+                  : event.completed
+                    ? 'bg-green-500/10 border-green-500/20 text-green-400'
+                    : 'bg-slate-700/30 border-slate-700/50 text-slate-500'
+              }`}
+              title={event.completed ? 'Completato' : event.active ? 'In corso' : 'In attesa'}
+            >
+              <EventIcon className="size-3.5" />
+              <span>{event.label}</span>
+            </div>
+            {idx < events.length - 1 && events[idx + 1]?.key !== 'failed' && (
+              <ChevronRight className="size-4" />
+            )}
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 };
@@ -212,7 +216,7 @@ export const VeloxJobDetailView: React.FC = () => {
           <div className="flex items-center gap-4">
             <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{job.projectId || 'Untitled Project'}</h1>
             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border ${renderBadge.bg} ${renderBadge.color} text-sm font-semibold`}>
-              <span className={`material-symbols-outlined text-[16px] ${renderBadge.animate ? 'animate-pulse' : ''}`}>{renderBadge.icon}</span>
+              <renderBadge.icon className={`size-4 ${renderBadge.animate ? 'animate-pulse' : ''}`} />
               {renderBadge.label}
             </span>
           </div>
@@ -230,7 +234,7 @@ export const VeloxJobDetailView: React.FC = () => {
           <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
             <div className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider mb-1">Stato Rendering</div>
             <div className={`text-lg font-bold ${renderBadge.color} flex items-center gap-2`}>
-              <span className="material-symbols-outlined text-[20px]">{renderBadge.icon}</span>
+              <renderBadge.icon className="size-5" />
               {renderBadge.label}
             </div>
           </div>

@@ -68,9 +68,11 @@ export type ErrorCategory =
     | 'ERROR'
     | 'UNKNOWN';
 
+import React from 'react';
+
 export interface ErrorInfo {
     category: ErrorCategory;
-    icon: string;
+    icon: React.ElementType;
     color: string;
     hint: string;
 }

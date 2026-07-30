@@ -72,11 +72,10 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                                         </td>
                                         <td className="p-4">
                                             <div className="flex items-start gap-2">
-                                                {errorInfo && (
-                                                    <span className={`material-symbols-rounded text-[14px] text-${errorInfo.color}-400 mt-0.5`} title={errorInfo.hint}>
-                                                        {errorInfo.icon}
-                                                    </span>
-                                                )}
+                                                {errorInfo && (() => {
+                                                    const ErrIcon = errorInfo.icon;
+                                                    return <ErrIcon className={`size-3.5 text-${errorInfo.color}-400 mt-0.5 shrink-0`} title={errorInfo.hint} />;
+                                                })()}
                                                 <div 
                                                     className="max-w-md text-red-300 text-xs font-mono bg-red-950/30 p-2 rounded border border-red-900/30 truncate cursor-pointer" 
                                                     title={errorMsg || 'Unknown error'}

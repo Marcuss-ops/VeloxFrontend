@@ -1,4 +1,5 @@
 import React from 'react';
+import { CheckCircle2, AlertTriangle, XCircle, HelpCircle } from 'lucide-react';
 
 type BadgeStatus = 'ok' | 'warning' | 'error' | 'unknown';
 
@@ -15,17 +16,18 @@ const statusColors: Record<BadgeStatus, string> = {
     unknown: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
 };
 
-const statusIcons: Record<BadgeStatus, string> = {
-    ok: 'check_circle',
-    warning: 'warning',
-    error: 'cancel',
-    unknown: 'help',
+const statusIcons: Record<BadgeStatus, React.ElementType> = {
+    ok: CheckCircle2,
+    warning: AlertTriangle,
+    error: XCircle,
+    unknown: HelpCircle,
 };
 
 export const SectionBadge: React.FC<SectionBadgeProps> = ({ label, status, detail }) => {
+    const Icon = statusIcons[status];
     return (
         <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs border ${statusColors[status]}`}>
-            <span className="material-symbols-rounded text-[14px]">{statusIcons[status]}</span>
+            <Icon className="size-3.5" />
             <span>{label}</span>
             {detail && <span className="opacity-70">({detail})</span>}
         </div>

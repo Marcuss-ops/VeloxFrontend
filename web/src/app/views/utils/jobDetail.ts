@@ -1,5 +1,7 @@
 /** JobDetailView utility functions */
 
+import React from 'react';
+import { Clock, RefreshCw, CheckCircle2, AlertCircle, XCircle, Ban } from 'lucide-react';
 import type { Job, JobStatus } from '../../../lib/api/jobsApi';
 
 export interface JobEvent {
@@ -25,14 +27,14 @@ export interface JobDetailData extends Job {
     logs?: JobEvent[];
 }
 
-// Status badge configuration
-export const statusConfig: Record<JobStatus, { label: string; color: string; bgColor: string; icon: string; animate?: boolean }> = {
-    PENDING: { label: 'Pending', color: 'text-slate-400', bgColor: 'bg-slate-500/10 border-slate-500/20', icon: 'schedule' },
-    PROCESSING: { label: 'Processing', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/20', icon: 'sync', animate: true },
-    COMPLETED: { label: 'Completed', color: 'text-green-400', bgColor: 'bg-green-500/10 border-green-500/20', icon: 'check_circle' },
-    ERROR: { label: 'Error', color: 'text-red-400', bgColor: 'bg-red-500/10 border-red-500/20', icon: 'error' },
-    FAILED: { label: 'Failed', color: 'text-red-400', bgColor: 'bg-red-500/10 border-red-500/20', icon: 'cancel' },
-    CANCELED: { label: 'Canceled', color: 'text-amber-400', bgColor: 'bg-amber-500/10 border-amber-500/20', icon: 'block' },
+// Status badge configuration with Lucide components
+export const statusConfig: Record<JobStatus, { label: string; color: string; bgColor: string; icon: React.ElementType; animate?: boolean }> = {
+    PENDING: { label: 'Pending', color: 'text-slate-400', bgColor: 'bg-slate-500/10 border-slate-500/20', icon: Clock },
+    PROCESSING: { label: 'Processing', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/20', icon: RefreshCw, animate: true },
+    COMPLETED: { label: 'Completed', color: 'text-green-400', bgColor: 'bg-green-500/10 border-green-500/20', icon: CheckCircle2 },
+    ERROR: { label: 'Error', color: 'text-red-400', bgColor: 'bg-red-500/10 border-red-500/20', icon: AlertCircle },
+    FAILED: { label: 'Failed', color: 'text-red-400', bgColor: 'bg-red-500/10 border-red-500/20', icon: XCircle },
+    CANCELED: { label: 'Canceled', color: 'text-amber-400', bgColor: 'bg-amber-500/10 border-amber-500/20', icon: Ban },
 };
 
 // Format timestamp

@@ -106,9 +106,7 @@ export const JobDetailView: React.FC = () => {
                                 {job.video_name || 'Untitled Video'}
                             </h1>
                             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${statusInfo.bgColor} border ${statusInfo.color} text-sm font-semibold`}>
-                                <span className={`material-symbols-outlined text-[16px] ${statusInfo.animate ? 'animate-pulse' : ''}`}>
-                                    {statusInfo.icon}
-                                </span>
+                                <statusInfo.icon className={`size-4 ${statusInfo.animate ? 'animate-pulse' : ''}`} />
                                 {statusInfo.label}
                             </div>
                         </div>

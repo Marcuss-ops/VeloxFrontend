@@ -1,3 +1,5 @@
+import React from 'react';
+import { HelpCircle, Copy, KeyRound, Hourglass, Scale, Copyright, WifiOff, Tv, AlertCircle } from 'lucide-react';
 import { ErrorInfo, Job, Worker } from './types';
 
 export function toISODateTime(value: unknown): string | null {
@@ -56,23 +58,23 @@ export function getVideoName(job: Job): string {
 }
 
 export function categorizeYouTubeError(errorMsg: string | undefined): ErrorInfo {
-    if (!errorMsg) return { category: 'UNKNOWN', icon: 'help', color: 'slate', hint: 'Errore sconosciuto' };
+    if (!errorMsg) return { category: 'UNKNOWN', icon: HelpCircle, color: 'slate', hint: 'Errore sconosciuto' };
     const err = errorMsg.toLowerCase();
     if (err.includes('idempoten') || err.includes('already exists') || err.includes('duplicate') || err.includes('video already'))
-        return { category: 'IDEMPOTENT', icon: 'content_copy', color: 'blue', hint: 'Video già caricato (idempotenza)' };
+        return { category: 'IDEMPOTENT', icon: Copy, color: 'blue', hint: 'Video già caricato (idempotenza)' };
     if (err.includes('oauth') || err.includes('token') || err.includes('unauthorized') || err.includes('auth') || err.includes('credential'))
-        return { category: 'OAUTH', icon: 'key_off', color: 'amber', hint: 'OAuth/token mancante o scaduto' };
+        return { category: 'OAUTH', icon: KeyRound, color: 'amber', hint: 'OAuth/token mancante o scaduto' };
     if (err.includes('quota') || err.includes('limit') || err.includes('rate'))
-        return { category: 'QUOTA', icon: 'hourglass_empty', color: 'orange', hint: 'Quota superata' };
+        return { category: 'QUOTA', icon: Hourglass, color: 'orange', hint: 'Quota superata' };
     if (err.includes('too long') || err.includes('too large') || err.includes('size') || err.includes('duration'))
-        return { category: 'SIZE', icon: 'scale', color: 'purple', hint: 'Video troppo lungo o grande' };
+        return { category: 'SIZE', icon: Scale, color: 'purple', hint: 'Video troppo lungo o grande' };
     if (err.includes('copyright') || err.includes('blocked') || err.includes('claim'))
-        return { category: 'COPYRIGHT', icon: 'copyright', color: 'red', hint: 'Problema copyright' };
+        return { category: 'COPYRIGHT', icon: Copyright, color: 'red', hint: 'Problema copyright' };
     if (err.includes('network') || err.includes('connection') || err.includes('timeout') || err.includes('fetch'))
-        return { category: 'NETWORK', icon: 'wifi_off', color: 'cyan', hint: 'Errore di rete' };
+        return { category: 'NETWORK', icon: WifiOff, color: 'cyan', hint: 'Errore di rete' };
     if (err.includes('channel not found') || err.includes('no channel'))
-        return { category: 'CHANNEL', icon: 'tv_off', color: 'pink', hint: 'Canale non trovato' };
-    return { category: 'ERROR', icon: 'error', color: 'red', hint: 'Errore upload video' };
+        return { category: 'CHANNEL', icon: Tv, color: 'pink', hint: 'Canale non trovato' };
+    return { category: 'ERROR', icon: AlertCircle, color: 'red', hint: 'Errore upload video' };
 }
 
 export function getYouTubeFailureLabel(errorMsg: string | undefined): string {

@@ -57,9 +57,7 @@ export const DeliveryStatusCell: React.FC<DeliveryStatusCellProps> = ({ jobId })
                             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 text-[11px] font-bold cursor-help relative group/yt"
                             title={lastErrorMessage ?? 'Pubblicazione fallita'}
                         >
-                            <span className="material-symbols-rounded text-[14px]" style={{ color: `var(--color-${errorInfo.color}-400)` }}>
-                                {errorInfo.icon}
-                            </span>
+                            <errorInfo.icon className="size-3.5" style={{ color: `var(--color-${errorInfo.color}-400)` }} />
                             Video: {label}
                             <span className="hidden group-hover/yt:block absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-200 shadow-xl whitespace-normal pointer-events-none">
                                 <div className="font-bold text-red-400 mb-1">{errorInfo.hint}</div>

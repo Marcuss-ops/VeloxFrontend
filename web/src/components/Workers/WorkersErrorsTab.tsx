@@ -150,9 +150,7 @@ export const WorkersErrorsTab: React.FC<WorkersErrorsTabProps> = ({ jobs, onRefr
                                     <td className="p-4">
                                         <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold border ${iconColor}`}
                                             style={{ background: `rgba(var(--err-bg, 239,68,68),0.08)`, borderColor: `rgba(var(--err-bg, 239,68,68),0.2)` }}>
-                                            <span className={`material-symbols-rounded text-[13px] ${iconColor}`} title={errInfo.hint}>
-                                                {errInfo.icon}
-                                            </span>
+                                            <errInfo.icon className={`size-3.5 ${iconColor}`} title={errInfo.hint} />
                                             {errInfo.category}
                                         </span>
                                     </td>

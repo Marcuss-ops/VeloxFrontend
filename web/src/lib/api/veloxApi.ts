@@ -9,7 +9,9 @@
  * opaque external_destination_id references).
  */
 
+import React from 'react';
 import { apiGet, apiPost } from './client';
+import { BadgeCheck, ListOrdered, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
 
 /** A Velox rendering job. */
 export interface VeloxJob {
@@ -35,7 +37,7 @@ export interface VeloxDeliveryEvent {
   label: string;
   completed: boolean;
   active: boolean;
-  icon: string;
+  icon: React.ElementType;
 }
 
 /** Build a synthetic timeline of delivery events from the current status.
@@ -49,10 +51,10 @@ export function getDeliveryEventTimeline(status: string): VeloxDeliveryEvent[] {
   const normalized = (status || 'UNKNOWN').toUpperCase();
 
   const pipeline: VeloxDeliveryEvent[] = [
-    { key: 'artifact_verified', label: 'Artifact verificato', icon: 'verified', completed: false, active: false },
-    { key: 'queued', label: 'In coda', icon: 'queue', completed: false, active: false },
-    { key: 'publishing', label: 'Pubblicazione in corso', icon: 'publish', completed: false, active: false },
-    { key: 'published', label: 'Pubblicato', icon: 'check_circle', completed: false, active: false },
+    { key: 'artifact_verified', label: 'Artifact verificato', icon: BadgeCheck, completed: false, active: false },
+    { key: 'queued', label: 'In coda', icon: ListOrdered, completed: false, active: false },
+    { key: 'publishing', label: 'Pubblicazione in corso', icon: Upload, completed: false, active: false },
+    { key: 'published', label: 'Pubblicato', icon: CheckCircle2, completed: false, active: false },
   ];
 
   const markCompleted = (upToIndex: number) => {
@@ -90,7 +92,7 @@ export function getDeliveryEventTimeline(status: string): VeloxDeliveryEvent[] {
       {
         key: 'failed',
         label,
-        icon: 'error',
+        icon: AlertCircle,
         completed: false,
         active: true,
       },
