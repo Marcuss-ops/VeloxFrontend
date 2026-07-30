@@ -163,19 +163,31 @@ describe('ChannelAnalyticsView', () => {
   it('renders Header + KpiGrid + Chart + Table on success', async () => {
     vi.mocked(channelAnalyticsApi.getAccountPerformance).mockResolvedValueOnce(sampleResponse);
     renderView(381);
-    // Header + period selector render on the first paint.
-    await screen.findByText(sampleResponse.channel.channel_name);
+    // Separate findBy* calls instead of cramming 6 asserts in one
+    // waitFor block: each is auto-waiting, gives a sharp failure
+    // message pinpointing which panel regressed, and avoids ICU
+    // coupling by targeting aria-labels (which carry KPI titles) +
+    // roles instead of locale-formatted strings.
     expect(
-      screen.getByRole('group', { name: /selettore periodo analytics/i }),
+      await screen.findByRole('heading', { level: 1, name: sampleResponse.channel.channel_name }),
     ).toBeTruthy();
-    // "Visualizzazioni" appears in BOTH the KPI grid label and the chart
-    // metric selector, so use getAllByText + check we have at least 2
-    // hits. Likewise "ultimo aggiornamento" is unique to the header.
-    expect(screen.getAllByText(/visualizzazioni/i).length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText(/ultimo aggiornamento/i)).toBeTruthy();
-    // Top viewed video title is the most reliable proof the
-    // TrendingVideosTable received the dataset (titles are escaped
-    // strings, no locale ambiguity).
-    expect(screen.getByText(/top viewed/i)).toBeTruthy();
+    expect(
+      await screen.findByRole('group', { name: /selettore periodo analytics/i }),
+    ).toBeTruthy();
+    expect(await screen.findByText(/ultimo aggiornamento/i)).toBeTruthy();
+    // KPI cards expose aria-label "Visualizzazioni: <value>" — anchor
+    // on the KPI title (locale-stable) rather than the formatted
+    // number (Intl/ICU-dependent: '100K' vs '100.000' differs across
+    // Node builds + browsers).
+    expect(await screen.findByLabelText(/^Visualizzazioni/)).toBeTruthy();
+    expect(await screen.findByLabelText(/^Watch time/)).toBeTruthy();
+    // Chart canvas: role="img" + aria-label unique to the chart.
+    expect(
+      await screen.findByRole('img', { name: /andamento giornaliero/i }),
+    ).toBeTruthy();
+    // TrendingVideosTable renders each row as a clickable <a>.
+    expect(
+      await screen.findByRole('link', { name: /top viewed/i }),
+    ).toBeTruthy();
   });
 });

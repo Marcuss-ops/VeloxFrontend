@@ -80,7 +80,7 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
     // dark editor's bff.ts. Both SPA halves share this contract.
     await context.route('**/api/v1/auth/me', async (route) => {
         await route.fulfill({
-            json: { user: { id: 123, name: 'Real Flow Tester', workspace_id: WORKSPACE_ID } },
+            json: { user: { id: 123, name: 'Real Flow Tester', workspaceId: WORKSPACE_ID, isAdmin: false } },
         });
     });
 
@@ -106,7 +106,7 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
     // GET /dark_editor_v2/api/projects/{id} — the editor's own
     // useProjectLoader endpoint. Returns the project row that
     // populates the "Senza nome" input.
-    await context.route('**/dark_editor_v2/api/projects/*', async (route) => {
+    await context.route('**/api/projects/*', async (route) => {
         if (route.request().method() === 'GET') {
             await route.fulfill({
                 json: {

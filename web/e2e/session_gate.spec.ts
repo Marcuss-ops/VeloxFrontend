@@ -5,189 +5,177 @@
  * una sessione YouTube valida. Il flusso corretto richiede:
  *   InstaEdit Social → selezione video → creazione sessione → editor_url reale
  *
+ * Tutti i test partono dalla SPA Vite (:3000), cliccano "Crea sessione"
+ * su una card video, e solo a quel punto il popup atterra sul Dark Editor.
+ * Il comportamento del gate è determinato dal mock di
+ * GET /api/v1/youtube/editor-sessions/by-project/{velox_project_id}
+ * che ogni test configura con il verdict atteso.
+ *
  * Test:
- *   1. Accesso diretto con ID falso → gate chiama /by-project, riceve 404,
- *      non monta Canvas, redirect a /dashboard-channels (Azione 4 spec).
- *   2. Accesso diretto con sessione "publishing" → gate blocca, banner visibile.
- *   3. Accesso diretto con sessione "published" → gate blocca, banner + CTA.
- *   4. Accesso diretto con sessione "editing" valida → gate autorizza, Canvas monta.
- *   5. Accesso diretto con 401 dal gate → redirect a /login (Azione 4 spec).
+ *   1. Backend risponde 404 sul gate → SessionGateError + auto-redirect
+ *      a /dashboard-channels (Azione 4 spec).
+ *   2. Backend risponde session con status="publishing" → SessionBlocked,
+ *      nessun Canvas mutabile.
+ *   3. Backend risponde session con status="published" → SessionReadonly +
+ *      CTA "Vedi su YouTube", nessun Canvas mutabile.
+ *   4. Backend risponde session con status="editing" → Canvas monta,
+ *      progetto caricato.
+ *   5. Backend risponde 401 sul gate → redirect immediato a /login.
+ *
+ * Nessun entrypoint diretto a /dark_editor_v2/editor/<hardcoded-id>:
+ * ogni test mint una nuova session via POST /editor-sessions.
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import {
+    VITE_SPA_BASE,
+    setupBaseContext,
+    setupProjectMock,
+    setupSpaVideosListMock,
+    setupSpaMintMock,
+    setupGateMock,
+    clickCreaSessioneAndCapturePopup,
+} from './helpers/sharedMocks';
 
-const DARK_EDITOR_BASE = 'http://localhost:3001';
-const FAKE_PROJECT_ID = 've_fake_123';
-const VALID_PROJECT_ID = 'proj-gate-valid-1';
-const PUBLISHING_PROJECT_ID = 'proj-gate-publishing-1';
-const PUBLISHED_PROJECT_ID = 'proj-gate-published-1';
+const GROUP_ID = '123';
+const VIDEO_TITLE = 'Gate Test Video';
+
+const SESSION_404 = {
+    sessionId: 'session-gate-404',
+    veloxProjectId: 've_gate_404_session',
+};
+const SESSION_PUBLISHING = {
+    sessionId: 'session-gate-publishing',
+    veloxProjectId: 've_gate_publishing_session',
+};
+const SESSION_PUBLISHED = {
+    sessionId: 'session-gate-published',
+    veloxProjectId: 've_gate_published_session',
+};
+const SESSION_EDITING = {
+    sessionId: 'session-gate-editing',
+    veloxProjectId: 've_gate_editing_session',
+};
+const SESSION_401 = {
+    sessionId: 'session-gate-401',
+    veloxProjectId: 've_gate_401_session',
+};
 
 test.beforeEach(async ({ context }) => {
-    await context.addCookies([
-        {
-            name: 'csrf_token',
-            value: 'mock-csrf-token-for-gate-test',
-            domain: 'localhost',
-            path: '/',
-        },
-    ]);
+    await setupBaseContext(context, { csrfToken: 'mock-csrf-token-for-gate-test' });
 });
 
-function registerSessionMock(page: Page) {
-    // Mock della GET session by project per vari stati
-    page.route('**/api/v1/youtube/editor-sessions/by-project/**', async (route) => {
-        const url = route.request().url();
-
-        if (url.includes(FAKE_PROJECT_ID)) {
-            await route.fulfill({
-                status: 404,
-                json: { error: 'editor session not found' },
-            });
-            return;
-        }
-
-        if (url.includes(PUBLISHING_PROJECT_ID)) {
-            await route.fulfill({
-                json: {
-                    id: 'session-publishing',
-                    workspace_id: 42,
-                    platform_account_id: 999,
-                    youtube_video_id: 'yt-publishing-1',
-                    velox_project_id: PUBLISHING_PROJECT_ID,
-                    desired_privacy: 'private',
-                    status: 'publishing',
-                    created_at: '2024-01-01T00:00:00Z',
-                    updated_at: '2024-01-01T00:00:00Z',
-                },
-            });
-            return;
-        }
-
-        if (url.includes(PUBLISHED_PROJECT_ID)) {
-            await route.fulfill({
-                json: {
-                    id: 'session-published',
-                    workspace_id: 42,
-                    platform_account_id: 999,
-                    youtube_video_id: 'yt-published-1',
-                    velox_project_id: PUBLISHED_PROJECT_ID,
-                    desired_privacy: 'public',
-                    status: 'published',
-                    created_at: '2024-01-01T00:00:00Z',
-                    updated_at: '2024-01-01T00:00:00Z',
-                },
-            });
-            return;
-        }
-
-        // Default: valid editing session
-        await route.fulfill({
-            json: {
-                id: 'session-valid',
-                workspace_id: 42,
-                platform_account_id: 999,
-                youtube_video_id: 'yt-valid-1',
-                velox_project_id: VALID_PROJECT_ID,
-                desired_privacy: 'private',
-                status: 'editing',
-                created_at: '2024-01-01T00:00:00Z',
-                updated_at: '2024-01-01T00:00:00Z',
-            },
-        });
+test('session gate: backend returns 404 → SessionGateError + redirect to /dashboard-channels', async ({
+    page,
+    context,
+}) => {
+    await setupSpaVideosListMock(page, {
+        groupId: GROUP_ID,
+        videoId: 'yt-gate-404',
+        title: VIDEO_TITLE,
+    });
+    await setupSpaMintMock(page, SESSION_404);
+    await setupGateMock(context, {
+        veloxProjectId: SESSION_404.veloxProjectId,
+        verdict: { kind: '404' },
     });
 
-    // Mock del progetto Velox per il caso valido
-    page.route(`**/dark_editor_v2/api/projects/${VALID_PROJECT_ID}`, async (route) => {
-        if (route.request().method() === 'GET') {
-            await route.fulfill({
-                json: {
-                    id: VALID_PROJECT_ID,
-                    name: 'Gate Test Project',
-                    type: 'image',
-                    canvas_json: { objects: [] },
-                    preview_url: '',
-                    created_at: '2024-01-01T00:00:00Z',
-                    updated_at: '2024-01-01T00:00:00Z',
-                },
-            });
-            return;
-        }
-        await route.fallback();
+    // SPA flow: home → /groups/{id}/videos → click "Crea sessione" → popup
+    await page.goto(VITE_SPA_BASE);
+    await page.goto(`${VITE_SPA_BASE}/groups/${GROUP_ID}/videos`);
+    const popup = await clickCreaSessioneAndCapturePopup(page, VIDEO_TITLE);
+    await popup.waitForLoadState('domcontentloaded');
+
+    // Gate 404 → SessionGateError visibile con projectId + CTA Dashboard
+    await expect(popup.getByText('Sessione non trovata')).toBeVisible({ timeout: 10_000 });
+    await expect(popup.getByText(SESSION_404.veloxProjectId)).toBeVisible();
+    await expect(popup.getByRole('button', { name: 'Vai alla Dashboard' })).toBeVisible();
+
+    // Canvas non viene mai montato quando il gate rifiuta
+    await expect(popup.locator('canvas')).toHaveCount(0);
+
+    // Azione 4: ~3s auto-redirect a /dashboard-channels (InstaEdit Social)
+    await popup.waitForURL(/\/dashboard-channels/, { timeout: 5_000 });
+});
+
+test('session gate: backend returns publishing status → SessionBlocked, no Canvas', async ({
+    page,
+    context,
+}) => {
+    await setupSpaVideosListMock(page, {
+        groupId: GROUP_ID,
+        videoId: 'yt-gate-publishing',
+        title: VIDEO_TITLE,
+    });
+    await setupSpaMintMock(page, SESSION_PUBLISHING);
+    await setupProjectMock(context, SESSION_PUBLISHING.veloxProjectId, {
+        projectName: 'Gate Publishing Project',
+    });
+    await setupGateMock(context, {
+        veloxProjectId: SESSION_PUBLISHING.veloxProjectId,
+        verdict: { kind: '200', status: 'publishing' },
     });
 
-    // Catch-all per evitare che altre richieste blocchino il test
-    page.route('**/dark_editor_v2/api/**', async (route) => {
-        if (route.request().method() === 'GET') {
-            await route.fulfill({ json: {} });
-            return;
-        }
-        await route.fulfill({ json: {} });
+    await page.goto(`${VITE_SPA_BASE}/groups/${GROUP_ID}/videos`);
+    const popup = await clickCreaSessioneAndCapturePopup(page, VIDEO_TITLE);
+    await popup.waitForLoadState('domcontentloaded');
+
+    // Banner statico full-page SessionBlocked
+    await expect(popup.getByText('Pubblicazione in corso')).toBeVisible({ timeout: 10_000 });
+
+    // Nessun Canvas mutabile montato
+    await expect(popup.locator('canvas')).toHaveCount(0);
+});
+
+test('session gate: backend returns published status → SessionReadonly + CTA, no Canvas', async ({
+    page,
+    context,
+}) => {
+    await setupSpaVideosListMock(page, {
+        groupId: GROUP_ID,
+        videoId: 'yt-gate-published',
+        title: VIDEO_TITLE,
     });
-}
+    await setupSpaMintMock(page, SESSION_PUBLISHED);
+    await setupProjectMock(context, SESSION_PUBLISHED.veloxProjectId, {
+        projectName: 'Gate Published Project',
+    });
+    await setupGateMock(context, {
+        veloxProjectId: SESSION_PUBLISHED.veloxProjectId,
+        verdict: { kind: '200', status: 'published' },
+    });
 
-test('session gate: direct access with fake project ID shows error and redirects to /dashboard-channels', async ({ page }) => {
-    registerSessionMock(page);
+    await page.goto(`${VITE_SPA_BASE}/groups/${GROUP_ID}/videos`);
+    const popup = await clickCreaSessioneAndCapturePopup(page, VIDEO_TITLE);
+    await popup.waitForLoadState('domcontentloaded');
 
-    // The gate MUST call GET /api/v1/youtube/editor-sessions/by-project/{id}
-    // BEFORE any UI renders. If this hook never fired, the page would
-    // mount the Canvas unconditionally — defeating the entire point of
-    // the gate. Wait for the request to land before asserting UI state.
-    const gateRequestPromise = page.waitForRequest(
-        (req) =>
-            req.url().includes('/api/v1/youtube/editor-sessions/by-project/') &&
-            req.url().includes(FAKE_PROJECT_ID),
-    );
+    // Banner SessionReadly + CTA Vedi su YouTube
+    await expect(popup.getByText('Video già pubblicato')).toBeVisible({ timeout: 10_000 });
+    await expect(popup.getByText('Vedi su YouTube')).toBeVisible();
 
-    await page.goto(`${DARK_EDITOR_BASE}/editor/${FAKE_PROJECT_ID}`);
-
-    // Gate must have fired (and the mock returned 404 for FAKE_PROJECT_ID).
-    await gateRequestPromise;
-
-    // 404 → SessionGateError visible with projectId + 'Vai alla Dashboard' button.
-    await expect(page.getByText('Sessione non trovata')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(FAKE_PROJECT_ID)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Vai alla Dashboard' })).toBeVisible();
-
-    // Canvas must NEVER mount when the gate refuses.
-    await expect(page.locator('canvas')).toHaveCount(0);
-
-    // Azione 4 spec: ~3s auto-redirect to /dashboard-channels (InstaEdit Social).
-    // The redirect can land on :3000 (production via Caddy) or :3001 (dev)
-    // — the path component /dashboard-channels is what we assert.
-    await page.waitForURL(/\/dashboard-channels/, { timeout: 5_000 });
+    // Nessun Canvas mutabile montato
+    await expect(popup.locator('canvas')).toHaveCount(0);
 });
 
-test('session gate: publishing session shows blocked state', async ({ page }) => {
-    registerSessionMock(page);
+test('session gate: backend returns editing status → Canvas mounts with project row', async ({
+    page,
+    context,
+}) => {
+    await setupSpaVideosListMock(page, {
+        groupId: GROUP_ID,
+        videoId: 'yt-gate-editing',
+        title: VIDEO_TITLE,
+    });
+    await setupSpaMintMock(page, SESSION_EDITING);
+    await setupProjectMock(context, SESSION_EDITING.veloxProjectId, {
+        projectName: 'Gate Editing Project',
+    });
+    await setupGateMock(context, {
+        veloxProjectId: SESSION_EDITING.veloxProjectId,
+        verdict: { kind: '200', status: 'editing' },
+    });
 
-    await page.goto(`${DARK_EDITOR_BASE}/editor/${PUBLISHING_PROJECT_ID}`);
-
-    // Deve mostrare il messaggio di pubblicazione in corso
-    await expect(page.getByText('Pubblicazione in corso')).toBeVisible({ timeout: 10_000 });
-
-    // Il canvas NON deve essere montato
-    await expect(page.locator('canvas')).toHaveCount(0);
-});
-
-test('session gate: published session shows readonly state', async ({ page }) => {
-    registerSessionMock(page);
-
-    await page.goto(`${DARK_EDITOR_BASE}/editor/${PUBLISHED_PROJECT_ID}`);
-
-    // Deve mostrare il messaggio di video già pubblicato
-    await expect(page.getByText('Video già pubblicato')).toBeVisible({ timeout: 10_000 });
-
-    // Deve mostrare il link a YouTube
-    await expect(page.getByText('Vedi su YouTube')).toBeVisible();
-
-    // Il canvas NON deve essere montato
-    await expect(page.locator('canvas')).toHaveCount(0);
-});
-
-test('session gate: valid editing session allows canvas to load', async ({ page }) => {
-    registerSessionMock(page);
-
-    // Override HTMLCanvasElement.prototype.toBlob per evitare errori Konva
+    // Konva canvas.toBlob override necessario per il mount dell'editor
     await page.addInitScript(() => {
         HTMLCanvasElement.prototype.toBlob = function (
             callback: BlobCallback | null,
@@ -200,65 +188,43 @@ test('session gate: valid editing session allows canvas to load', async ({ page 
         };
     });
 
-    await page.goto(`${DARK_EDITOR_BASE}/editor/${VALID_PROJECT_ID}`);
+    await page.goto(`${VITE_SPA_BASE}/groups/${GROUP_ID}/videos`);
+    const popup = await clickCreaSessioneAndCapturePopup(page, VIDEO_TITLE);
+    await popup.waitForLoadState('domcontentloaded');
 
-    // Il gate deve autorizzare e il progetto deve caricarsi.
-    // Il nome del progetto appare nell'input in alto a sinistra.
-    await expect(page.locator('input[placeholder="Senza nome"]')).toHaveValue(
-        'Gate Test Project',
+    // Gate autorizza + useProjectLoader.fetch → setCurrentProject
+    // → input "Senza nome" popolato con il nome del progetto mockato
+    await expect(popup.locator('input[placeholder="Senza nome"]')).toHaveValue(
+        'Gate Editing Project',
         { timeout: 60_000 },
     );
 
-    // Il canvas deve essere montato
-    await expect(page.locator('canvas')).not.toHaveCount(0);
+    // Canvas montato → editor completamente funzionante
+    await expect(popup.locator('canvas')).not.toHaveCount(0);
 });
 
-test('session gate: 401 unauthorized redirects to /login', async ({ page }) => {
-    // Gate endpoint returns 401 — simulates a missing/expired JWT.
-    // The dark editor's useYouTubeSessionGate hook maps HTTP 401 to
-    // state='unauthorized', which the page's useEffect (Azione 4)
-    // translates into a redirect to /login via window.location.href.
-    await page.route('**/api/v1/youtube/editor-sessions/by-project/**', async (route) => {
-        await route.fulfill({
-            status: 401,
-            json: { error: 'missing user identity' },
-        });
+test('session gate: gate endpoint returns 401 → popup redirects to /login', async ({
+    page,
+    context,
+}) => {
+    await setupSpaVideosListMock(page, {
+        groupId: GROUP_ID,
+        videoId: 'yt-gate-401',
+        title: VIDEO_TITLE,
+    });
+    await setupSpaMintMock(page, SESSION_401);
+    await setupGateMock(context, {
+        veloxProjectId: SESSION_401.veloxProjectId,
+        verdict: { kind: '401' },
     });
 
-    // Defensive: simulate the BFF /auth/me also returning 401 so the
-    // dark editor's bff.ts doesn't see a 'logged-in user' that would
-    // contradict the gate's response. Inconsistent state between the
-    // two would mask the gate's 401 verdict.
-    await page.route('**/api/v1/auth/me', async (route) => {
-        await route.fulfill({
-            status: 401,
-            json: { error: 'no session' },
-        });
-    });
+    await page.goto(`${VITE_SPA_BASE}/groups/${GROUP_ID}/videos`);
+    const popup = await clickCreaSessioneAndCapturePopup(page, VIDEO_TITLE);
+    await popup.waitForLoadState('domcontentloaded');
 
-    // Catch-all for any dark_editor sibling endpoint that might
-    // mount during the brief render window before the redirect fires.
-    await page.route('**/dark_editor_v2/api/**', async (route) => {
-        await route.fulfill({ json: {} });
-    });
+    // Canvas non viene mai montato quando il gate rifiuta (401)
+    await expect(popup.locator('canvas')).toHaveCount(0);
 
-    // Wait for the gate's GET to fire and return 401.
-    const gateRequestPromise = page.waitForRequest(
-        (req) => req.url().includes('/api/v1/youtube/editor-sessions/by-project/'),
-    );
-
-    await page.goto(`${DARK_EDITOR_BASE}/editor/${FAKE_PROJECT_ID}`);
-
-    // Gate must have fired (the mock returned 401 for any ID).
-    await gateRequestPromise;
-
-    // Canvas must NEVER mount when the gate refuses (401 → unauthorized).
-    await expect(page.locator('canvas')).toHaveCount(0);
-
-    // Azione 4 spec: 401 → redirect to /login (InstaEdit Social).
-    // The redirect uses window.location.href = '/login' (relative URL)
-    // which resolves against the current origin :3001 (Dark Editor) in
-    // dev — the destination may 404 in dev without Caddy, but the URL
-    // pattern is what we assert here.
-    await page.waitForURL(/\/login/, { timeout: 5_000 });
+    // Azione 4 spec: 401 → redirect immediato a /login (InstaEdit Social)
+    await popup.waitForURL(/\/login/, { timeout: 5_000 });
 });

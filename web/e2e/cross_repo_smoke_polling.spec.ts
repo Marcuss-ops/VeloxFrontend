@@ -98,7 +98,7 @@ function registerApiMocks(page: Page, counter: { getCount: number }) {
     // 42 is a stable sandbox fixture.
     page.route('**/api/v1/auth/me', async (route) => {
         await route.fulfill({
-            json: { user: { id: 123, name: 'Polling Tester', workspace_id: 42 } },
+            json: { user: { id: 123, name: 'Polling Tester', workspaceId: 42, isAdmin: false } },
         });
     });
 
@@ -132,10 +132,15 @@ function registerApiMocks(page: Page, counter: { getCount: number }) {
         const elapsedSinceFirst = now - firstFetchAt;
         const inFallbackWindow = elapsedSinceFirst < POLL_WINDOW_MS;
 
+        // During the fallback window the renderStatus must be
+        // NON-terminal (PROCESSING) so useVeloxJobDetail's polling
+        // actually fires.  If we return SUCCEEDED on the first fetch
+        // the hook short-circuits and never polls again — the
+        // socialDeliveryId stays empty forever.
         const baseJob = {
             id: EXPECTED_JOB_ID,
             projectId: PROJECT_ID,
-            renderStatus: 'SUCCEEDED',
+            renderStatus: inFallbackWindow ? 'PROCESSING' : 'SUCCEEDED',
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: counter.getCount === 1
                 ? '2024-01-01T00:00:00Z'
@@ -143,7 +148,8 @@ function registerApiMocks(page: Page, counter: { getCount: number }) {
         };
 
         const response = inFallbackWindow
-            ? // Fallback window: empty socialDeliveryId triggers the
+            ? // Fallback window: renderStatus = PROCESSING (polling
+              // fires) + empty socialDeliveryId triggers the
               // fallback row in VeloxJobDetailView's ternary.
               {
                   job: baseJob,
@@ -156,7 +162,8 @@ function registerApiMocks(page: Page, counter: { getCount: number }) {
                       },
                   ],
               }
-            : // Past the window: populated -> fallback row unmounts.
+            : // Past the window: populated socialDeliveryId + SUCCEEDED
+              // unmounts the fallback row.
               {
                   job: baseJob,
                   deliveries: [
@@ -208,8 +215,9 @@ test('cross-repo polling smoke: 5-second poll re-hit re-renders social_delivery_
     // on :3000.)
     await page.goto(`${VITE_SPA_BASE}/velox/jobs/${EXPECTED_JOB_ID}`);
 
-    // Render badge for SUCCEEDED job -> 'Completato' label.
-    await expect(page.getByText('Completato').first()).toBeVisible({ timeout: 15_000 });
+    // First fetch: mock returns PROCESSING (non-terminal so polling
+    // fires) + empty socialDeliveryId -> fallback row.
+    await expect(page.getByText('Rendering').first()).toBeVisible({ timeout: 15_000 });
 
     if (isMockMode) {
         // ===== Mock mode: full empty-then-populated contract =====
@@ -222,13 +230,17 @@ test('cross-repo polling smoke: 5-second poll re-hit re-renders social_delivery_
 
         const t1 = Date.now();
 
-        // ===== Tick #2 (5s poll re-fire) -- populated, fallback gone =====
-        // After POLL_WINDOW_MS, the mock starts returning the
-        // populated payload. The forthcoming re-poll (from
-        // useVeloxJobDetail's setInterval(5000)) will pick it up.
+        // ===== Tick #2 (5s poll re-fire) — populated, fallback gone =====
+        // After POLL_WINDOW_MS, the mock starts returning
+        // SUCCEEDED + populated socialDeliveryId.
+        // The re-poll from useVeloxJobDetail's setInterval(5000)
+        // picks it up.
         await expect(
             page.getByText(EXPECTED_SOCIAL_DELIVERY_ID, { exact: true }),
         ).toBeVisible({ timeout: 15_000 });
+
+        // After the poll, the status badge flips from Rendering → Completato.
+        await expect(page.getByText('Completato').first()).toBeVisible({ timeout: 5_000 });
 
         // Fallback row must be unmounted (count == 0) after the
         // re-render. DeliveryRow's React key prefers socialDeliveryId

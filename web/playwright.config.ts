@@ -40,7 +40,10 @@ export default defineConfig({
         {
             command: 'npm run dev',
             cwd: './dark_editor',
-            url: 'http://localhost:3001/',
+            // Next.js has basePath: '/dark_editor_v2' so the root '/' 404s;
+            // health-check the basePath route instead so Playwright can
+            // detect an already-running server (e.g. systemd service).
+            url: 'http://localhost:3001/dark_editor_v2/',
             reuseExistingServer: !process.env.CI,
             timeout: 180 * 1000,
         },

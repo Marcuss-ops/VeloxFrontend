@@ -2,292 +2,115 @@
  * Cross-repo smoke test
  *
  * Validates the wired pipeline:
- *   VeloxFrontend (Next.js dark editor on :3001)
- *     └→ BFF GET /api/v1/integrations/velox/destinations  (now backed by InstaeditLogin list)
- *     └→ BFF POST /api/v1/projects + POST /api/v1/velox/jobs
- *     └→ Vite SPA /velox/jobs/{id} → VeloxJobDetailView renders social_delivery_id
+ *   InstaEdit Social (Vite SPA :3000)
+ *     └→ /groups/{id}/videos → POST /api/v1/youtube/editor-sessions (mint)
+ *     └→ Popup → Dark Editor (Next.js :3001)
+ *     └→ ExportDialog → fill title → click Pubblica
+ *     └→ BFF: presign → upload → complete → PATCH thumbnail → POST publish
+ *     └→ Success toast + security contract check
+ *
+ * Entrypoint: la SPA InstaEdit Social (NO accesso diretto al Dark Editor).
+ * Il flow reale è:
+ *   1. SPA root → /groups/{id}/videos
+ *   2. Click "Crea sessione" → POST /editor-sessions → 201 + editor_url
+ *   3. window.open popup → Dark Editor
+ *   4. ExportDialog → fill title → click Pubblica
+ *   5. Toast "Pubblicato su YouTube"
+ *   6. Security contract: no OAuth / channel_id / platform_account_id leakage
  *
  * Both backends are mocked locally via page.route(); the test runs against
  * the real DarkEditor and Vite SPA shells with NO live InstaeditLogin or
  * VeloxEditiingg running. The point of the smoke is the WIRING and the
- * SECURITY CONTRACT (no OAuth / channel_id / platform_account_id leakage
- * into the Velox job payload), not the live backends themselves.
+ * SECURITY CONTRACT, not the live backends themselves.
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type BrowserContext } from '@playwright/test';
+import {
+    VITE_SPA_BASE,
+    setupBaseContext,
+    setupProjectMock,
+    setupSpaVideosListMock,
+    setupSpaMintMock,
+    setupGateMock,
+    clickCreaSessioneAndCapturePopup,
+} from './helpers/sharedMocks';
 
-const DARK_EDITOR_BASE = 'http://localhost:3001';
-const VITE_SPA_BASE = 'http://localhost:3000';
-const PROJECT_ID = 'proj-smoke-cross-repo-1';
-const EXTERNAL_DEST_ID = 'ext-dest-youtube-channel-A';
-const EXPECTED_JOB_ID = 'velox-job-888';
-const EXPECTED_PROJECT_ID = 'velox-proj-777';
-const EXPECTED_SOCIAL_DELIVERY_ID = 'soc-del-999';
+const GROUP_ID = '123';
+const VIDEO_TITLE = 'Cross Repo Smoke Video';
+const SESSION = {
+    sessionId: 'session-cross-repo-smoke',
+    veloxProjectId: 've_cross_repo_smoke_session',
+};
 
 test.beforeEach(async ({ context }) => {
-    // CSRF double-submit cookie (read from document.cookie in dark_editor's bff.ts
-    // and Vite's client.ts on every mutation). domain='localhost' makes the
-    // cookie apply to BOTH :3000 and :3001 — the cookie jar travels with the
-    // browser context across navigations between ports.
-    await context.addCookies([
-        {
-            name: 'csrf_token',
-            value: 'mock-csrf-token-for-smoke-test',
-            domain: 'localhost',
-            path: '/',
-        },
-    ]);
+    await setupBaseContext(context, { csrfToken: 'mock-csrf-token-for-smoke-test' });
 });
 
-type CapturedJobPost = {
+type CapturedPublishPost = {
     body: unknown;
     url: string;
 } | null;
 
-function registerApiMocks(
-    page: Page,
-    capturedJobs: { post: CapturedJobPost },
-) {
-    // ----------------------- SESSION GATE -------------------------
-    // GET /api/v1/youtube/editor-sessions/by-project/{velox_project_id}
-    // Il Dark Editor chiama questo endpoint prima di montare il canvas.
-    // Deve restituire una sessione valida con status=editing per procedere.
-    page.route('**/api/v1/youtube/editor-sessions/by-project/**', async (route) => {
-        if (route.request().method() === 'GET') {
-            await route.fulfill({
-                json: {
-                    id: 'mock-session-id',
-                    workspace_id: 42,
-                    platform_account_id: 999,
-                    youtube_video_id: 'mock-video-id',
-                    velox_project_id: PROJECT_ID,
-                    source_thumbnail_url: '',
-                    thumbnail_media_id: null,
-                    desired_privacy: 'private',
-                    publish_at: null,
-                    status: 'editing',
-                    created_at: '2024-01-01T00:00:00Z',
-                    updated_at: '2024-01-01T00:00:00Z',
-                },
-            });
-            return;
-        }
-        await route.fallback();
-    });
-
-    // ----- Catch-alls for dark_editor's own Go backend endpoints that are
-    //       NOT part of the cross-repo pipeline but are mounted via siblings
-    //       of useSocialDestinations: useDriveIntegration fetches groups,
-    //       FormatQualitySection mounts preset fetchers, FolderAdmin fetches
-    //       folders, etc. Without these the dialog hangs on unmocked GETs.
-    page.route('**/dark_editor_v2/api/drive/**', async (route) => {
-        if (route.request().method() === 'GET') {
-            // getDriveGroups / listDriveFolders / getDriveFiles / getDriveLinks
-            // all return empty shapes; the dialog is fine with empty drives.
-            const url = route.request().url();
-            if (url.includes('/groups')) {
-                await route.fulfill({ json: { groups: [] } });
-            } else if (url.includes('/folders')) {
-                await route.fulfill({ json: { folders: [] } });
-            } else if (url.includes('/files')) {
-                await route.fulfill({ json: { files: [] } });
-            } else if (url.includes('/links')) {
-                await route.fulfill({ json: { links: [] } });
-            } else {
-                await route.fulfill({ json: {} });
-            }
-            return;
-        }
-        // POST /dark_editor_v2/api/drive/upload: a mount-time or auto-save
-        // regression that fires this returns a safe error ({success:false})
-        // instead of silently hitting the real Next dev server (502 /
-        // EAI_AGAIN). ToolbarDock / useDriveIntegration callers typically
-        // read .success; false here matches the no-op semantics of the
-        // existing GET mocks and lets visible assertions trip instead of
-        // an opaque network failure.
-        if (
-            route.request().method() === 'POST' &&
-            route.request().url().includes('/upload')
-        ) {
-            await route.fulfill({ json: { success: false } });
-            return;
-        }
-        await route.fallback();
-    });
-
-    // POST /dark_editor_v2/api/process/*: filter / transform / upscale /
-    // remove-bg / etc. all return an empty object so a regression that
-    // auto-fires them at mount time fails a visible assertion (toast /
-    // canvas state / disabled-button state) instead of hitting the real
-    // Next dev server (502 / EAI_AGAIN / SVG hang on upload wait).
-    page.route('**/dark_editor_v2/api/process/**', async (route) => {
-        if (route.request().method() === 'POST') {
-            await route.fulfill({ json: {} });
-            return;
-        }
-        await route.fallback();
-    });
-
-    page.route('**/dark_editor_v2/api/presets/**', async (route) => {
-        if (route.request().method() === 'GET') {
-            await route.fulfill({ json: [] });
-            return;
-        }
-        await route.fallback();
-    });
-
-    page.route('**/dark_editor_v2/api/folders/**', async (route) => {
-        if (route.request().method() === 'GET') {
-            await route.fulfill({ json: { folders: [] } });
-            return;
-        }
-        await route.fallback();
-    });
-
-    // ----- DARK_EDITOR's project load (matches what useProjectLoader calls) -----
-    page.route('**/dark_editor_v2/api/projects/*', async (route) => {
-        if (route.request().method() === 'GET') {
-            await route.fulfill({
-                json: {
-                    id: PROJECT_ID,
-                    name: 'Smoke Test Project',
-                    type: 'image',
-                    canvas_json: { objects: [] },
-                    preview_url: '',
-                    created_at: '2024-01-01T00:00:00Z',
-                    updated_at: '2024-01-01T00:00:00Z',
-                },
-            });
-            return;
-        }
-        await route.fallback();
-    });
-
-    // ----- BFF mocks (Vite :3000 + dark_editor :3001) -----
-
-    // GET /api/v1/auth/me — useSocialDestinations calls this to learn workspace_id.
-    page.route('**/api/v1/auth/me', async (route) => {
-        await route.fulfill({
-            json: { user: { id: 123, name: 'Smoke Tester', workspace_id: 42 } },
-        });
-    });
-
-    // GET /api/v1/integrations/velox/destinations — InstaeditLogin list endpoint.
-    // The response includes platform_account_id=999 INTERNALLY; the security
-    // contract below proves platform_account_id does NOT leak into the POST
-    // body sent to Velox. Velox must remain platform-agnostic.
-    page.route('**/api/v1/integrations/velox/destinations**', async (route) => {
+/**
+ * Register the publish-flow mocks for the new ExportDialog (YouTube
+ * metadata publish). Mocks the entire BFF chain:
+ *   1. POST /api/v1/media/presign           -> presigned upload URL
+ *   2. PUT  <upload_url>                    -> mock S3 upload
+ *   3. PATCH .../by-project/{id}            -> attach thumbnail to session
+ *   4. POST  .../by-project/{id}/publish    -> YouTube publish
+ *
+ * `capturedPublish.post` is mutated on the POST publish call so the
+ * security-contract deny-list assertion can inspect the body.
+ */
+function registerPublishMocks(context: BrowserContext, capturedPublish: { post: CapturedPublishPost }) {
+    // 1. Media presign
+    context.route('**/api/v1/media/presign', async (route) => {
         await route.fulfill({
             json: {
-                destinations: [
-                    {
-                        external_destination_id: EXTERNAL_DEST_ID,
-                        label: 'Smoke Test Channel',
-                        provider: 'youtube',
-                        status: 'active',
-                        platform_account_id: 999,
-                        workspace_id: 42,
-                        source_system: 'velox',
-                    },
-                ],
+                upload_url: 'http://127.0.0.1:9999/mock-upload',
+                asset_id: 'mock-asset-123',
             },
         });
     });
 
-    // POST /api/v1/projects — createVeloxProject from dark_editor/bff.ts.
-    page.route('**/api/v1/projects', async (route) => {
-        if (route.request().method() === 'POST') {
-            await route.fulfill({
-                json: {
-                    id: EXPECTED_PROJECT_ID,
-                    name: 'Smoke Test Project',
-                    workspace_id: 42,
-                    status: 'CREATED',
-                    createdAt: '2024-01-01T00:00:00Z',
-                    updatedAt: '2024-01-01T00:00:00Z',
-                },
-            });
-            return;
-        }
-        await route.fallback();
+    // 2. Mock S3/GCS PUT
+    context.route('**/mock-upload', async (route) => {
+        await route.fulfill({ status: 200 });
     });
 
-    // POST /api/v1/velox/jobs — createVeloxJob from dark_editor/bff.ts.
-    // The route handler ONLY captures the body and returns a successful mock.
-    // The full security-contract deny-list check is performed at the test
-    // boundary (see Step 9 below) where the failure path is the cleanest.
-    page.route('**/api/v1/velox/jobs/**', async (route) => {
+    // 3. Media complete
+    context.route('**/api/v1/media/*/complete', async (route) => {
+        await route.fulfill({ json: { id: 'mock-media-123' } });
+    });
+
+    // 4+5. YouTube editor session: PATCH (thumbnail) + POST (publish)
+    context.route('**/api/v1/youtube/editor-sessions/by-project/**', async (route) => {
         const req = route.request();
 
-        if (req.method() === 'POST') {
+        // Thumbnail attachment (PATCH)
+        if (req.method() === 'PATCH') {
+            await route.fulfill({ status: 200, json: {} });
+            return;
+        }
+
+        // Publish (POST .../publish)
+        if (req.method() === 'POST' && req.url().endsWith('/publish')) {
             let parsed: unknown;
             try {
                 parsed = req.postDataJSON();
-            } catch (err) {
-                await route.fulfill({ status: 400, json: { error: 'invalid json' } });
-                return;
+            } catch {
+                /* body capture best-effort */
             }
-            capturedJobs.post = { body: parsed, url: req.url() };
-
-            // Inline shape check — keeps a fast feedback in the route handler
-            // without throwing (route handlers should never throw; they should
-            // fulfill or fallback). The deny-list check happens test-side so
-            // the failure message is in the assertion, not an uncaught.
-            const dlPlan = (
-                parsed as
-                    | { delivery_plan?: { destinations?: Array<Record<string, unknown>> } }
-                    | null
-            )?.delivery_plan;
-            const firstDest = dlPlan?.destinations?.[0];
-            if (
-                !firstDest ||
-                typeof firstDest.external_destination_id !== 'string'
-            ) {
-                await route.fulfill({
-                    status: 400,
-                    json: {
-                        error:
-                            'delivery_plan.destinations[0].external_destination_id missing or wrong type',
-                    },
-                });
-                return;
-            }
+            capturedPublish.post = { body: parsed, url: req.url() };
 
             await route.fulfill({
                 json: {
-                    id: EXPECTED_JOB_ID,
-                    projectId: EXPECTED_PROJECT_ID,
-                    renderStatus: 'SUCCEEDED',
-                    createdAt: '2024-01-01T00:00:00Z',
-                    updatedAt: '2024-01-01T00:00:00Z',
-                },
-            });
-            return;
-        }
-
-        if (req.method() === 'GET') {
-            // VeloxJobDetailView (via Vite SPA) polls this every 5s while render
-            // is non-terminal. We return immediately-rendered SUCCEEDED plus a
-            // populated social_delivery_id so step 12 passes on the first poll
-            // (avoids artificial sleeps; the polling code itself is covered
-            // by a sibling test).
-            await route.fulfill({
-                json: {
-                    job: {
-                        id: EXPECTED_JOB_ID,
-                        projectId: EXPECTED_PROJECT_ID,
-                        renderStatus: 'SUCCEEDED',
-                        createdAt: '2024-01-01T00:00:00Z',
-                        updatedAt: '2024-01-01T00:00:00Z',
-                    },
-                    deliveries: [
-                        {
-                            externalDestinationId: EXTERNAL_DEST_ID,
-                            socialDeliveryId: EXPECTED_SOCIAL_DELIVERY_ID,
-                            status: 'PUBLISHED',
-                            platformUrl: 'https://youtube.com/watch?v=smoke-cross-repo',
-                        },
-                    ],
+                    status: 'published',
+                    video_id: 'mock-yt-id',
+                    public_url: 'https://youtube.com/watch?v=mock',
+                    privacy_status: 'private',
+                    actual_privacy: 'private',
+                    youtube_sync_status: 'confirmed',
                 },
             });
             return;
@@ -297,22 +120,39 @@ function registerApiMocks(
     });
 }
 
-test('cross-repo smoke: dark editor \u2192 InstaEdit destinations \u2192 Velox job \u2192 social_delivery_id', async ({ page }) => {
-    const capturedJobs: { post: CapturedJobPost } = { post: null };
+test('cross-repo smoke: SPA → mint → dark editor publish → security contract', async ({
+    page,
+    context,
+    request,
+}) => {
+    const capturedPublish: { post: CapturedPublishPost } = { post: null };
+
+    // SPA flow mocks (page.route)
+    await setupSpaVideosListMock(page, {
+        groupId: GROUP_ID,
+        videoId: 'yt-cross-repo-smoke',
+        title: VIDEO_TITLE,
+    });
+    await setupSpaMintMock(page, SESSION);
+
+    // Gate + project mocks (context.route, shared with popup)
+    await setupGateMock(context, {
+        veloxProjectId: SESSION.veloxProjectId,
+        verdict: { kind: '200', status: 'editing' },
+    });
+    await setupProjectMock(context, SESSION.veloxProjectId, {
+        projectName: 'Smoke Test Project',
+    });
+
+    // Publish flow mocks (context.route, shared with popup)
+    registerPublishMocks(context, capturedPublish);
 
     // Mode gate:
-    //   MOCK !== 'false' (default) -> fast mocks via page.route (CI / every PR)
-    //   MOCK === 'false'           -> live services via docker-compose-e2e.yml
-    // The security-contract deny-list assertion further down is mode-agnostic:
-    // it inspects the captured POST /api/v1/velox/jobs body regardless of
-    // whether the body came from a page.route.fulfill mock or a live
-    // InstaeditLogin response.
+    //   MOCK !== 'false' (default) -> fast mocks via page.route
+    //   MOCK === 'false'           -> live services
     const isMockMode = process.env.MOCK !== 'false';
-    if (isMockMode) {
-        registerApiMocks(page, capturedJobs);
-    } else {
-        // Live mode fast-fail: confirm InstaeditLogin BFF on :8080 is
-        // reachable before going further. A 401 (no auth) here is healthy.
+    if (!isMockMode) {
+        // Live mode fast-fail: confirm InstaeditLogin BFF is reachable.
         const probe = await request.get(
             'http://127.0.0.1:8080/api/v1/auth/me',
             { failOnStatusCode: false },
@@ -320,36 +160,30 @@ test('cross-repo smoke: dark editor \u2192 InstaEdit destinations \u2192 Velox j
         const probeStatus = probe.status();
         if (probeStatus !== 200 && probeStatus !== 401) {
             throw new Error(
-                `live-mode pre-flight: InstaeditLogin BFF on 127.0.0.1:8080 returned ${probeStatus}; expected 200|401. Run \`bash web/scripts/run-e2e-live.sh\` to start live services.`,
+                `live-mode pre-flight: InstaeditLogin BFF on 127.0.0.1:8080 returned ${probeStatus}; expected 200|401.`,
             );
         }
 
-        // Live mode: register a passthrough route ONLY for POST
-        // /api/v1/velox/jobs so the deny-list assertion in step 6 still
-        // fires. All other endpoints hit the live InstaeditLogin + Velox
-        // backend through Vite's proxy /api/v1 -> 127.0.0.1:8080.
-        await page.route('**/api/v1/velox/jobs/**', async (route) => {
-            if (route.request().method() === 'POST') {
-                try {
-                    capturedJobs.post = {
-                        body: route.request().postDataJSON(),
-                        url: route.request().url(),
-                    };
-                } catch {
-                    // Body isn't valid JSON; skip capture -- the
-                    // deny-list assertion will fail loudly if the body
-                    // is meant to be JSON.
+        // Live mode: capture the publish POST body for security check.
+        await context.route(
+            '**/api/v1/youtube/editor-sessions/by-project/*/publish',
+            async (route) => {
+                if (route.request().method() === 'POST') {
+                    try {
+                        capturedPublish.post = {
+                            body: route.request().postDataJSON(),
+                            url: route.request().url(),
+                        };
+                    } catch {
+                        /* body capture best-effort */
+                    }
                 }
-            }
-            await route.continue();
-        });
+                await route.continue();
+            },
+        );
     }
 
-    // Override HTMLCanvasElement.prototype.toBlob so the Konva canvas's toBlob
-    // (invoked by exportCanvasToBlob via getCanvasElement \u2192 canvasEl.toBlob)
-    // synchronously returns a fake PNG blob. Without this, the real Konva
-    // canvas may not be in a state where toBlob yields valid bytes by the
-    // time ExportDialog.handleExport fires.
+    // Override canvas.toBlob so Konva exports synchronously.
     await page.addInitScript(() => {
         HTMLCanvasElement.prototype.toBlob = function (
             callback: BlobCallback | null,
@@ -362,62 +196,55 @@ test('cross-repo smoke: dark editor \u2192 InstaEdit destinations \u2192 Velox j
         };
     });
 
-    // ===== Step 1: Load dark editor =====
-    await page.goto(`${DARK_EDITOR_BASE}/editor/${PROJECT_ID}`);
+    // ===== Step 1: SPA flow → mint → popup =====
+    await page.goto(VITE_SPA_BASE);
+    await page.goto(`${VITE_SPA_BASE}/groups/${GROUP_ID}/videos`);
+    const popup = await clickCreaSessioneAndCapturePopup(page, VIDEO_TITLE);
+    await popup.waitForLoadState('domcontentloaded');
 
-    // Wait for project to load. The project-name input is populated by
-    // useProjectLoader.setCurrentProject({ name }) \u2014 once "Smoke Test Project"
-    // shows in the input, we know the canvas is mounted and dialogs can open.
-    await expect(page.locator('input[placeholder="Senza nome"]')).toHaveValue(
+    // ===== Step 2: Wait for dark editor to mount =====
+    await expect(popup.locator('input[placeholder="Senza nome"]')).toHaveValue(
         'Smoke Test Project',
         { timeout: 60_000 },
     );
 
-    // ===== Step 2: Click Export button (ToolbarDock's last DockItem; title="Export") =====
-    await page.locator('button[title="Export"]').click();
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    // ===== Step 3: Click Export button → dialog opens =====
+    await popup.locator('button[title="Export"]').click();
+    const dialog = popup.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible();
 
-    // ===== Step 3: Toggle "Queue to InstaEdit destination" =====
-    await page.getByRole('checkbox', { name: 'Toggle InstaEdit destination' }).check();
+    // ===== Step 4: Fill in the title (required by validation) =====
+    const testTitle = 'Cross Repo Smoke Publish';
+    await dialog.getByRole('textbox').first().fill(testTitle);
 
-    // ===== Step 4: Pick destination from the dropdown =====
-    // SCOPED locator: FormatQualitySection's format select is `<select>` #1
-    // in DOM order. The destination select is uniquely the select INSIDE
-    // the bordered div that contains the InstaEdit toggle checkbox. This
-    // disambiguates even if FormatQualitySection has its own select.
-    const destinationSelect = page.locator(
-        'div:has(input[aria-label="Toggle InstaEdit destination"]) select',
-    );
-    await destinationSelect.selectOption(EXTERNAL_DEST_ID);
+    // ===== Step 5: Click Pubblica (wait for it to be enabled) =====
+    const publishBtn = dialog.getByRole('button', { name: /Pubblica/i });
+    await expect(publishBtn).toBeEnabled({ timeout: 10_000 });
+    await publishBtn.click();
 
-    // ===== Step 5: Click submit ("Queue to InstaEdit") =====
-    await page.getByRole('button', { name: 'Queue to InstaEdit' }).click();
+    // ===== Step 6: Verify success toast (or diagnostic on error) =====
+    // Wait for either the success toast or an error toast, whichever appears first.
+    try {
+        await expect(popup.getByText(/Pubblicato su YouTube/i)).toBeVisible({
+            timeout: 15_000,
+        });
+    } catch {
+        // If the success toast didn't appear, check if an error toast did.
+        const errorToast = popup.getByText(/Pubblicazione fallita/i);
+        const isErrorVisible = await errorToast.isVisible().catch(() => false);
+        if (isErrorVisible) {
+            const errorText = await errorToast.textContent();
+            throw new Error(`Publish failed with error: ${errorText}`);
+        }
+        throw new Error('No toast appeared after clicking Pubblica — publish may have silently failed');
+    }
 
-    // Toast confirms the queue; this implicitly verifies the render chain
-    // (createProject \u2192 createJob \u2192 returned jobId \u2192 toast).
-    await expect(page.getByText(/Queued as Velox artifact/i)).toBeVisible({
-        timeout: 15_000,
-    });
+    // ===== Step 7: SECURITY CONTRACT =====
+    expect(capturedPublish.post, 'POST /publish was not captured').not.toBeNull();
+    const body = capturedPublish.post!.body as { title?: string };
 
-    // ===== Step 6: SECURITY CONTRACT (the cross-repo key invariant) =====
-    expect(capturedJobs.post, 'POST /api/v1/velox/jobs was not captured').not.toBeNull();
-    const body = capturedJobs.post!.body as {
-        project_id?: string;
-        delivery_plan?: {
-            destinations?: Array<{ external_destination_id?: string }>;
-        };
-    };
+    expect(body.title).toBe(testTitle);
 
-    // Shape assertion: project_id round-trips; destination carries the opaque
-    // id (NOT platform_account_id from the listSocialDestinations response).
-    expect(body.project_id).toBe(EXPECTED_PROJECT_ID);
-    expect(body.delivery_plan?.destinations?.[0]?.external_destination_id).toBe(
-        EXTERNAL_DEST_ID,
-    );
-
-    // Belt-and-suspenders deny-list. The mock listSocialDestinations response
-    // carries platform_account_id=999 \u2014 if a regression re-introduces
-    // platform-side identifiers into the Velox job payload, this trip.
     const forbidden = [
         'channel_id',
         'access_token',
@@ -434,19 +261,7 @@ test('cross-repo smoke: dark editor \u2192 InstaEdit destinations \u2192 Velox j
     for (const field of forbidden) {
         expect(
             bodyStr,
-            `forbidden field '${field}' leaked into Velox job payload \u2014 Velox must remain platform-agnostic`,
+            `forbidden field '${field}' leaked into publish payload`,
         ).not.toContain(field);
     }
-
-    // ===== Step 7: Verify the VeloxJobDetailView renders social_delivery_id =====
-    // The dark editor doesn't auto-navigate on queue success; we navigate
-    // manually to the canonical job-detail route on the Vite SPA.
-    await page.goto(`${VITE_SPA_BASE}/velox/jobs/${EXPECTED_JOB_ID}`);
-
-    // The render badge "Completato" corresponds to renderStatus=SUCCEEDED in
-    // VeloxJobDetailView.statusBadge.
-    await expect(page.getByText('Completato').first()).toBeVisible({ timeout: 15_000 });
-
-    // The cross-repo end: social_delivery_id is visible in the delivery row.
-    await expect(page.getByText(EXPECTED_SOCIAL_DELIVERY_ID, { exact: true })).toBeVisible();
 });

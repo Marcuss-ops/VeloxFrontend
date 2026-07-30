@@ -10,6 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { groupYouTubeVideosQueryKey } from './useGroupYouTubeVideos';
+import type { GroupYouTubeVideoEntry } from '@/types/youtubeGroups';
 
 describe('groupYouTubeVideosQueryKey', () => {
     it('produces a stable, comparable key for the same inputs', () => {
@@ -86,7 +87,7 @@ describe('GroupYouTubeVideoEntry phantom flag passthrough', () => {
         // If a future refactor marks it required (e.g. a careless
         // `phantom: boolean` instead of `phantom?: boolean`), this
         // literal would fail to compile.
-        const regular = {
+        const regular: GroupYouTubeVideoEntry = {
             youtube_video_id: 'yt-regular',
             title: 'Regular',
             thumbnail_url: 'https://ytimg.com/r.jpg',

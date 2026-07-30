@@ -87,36 +87,8 @@ export const Navbar: React.FC = () => {
                 </span>
                 </Link>
 
-            {/* Icone nav + pill button */}
+            {/* Icone nav */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Link
-                    to={`${APP_ROUTES.creatorStudio}?tab=script`}
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        color: '#ffffff',
-                        textDecoration: 'none',
-                        fontSize: 12,
-                        fontWeight: 500,
-                        border: '1px solid #333',
-                        padding: '6px 14px',
-                        borderRadius: 50,
-                        transition: 'background 0.2s, border-color 0.2s',
-                    }}
-                    onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.background = '#1a1a1a';
-                        (e.currentTarget as HTMLElement).style.borderColor = '#555';
-                    }}
-                    onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.background = 'transparent';
-                        (e.currentTarget as HTMLElement).style.borderColor = '#333';
-                    }}
-                >
-                    <span className="material-symbols-rounded" style={{ fontSize: 14 }}>movie_edit</span>
-                    Studio
-                </Link>
-
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',

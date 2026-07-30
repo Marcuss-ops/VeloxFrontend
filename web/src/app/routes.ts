@@ -3,7 +3,6 @@ export const APP_ROUTES = {
     dashboard: '/dashboard-channels',
     calendar: '/calendar',
     workersAnsible: '/workers-ansible',
-    creatorStudio: '/creator_studio_app',
     analytics: '/analytics',
     drive: '/drive',
     jobDetail: '/jobs/detail',

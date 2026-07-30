@@ -72,6 +72,8 @@ export interface GroupVideoCardProps {
     onOpenEditor: (video: GroupYouTubeVideoEntry) => void;
     /** Set while the click handler is awaiting the POST mint fallback. */
     isOpening?: boolean;
+    /** Disable the button entirely when workspace context isn't loaded yet. */
+    disabled?: boolean;
     /** Group id needed by the live-update listener to locate the right react-query cache slice. */
     groupId?: number | string;
     /** Must match the listing call. */
@@ -82,6 +84,7 @@ export const GroupVideoCard: React.FC<GroupVideoCardProps> = ({
     video,
     onOpenEditor,
     isOpening = false,
+    disabled = false,
     groupId,
     includeSubgroups = false,
 }) => {
@@ -138,7 +141,7 @@ export const GroupVideoCard: React.FC<GroupVideoCardProps> = ({
                         type="button"
                         size="sm"
                         variant="default"
-                        disabled={isOpening}
+                        disabled={disabled || isOpening}
                         onClick={() => onOpenEditor(video)}
                         aria-label={`Apri Dark Editor per ${video.title}`}
                     >

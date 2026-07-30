@@ -196,6 +196,7 @@ const GroupsView: React.FC = () => {
                             key={`${v.platform_account_id}-${v.youtube_video_id}`}
                             video={v}
                             onOpenEditor={onOpenEditor}
+                            disabled={actionDisabled}
                             groupId={groupId}
                             includeSubgroups={includeSubgroups}
                             isOpening={

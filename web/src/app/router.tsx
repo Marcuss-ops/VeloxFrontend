@@ -33,7 +33,6 @@ const CalendarView = lazy(() => import('./views/CalendarView').then(async m => {
 }));
 const WorkersAnsibleView = lazy(() => import('./views/WorkersAnsibleView'));
 // Lazy-loaded apps (wrapping named exports as default for lazy loading)
-const CreatorStudioApp = lazy(() => import('../components/Script/CreatorStudioApp').then(m => ({ default: m.CreatorStudioApp })));
 const AnalyticsDashboardApp = lazy(() => import('../components/Analytics/Dashboard/DashboardApp').then(m => ({ default: m.DashboardApp })));
 const DriveFileExplorer = lazy(() => import('../components/Drive/DriveFileExplorer').then(m => ({ default: m.DriveFileExplorer })));
 
@@ -86,7 +85,6 @@ const DashboardShell: React.FC = () => {
  *   /dashboard-channels  → Dashboard (main entry)
  *   /calendar            → Calendar
  *   /workers-ansible     → Workers + Ansible
- *   /creator_studio_app  → Creator Studio
  *   /analytics           → Analytics Dashboard
  *   /drive               → Drive Explorer
  *   /jobs/detail/:jobId  → Job Detail
@@ -114,16 +112,6 @@ export const router = createBrowserRouter([
             {
                 path: APP_ROUTES.workersAnsible,
                 element: <WorkersAnsibleView />
-            },
-
-            // --- Creator Studio ---
-            {
-                path: APP_ROUTES.creatorStudio,
-                element: (
-                    <ErrorBoundary>
-                        <CreatorStudioApp />
-                    </ErrorBoundary>
-                )
             },
 
             // --- Analytics Dashboard ---
