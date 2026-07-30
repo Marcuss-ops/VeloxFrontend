@@ -13,6 +13,27 @@ import type {
     GroupYouTubeVideosResponse,
 } from '@/types/youtubeGroups';
 
+// ---- Groups list -----------------------------------------------------------
+
+export interface GroupSummary {
+    id: number;
+    name: string;
+    parent_group_id?: number | null;
+}
+
+export interface GroupsListResponse {
+    groups: GroupSummary[];
+}
+
+/** GET /api/v1/groups */
+export async function listGroups(
+    options: { signal?: AbortSignal } = {},
+): Promise<GroupsListResponse> {
+    return apiGet<GroupsListResponse>('/api/v1/groups', { signal: options.signal });
+}
+
+// ---- YouTube videos --------------------------------------------------------
+
 /**
  * GET /api/v1/groups/{group_id}/youtube/videos
  * Returns the private/unlisted/processed videos across every YouTube

@@ -1,75 +1,124 @@
-import React, { useState } from 'react';
-import { useLocation, Link } from 'react-router-dom';
-import { PanoramaApp } from '../../components/Panorama/PanoramaApp';
-import { FinanceDashboardApp } from '../../components/Finance/FinanceDashboardApp';
-import { LayoutDashboard, TrendingUp } from 'lucide-react';
+/**
+ * DashboardView — InstaEdit groups list landing page.
+ *
+ * Replaces the old PanoramaApp analytics dashboard.
+ * Shows clickable group cards linking to /groups/:id/videos.
+ */
 
-type PanoramicaTab = 'panoramica' | 'revenue';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { listGroups, type GroupSummary } from '@/lib/api/youtubeGroupsApi';
 
-const TABS = [
-    { id: 'panoramica', label: 'Overview', icon: LayoutDashboard },
-    { id: 'revenue', label: 'Revenue', icon: TrendingUp },
-];
+// ---- Skeleton --------------------------------------------------------------
+
+const SkeletonCard: React.FC = () => (
+    <div className="animate-pulse rounded-xl border border-white/5 bg-white/[0.02] p-6">
+        <div className="h-5 w-32 rounded bg-white/10" />
+    </div>
+);
+
+// ---- Card ------------------------------------------------------------------
+
+const GroupCard: React.FC<{ group: GroupSummary }> = ({ group }) => (
+    <Link
+        to={`/groups/${group.id}/videos`}
+        className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-6 transition-all hover:border-purple-500/30 hover:bg-purple-500/[0.04]"
+    >
+        <div className="flex items-center gap-4">
+            <span
+                className="material-symbols-rounded text-2xl text-purple-400"
+                style={{ fontSize: 28 }}
+            >
+                folder
+            </span>
+            <span className="text-sm font-medium text-slate-200 group-hover:text-purple-300 transition-colors">
+                {group.name}
+            </span>
+        </div>
+        <span
+            className="material-symbols-rounded text-lg text-slate-600 group-hover:text-purple-400 transition-colors"
+            style={{ fontSize: 20 }}
+        >
+            arrow_forward
+        </span>
+    </Link>
+);
+
+// ---- View ------------------------------------------------------------------
 
 const DashboardView: React.FC = () => {
-    const location = useLocation();
-    const params = new URLSearchParams(location.search);
-    const panoramicaTab = params.get('tab') as PanoramicaTab || 'panoramica';
-    const [isHovered, setIsHovered] = useState(false);
+    const { data, isLoading, isError } = useQuery({
+        queryKey: ['groups'],
+        queryFn: () => listGroups(),
+        staleTime: 1000 * 60 * 5,
+    });
 
     return (
-        <div className="h-full flex flex-col bg-[#020617] relative">
-            {/* HOVER SENSITIVE AREA */}
-            <div 
-                className="absolute top-0 left-0 w-full h-20 z-40"
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-            />
+        <div className="mx-auto max-w-2xl px-4 py-12">
+            {/* Header */}
+            <div className="mb-8 text-center">
+                <span
+                    className="material-symbols-rounded mb-3 inline-block text-purple-400"
+                    style={{ fontSize: 40 }}
+                >
+                    auto_awesome
+                </span>
+                <h1 className="text-xl font-semibold tracking-tight text-white">
+                    InstaEdit
+                </h1>
+                <p className="mt-2 text-sm text-slate-400">
+                    Seleziona un gruppo per modificare le thumbnail dei tuoi video YouTube.
+                </p>
+            </div>
 
-            {/* COMPACT ICON NAVIGATION - HOVER TO REVEAL */}
-            <div 
-                className={`
-                    flex items-center justify-center py-4 px-6 border-b border-white/5 bg-slate-950/60 backdrop-blur-xl
-                    fixed top-[56px] left-0 right-0 z-50 transition-all duration-300 ease-in-out
-                    ${isHovered ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'}
-                `}
-                onMouseEnter={() => setIsHovered(true)}
-                onMouseLeave={() => setIsHovered(false)}
-            >
-                <div className="flex gap-1 p-1 bg-white/5 rounded-xl border border-white/5">
-                    {TABS.map(tab => {
-                        const isActive = panoramicaTab === tab.id;
-                        const Icon = tab.icon;
-
-                        return (
-                            <Link
-                                key={tab.id}
-                                to={`/dashboard-channels?tab=${tab.id}`}
-                                className={`
-                                    flex items-center gap-2 px-4 py-2 rounded-lg transition-all
-                                    ${isActive 
-                                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' 
-                                        : 'text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent'
-                                    }
-                                `}
-                            >
-                                <Icon size={18} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
-                            </Link>
-                        );
-                    })}
+            {/* Loading */}
+            {isLoading && (
+                <div className="space-y-3">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <SkeletonCard key={i} />
+                    ))}
                 </div>
-            </div>
+            )}
 
-            {/* Content Area */}
-            <div className="flex-1 min-h-0 overflow-auto p-6">
-                {panoramicaTab === 'panoramica' && (
-                    <PanoramaApp />
-                )}
-                {panoramicaTab === 'revenue' && (
-                    <FinanceDashboardApp initialTab="revenue" />
-                )}
-            </div>
+            {/* Error */}
+            {isError && (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6 text-center">
+                    <span
+                        className="material-symbols-rounded mb-2 text-2xl text-red-400"
+                        style={{ fontSize: 28 }}
+                    >
+                        error
+                    </span>
+                    <p className="text-sm text-red-300">
+                        Impossibile caricare i gruppi. Riprova più tardi.
+                    </p>
+                </div>
+            )}
+
+            {/* Empty */}
+            {!isLoading && !isError && data && data.groups.length === 0 && (
+                <div className="rounded-xl border border-white/5 bg-white/[0.02] p-8 text-center">
+                    <span
+                        className="material-symbols-rounded mb-3 text-3xl text-slate-600"
+                        style={{ fontSize: 32 }}
+                    >
+                        folder_off
+                    </span>
+                    <p className="text-sm text-slate-500">
+                        Nessun gruppo disponibile.
+                    </p>
+                </div>
+            )}
+
+            {/* Groups list */}
+            {!isLoading && !isError && data && data.groups.length > 0 && (
+                <div className="space-y-3">
+                    {data.groups.map((group) => (
+                        <GroupCard key={group.id} group={group} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
