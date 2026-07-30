@@ -147,7 +147,7 @@ export const VeloxJobDetailView: React.FC = () => {
     return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <span className="material-symbols-outlined text-[48px] text-primary animate-spin">progress_activity</span>
+          <Loader2 className="size-12 text-purple-400 animate-spin" />
           <span className="text-slate-400">Caricamento job...</span>
         </div>
       </div>
@@ -158,7 +158,7 @@ export const VeloxJobDetailView: React.FC = () => {
     return (
       <div className="min-h-screen bg-background-light dark:bg-background-dark flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-4 text-center max-w-md">
-          <span className="material-symbols-outlined text-[48px] text-red-400">error</span>
+          <AlertCircle className="size-12 text-red-400" />
           <span className="text-slate-400">{error}</span>
           <div className="flex gap-3">
             <button onClick={() => refresh()} className="px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors">
@@ -186,7 +186,7 @@ export const VeloxJobDetailView: React.FC = () => {
         </div>
         <div className="flex items-center gap-6">
           <button className="relative text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors">
-            <span className="material-symbols-outlined">notifications</span>
+            <Bell className="size-5" />
             <span className="absolute top-0 right-0 size-2 bg-primary rounded-full"></span>
           </button>
           <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-slate-200 dark:border-slate-700 bg-slate-300 dark:bg-slate-600" />
@@ -197,7 +197,7 @@ export const VeloxJobDetailView: React.FC = () => {
         {/* Breadcrumb */}
         <div className="flex items-center flex-wrap gap-2 text-sm font-medium">
           <button onClick={() => navigate('/analytics')} className="text-slate-500 dark:text-slate-400 hover:text-primary transition-colors flex items-center gap-1">
-            <span className="material-symbols-outlined text-[18px]">home</span>
+            <Home className="size-[18px]" />
             Dashboard
           </button>
           <span className="text-slate-300 dark:text-slate-600 material-symbols-outlined text-[16px]">chevron_right</span>

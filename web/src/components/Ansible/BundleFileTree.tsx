@@ -21,12 +21,12 @@ const Breadcrumb: React.FC<{
                 onClick={() => onNavigate('')}
                 className="flex items-center gap-1 px-2 py-1 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
             >
-                <span className="material-symbols-rounded text-[16px]">home</span>
+                <Home className="size-4" />
                 <span>root</span>
             </button>
             {parts.map((part, index) => (
                 <React.Fragment key={index}>
-                    <span className="material-symbols-rounded text-text-muted text-[14px]">chevron_right</span>
+                    <ChevronRight className="size-3.5 text-slate-500" />
                     <button
                         onClick={() => onNavigate(parts.slice(0, index + 1).join('/'))}
                         className="px-2 py-1 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"

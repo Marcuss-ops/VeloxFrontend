@@ -146,7 +146,7 @@ export function ComputerCard({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.03)' }}>
                 <div style={{ fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span className="material-symbols-rounded" style={{ fontSize: 12 }}>person</span>
+                    <User className="size-3 text-slate-500" />
                     {computer.ansible_user || 'root'}
                 </div>
                 <div style={{ fontSize: 10, color: '#475569' }}>
@@ -182,7 +182,7 @@ export function ComputerCard({
                         alignItems: 'center',
                     }}
                 >
-                    <span className="material-symbols-rounded" style={{ fontSize: 14 }}>close</span>
+                    <X className="size-3.5 text-red-400" />
                 </button>
             )}
         </div>

@@ -64,12 +64,12 @@ export const JobDetailView: React.FC = () => {
             {/* Header */}
             <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800/80 px-6 py-4 bg-white dark:bg-slate-900/50">
                 <div className="flex items-center gap-4">
-                    <span className="material-symbols-outlined text-primary">analytics</span>
+                    <BarChart3 className="size-5 text-purple-400" />
                     <h2 className="text-lg font-bold leading-tight tracking-tight">Analytics Dashboard</h2>
                 </div>
                 <div className="flex items-center gap-6">
                     <button className="relative text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 transition-colors">
-                        <span className="material-symbols-outlined">notifications</span>
+                        <Bell className="size-5" />
                         <span className="absolute top-0 right-0 size-2 bg-primary rounded-full"></span>
                     </button>
                     <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-9 border border-slate-200 dark:border-slate-700 bg-slate-300 dark:bg-slate-600" />
@@ -84,7 +84,7 @@ export const JobDetailView: React.FC = () => {
                             className="text-slate-500 dark:text-slate-400 hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
                             onClick={() => navigate('/analytics')}
                         >
-                            <span className="material-symbols-outlined text-[18px]">home</span>
+                            <Home className="size-[18px]" />
                             Dashboard
                         </a>
                         <span className="text-slate-300 dark:text-slate-600 material-symbols-outlined text-[16px]">chevron_right</span>
