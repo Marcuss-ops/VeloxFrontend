@@ -148,6 +148,12 @@ export const router = createBrowserRouter([
                 )
             },
 
+            // --- Legacy Creator Studio redirect ---
+            {
+                path: '/creator_studio_app/*',
+                element: <Navigate to={APP_ROUTES.dashboard} replace />
+            },
+
             // --- Default redirect ---
             {
                 path: '/',
