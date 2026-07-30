@@ -57,7 +57,7 @@ export const WorkersDashboardApp: React.FC<WorkersDashboardAppProps> = ({ initia
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
                         Dashboard Workers
                     </h1>
-                    <p className="text-text-secondary mt-1 text-sm">Monitoraggio real-time dello stato del sistema</p>
+                    <p className="text-muted-foreground mt-1 text-sm">Monitoraggio real-time dello stato del sistema</p>
                 </div>
                 <div className="flex items-center gap-4">
                     {error ? (
@@ -66,14 +66,14 @@ export const WorkersDashboardApp: React.FC<WorkersDashboardAppProps> = ({ initia
                             Connessione persa
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border-dark text-xs font-medium text-text-secondary">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border text-xs font-medium text-muted-foreground">
                             <span className="size-2 rounded-full bg-green-500 animate-pulse" />
                             System Online
                         </div>
                     )}
                     <button
                         onClick={refresh}
-                        className="p-2 rounded-lg hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors group"
+                        className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors group"
                         title="Aggiorna dati"
                     >
                         <span className={`material-symbols-rounded group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`}>

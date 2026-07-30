@@ -80,7 +80,7 @@ export const Navbar: React.FC = () => {
             </Link>
 
             {/* Nav items - pill style */}
-            <div className="flex items-center gap-1 p-0.5 bg-white/[0.04] rounded-xl border border-white/[0.06]">
+            <div className="flex items-center gap-1 p-0.5 bg-white/[0.04] rounded-xl border border">
                 {NAV_ITEMS.map(item => {
                     const active = isActive(item.href, location.pathname);
                     const Icon = item.icon;

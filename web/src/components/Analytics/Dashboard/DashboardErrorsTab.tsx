@@ -25,7 +25,7 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex flex-col gap-1">
                     <h2 className="text-white text-2xl font-bold tracking-tight">Error Log</h2>
-                    <p className="text-slate-400 text-sm">Fallimenti recenti che richiedono attenzione</p>
+                    <p className="text-muted-foreground text-sm">Fallimenti recenti che richiedono attenzione</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full text-xs font-bold">
@@ -34,9 +34,9 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                 </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 overflow-hidden shadow-lg">
+            <div className="rounded-xl border border bg-card/80 overflow-hidden shadow-lg">
                 <table className="w-full text-left">
-                    <thead className="bg-slate-800 text-xs uppercase text-slate-400 border-b border-white/10">
+                    <thead className="bg-card text-xs uppercase text-muted-foreground border-b border">
                         <tr>
                             <th className="p-4">Quando</th>
                             <th className="p-4">Video / ID</th>
@@ -47,7 +47,7 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                     <tbody className="divide-y divide-[#1f1f1f]">
                         {jobs.length === 0 ? (
                             <tr>
-                                <td colSpan={4} className="p-8 text-center text-slate-400 italic">
+                                <td colSpan={4} className="p-8 text-center text-muted-foreground italic">
                                     Nessun errore rilevato. Great job!
                                 </td>
                             </tr>
@@ -61,7 +61,7 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                                 
                                 return (
                                     <tr key={jobId} className="border-b border-red-900/10 hover:bg-red-900/5 transition-colors group">
-                                        <td className="p-4 text-xs text-slate-400">{dateStr}</td>
+                                        <td className="p-4 text-xs text-muted-foreground">{dateStr}</td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
                                                 <span className="text-white text-sm font-medium">{vid}</span>
@@ -95,7 +95,7 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                                                 </Button>
                                                 <a 
                                                     href={`/jobs/detail/${encodeURIComponent(jobId)}`} 
-                                                    className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                                                    className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-card text-muted-foreground hover:text-white transition-colors"
                                                 >
                                                     <Eye className="size-[18px]" />
                                                 </a>

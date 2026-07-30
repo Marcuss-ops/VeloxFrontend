@@ -31,7 +31,7 @@ interface WorkersTabsProps {
 export const WorkersTabs: React.FC<WorkersTabsProps> = ({ activeTab, onTabChange, counts }) => {
     const Icon = TABS.find(t => t.key === activeTab)?.icon;
     return (
-        <div className="mb-8 border-b border-white/10 bg-black/20">
+        <div className="mb-8 border-b border bg-black/20">
             <div className="flex gap-8 overflow-x-auto">
                 {TABS.map(tab => {
                     const isActive = activeTab === tab.key;
@@ -47,7 +47,7 @@ export const WorkersTabs: React.FC<WorkersTabsProps> = ({ activeTab, onTabChange
                             <TabIcon className="size-[18px]" />
                             {tab.label}
                             {count > 0 && (
-                                <span className="bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded ml-1">
+                                <span className="bg-card text-white text-[10px] px-1.5 py-0.5 rounded ml-1">
                                     {count}
                                 </span>
                             )}

@@ -211,7 +211,7 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
             ref={containerRef}
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
-            className="group relative flex flex-col h-[600px] bg-slate-950 rounded-2xl border border-white/5 overflow-hidden shadow-2xl"
+            className="group relative flex flex-col h-[600px] bg-background rounded-2xl border border overflow-hidden shadow-2xl"
             style={glowStyle}
         >
             {/* Cursor-following edge glow */}
@@ -225,19 +225,19 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
             />
             <div className="relative flex flex-col h-full">
                 {/* Terminal Header */}
-            <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-white/5">
+            <div className="flex items-center justify-between px-4 py-2 bg-card border-b border">
                 <div className="flex items-center gap-2">
                     <div className="flex gap-1.5">
                         <div className="size-3 rounded-full bg-red-500/80" />
                         <div className="size-3 rounded-full bg-amber-500/80" />
                         <div className="size-3 rounded-full bg-emerald-500/80" />
                     </div>
-                    <span className="text-xs font-mono text-slate-400 ml-2">ssh-terminal — {selectedIds.size} target</span>
+                    <span className="text-xs font-mono text-muted-foreground ml-2">ssh-terminal — {selectedIds.size} target</span>
                 </div>
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handleCopy}
-                        className="text-[10px] uppercase tracking-wider font-bold text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1"
+                        className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground/70 transition-colors flex items-center gap-1"
                         title="Copia log output"
                     >
                         <span className="material-symbols-rounded text-[14px]">{copied ? 'done' : 'content_copy'}</span>
@@ -245,7 +245,7 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
                     </button>
                     <button
                         onClick={clearTerminal}
-                        className="text-[10px] uppercase tracking-wider font-bold text-slate-500 hover:text-slate-300 transition-colors"
+                        className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground hover:text-foreground/70 transition-colors"
                     >
                         Clear
                     </button>
@@ -258,20 +258,20 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
                 className="flex-1 overflow-auto p-4 font-mono text-sm bg-black/20 scrollbar-hide"
             >
                 {lines.length === 0 ? (
-                    <div className="text-slate-600 italic">
+                    <div className="text-muted-foreground italic">
                         Terminal pronto. Seleziona i computer nella scheda precedente e digita un comando sotto.
                     </div>
                 ) : (
                     <div className="space-y-1">
                         {lines.map((line: ShellLine) => (
                             <div key={line.id} className="flex gap-2">
-                                <span className="text-slate-600 shrink-0 select-none">
+                                <span className="text-muted-foreground shrink-0 select-none">
                                     [{line.timestamp.toLocaleTimeString([], { hour12: false })}]
                                 </span>
                                 <span className={`break-all ${line.type === 'input' ? 'text-emerald-400 font-bold' :
                                     line.type === 'error' ? 'text-red-400' :
                                         line.type === 'system' ? 'text-primary/80 italic' :
-                                            'text-slate-300'
+                                            'text-foreground/70'
                                     }`}>
                                     {line.text}
                                 </span>
@@ -279,7 +279,7 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
                         ))}
                         {executing && (
                             <div className="flex gap-2 animate-pulse">
-                                <span className="text-slate-600 select-none">
+                                <span className="text-muted-foreground select-none">
                                     [{new Date().toLocaleTimeString([], { hour12: false })}]
                                 </span>
                                 <span className="text-primary italic">Esecuzione in corso...</span>
@@ -292,7 +292,7 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
             {/* Terminal Input */}
             <form
                 onSubmit={handleRun}
-                className="p-3 bg-slate-900/80 border-t border-white/5 flex gap-3"
+                className="p-3 bg-card/80 border-t border flex gap-3"
             >
                 <div className="flex-1 relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-500 font-bold select-none">$</span>
@@ -302,14 +302,14 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
                         onChange={e => setCommand(e.target.value)}
                         disabled={executing}
                         placeholder="Digita un comando SSH (es: uptime, df -h, ls /tmp)..."
-                        className="w-full bg-black/40 border border-white/10 rounded-lg py-2 pl-8 pr-4 text-emerald-400 font-mono text-sm focus:border-primary/50 outline-none transition-all disabled:opacity-50"
+                        className="w-full bg-black/40 border border rounded-lg py-2 pl-8 pr-4 text-emerald-400 font-mono text-sm focus:border-primary/50 outline-none transition-all disabled:opacity-50"
                         autoFocus
                     />
                 </div>
                 <button
                     type="submit"
                     disabled={executing || !command.trim()}
-                    className="px-4 py-2 bg-primary hover:bg-primary-dark disabled:bg-slate-800 text-white rounded-lg font-bold text-sm transition-all flex items-center gap-2"
+                    className="px-4 py-2 bg-primary hover:bg-primary-dark disabled:bg-card text-white rounded-lg font-bold text-sm transition-all flex items-center gap-2"
                 >
                     <Terminal className="size-[18px] text-emerald-400" />
                     Esegui

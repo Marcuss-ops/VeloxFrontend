@@ -118,7 +118,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                 }}
             >
                 {/* Header */}
-                <header className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                <header className="flex items-center justify-between px-6 py-4 border-b border">
                     <div className="flex items-center gap-3">
                         <div className="w-1.5 h-6 bg-gradient-to-b from-purple-500 to-violet-600 rounded-full" />
                         <div>
@@ -145,7 +145,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                 </header>
 
                 {/* Tab Navigation */}
-                <div className="flex items-center gap-1 px-4 pt-2 border-b border-white/10">
+                <div className="flex items-center gap-1 px-4 pt-2 border-b border">
                     <button
                         onClick={() => handleTabChange('info')}
                         className={`px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all border-b-2 ${

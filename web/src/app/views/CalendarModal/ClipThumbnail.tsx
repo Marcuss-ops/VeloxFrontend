@@ -65,7 +65,7 @@ export const ClipThumbnail: React.FC<ClipThumbnailProps> = React.memo(
 
         return (
             <div className="group relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                <div className="aspect-video bg-white/5 rounded-lg overflow-hidden border border-white/10 group-hover:border-purple-500/50 transition-colors">
+                <div className="aspect-video bg-white/5 rounded-lg overflow-hidden border border group-hover:border-purple-500/50 transition-colors">
                     {clip.thumbnail ? (
                         <img src={clip.thumbnail} alt={clip.name} className="w-full h-full object-cover" loading="lazy" />
                     ) : (

@@ -21,9 +21,9 @@ export const PROJECT_STATUSES: Record<ProjectStatus, StatusConfig> = {
   draft: {
     label: 'Draft',
     labelIt: 'Bozza',
-    color: 'text-slate-300',
-    bgColor: 'bg-slate-500/20',
-    borderColor: 'border-slate-500/50',
+    color: 'text-foreground/70',
+    bgColor: 'bg-white/20',
+    borderColor: 'border/50',
   },
   in_progress: {
     label: 'In Progress',

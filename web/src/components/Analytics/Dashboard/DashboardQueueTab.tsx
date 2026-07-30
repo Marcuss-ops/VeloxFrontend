@@ -55,7 +55,7 @@ export const DashboardQueueTab: React.FC<DashboardQueueTabProps> = ({ jobs, onRe
                 <div className="flex min-w-72 flex-col gap-1">
                     <h2 className="text-white text-2xl font-bold tracking-tight">Coda di Elaborazione</h2>
                     <div className="flex items-center gap-2">
-                        <span className="text-slate-400 text-sm">{jobs.length} job in attesa</span>
+                        <span className="text-muted-foreground text-sm">{jobs.length} job in attesa</span>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -76,9 +76,9 @@ export const DashboardQueueTab: React.FC<DashboardQueueTabProps> = ({ jobs, onRe
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="col-span-1 md:col-span-2 rounded-xl border border-white/10 bg-slate-900/80 overflow-hidden shadow-lg">
+                <div className="col-span-1 md:col-span-2 rounded-xl border border bg-card/80 overflow-hidden shadow-lg">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-800 text-xs uppercase text-slate-400 border-b border-white/10">
+                        <thead className="bg-card text-xs uppercase text-muted-foreground border-b border">
                             <tr>
                                 <th className="p-4 w-16">Sel.</th>
                                 <th className="p-4">Video / Job ID</th>
@@ -89,7 +89,7 @@ export const DashboardQueueTab: React.FC<DashboardQueueTabProps> = ({ jobs, onRe
                         <tbody className="divide-y divide-[#1f1f1f]">
                             {jobs.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="p-8 text-center text-slate-400 text-sm italic">
+                                    <td colSpan={4} className="p-8 text-center text-muted-foreground text-sm italic">
                                         Nessun job in coda.
                                     </td>
                                 </tr>
@@ -110,7 +110,7 @@ export const DashboardQueueTab: React.FC<DashboardQueueTabProps> = ({ jobs, onRe
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         onChange={() => toggleJob(jobId)}
-                                                        className="queue-job-checkbox form-checkbox rounded border-white/10 bg-slate-800 text-primary focus:ring-offset-0 focus:ring-primary/50"
+                                                        className="queue-job-checkbox form-checkbox rounded border bg-card text-primary focus:ring-offset-0 focus:ring-primary/50"
                                                     />
                                                 </label>
                                             </td>
@@ -128,7 +128,7 @@ export const DashboardQueueTab: React.FC<DashboardQueueTabProps> = ({ jobs, onRe
                                             </td>
                                             <td className="p-4">
                                                 <Link to={`/jobs/detail/${jobId}`} className="block">
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-[#333]">
+                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-card text-muted-foreground border border-[#333]">
                                                         <span className="size-1.5 rounded-full bg-text-secondary"></span>
                                                         PENDING
                                                     </span>
@@ -138,7 +138,7 @@ export const DashboardQueueTab: React.FC<DashboardQueueTabProps> = ({ jobs, onRe
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <Link
                                                         to={`/jobs/detail/${jobId}`}
-                                                        className="size-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors flex items-center justify-center"
+                                                        className="size-8 rounded-lg bg-card text-muted-foreground hover:text-white hover:bg-muted transition-colors flex items-center justify-center"
                                                         title="Dettagli"
                                                     >
                                                         <Eye className="size-[18px]" />
@@ -154,13 +154,13 @@ export const DashboardQueueTab: React.FC<DashboardQueueTabProps> = ({ jobs, onRe
                 </div>
 
                 <div className="col-span-1 space-y-4">
-                    <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
+                    <div className="rounded-xl border border bg-card/80 p-6">
                         <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Statistiche Coda</h3>
                         <div className="flex items-center justify-between mb-2">
-                            <span className="text-slate-400 text-sm">Totale in attesa</span>
+                            <span className="text-muted-foreground text-sm">Totale in attesa</span>
                             <span className="text-white font-mono font-bold">{jobs.length}</span>
                         </div>
-                        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mb-4">
+                        <div className="w-full bg-card h-1.5 rounded-full overflow-hidden mb-4">
                             <div className="bg-primary h-full rounded-full" style={{ width: `${Math.min(100, jobs.length * 2)}%` }}></div>
                         </div>
                         <p className="text-[11px] text-[#555]">

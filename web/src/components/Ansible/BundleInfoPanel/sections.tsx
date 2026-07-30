@@ -31,7 +31,7 @@ const SECTION_STATUS_COLORS: Record<SectionStatus, string> = {
     ok: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     warning: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     error: 'bg-red-500/20 text-red-400 border-red-500/30',
-    unknown: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+    unknown: 'bg-white/20 text-muted-foreground border-white/30',
 };
 
 const SECTION_STATUS_ICONS: Record<SectionStatus, string> = {
@@ -72,21 +72,21 @@ export const SectionCard: React.FC<SectionCardProps> = ({
     collapsed = false,
     onToggle,
 }) => (
-    <div className="bg-card-dark border border-border-dark rounded-xl overflow-hidden">
+    <div className="bg-card border border rounded-xl overflow-hidden">
         <button
             onClick={onToggle}
             className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
         >
             <div className="flex items-center gap-2">
                 <span className={`material-symbols-rounded ${iconColor}`}>{icon}</span>
-                <h4 className="text-sm font-semibold text-text-primary">{title}</h4>
+                <h4 className="text-sm font-semibold text-foreground">{title}</h4>
             </div>
-            <span className={`material-symbols-rounded text-text-muted transition-transform ${collapsed ? '' : 'rotate-180'}`}>
+            <span className={`material-symbols-rounded text-muted-foreground transition-transform ${collapsed ? '' : 'rotate-180'}`}>
                 expand_more
             </span>
         </button>
         {!collapsed && (
-            <div className="px-4 pb-4 border-t border-border-dark/50">
+            <div className="px-4 pb-4 border-t border/50">
                 {children}
             </div>
         )}

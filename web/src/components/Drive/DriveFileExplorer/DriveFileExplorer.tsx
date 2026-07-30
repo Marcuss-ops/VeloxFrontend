@@ -97,9 +97,9 @@ export function DriveFileExplorer({
 
       {/* Footer with selection summary */}
       {selectedIds.size > 0 && (
-        <div className="px-4 py-3 border-t border-white/10 bg-slate-900/50">
+        <div className="px-4 py-3 border-t border bg-card/50">
           <div className="flex items-center justify-between">
-            <div className="text-[11px] text-slate-400">
+            <div className="text-[11px] text-muted-foreground">
               {Array.from(selectedItems.values()).slice(0, 3).map((item, i) => (
                 <span key={item.id} className="inline-flex items-center gap-1 mr-2">
                   {i > 0 && <span>•</span>}
@@ -107,7 +107,7 @@ export function DriveFileExplorer({
                 </span>
               ))}
               {selectedItems.size > 3 && (
-                <span className="text-slate-500">+{selectedItems.size - 3} altri</span>
+                <span className="text-muted-foreground">+{selectedItems.size - 3} altri</span>
               )}
             </div>
           </div>

@@ -73,7 +73,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                         onMouseEnter={() => scheduleClipPicker(folder, type)}
                         onMouseLeave={cancelClipPickerHover}
                         className={`px-2 py-1 rounded-md border text-[10px] transition-all ${
-                            selectedId === folder.id ? 'bg-green-500/20 border-green-500/50 text-green-200' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-green-500/30'
+                            selectedId === folder.id ? 'bg-green-500/20 border-green-500/50 text-green-200' : 'bg-white/5 border text-white/60 hover:bg-white/10 hover:border-green-500/30'
                         }`}
                     >
                         {folder.name}
@@ -86,7 +86,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
     return (
         <>
             {/* Stock Footage */}
-            <section className="p-3 bg-white/5 rounded-xl border border-white/10">
+            <section className="p-3 bg-white/5 rounded-xl border border">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">video_library</span>
@@ -109,11 +109,11 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                                 key={folder.id}
                                 onClick={() => setSelectedStockFolderId(folder.id)}
                                 className={`p-3 rounded-lg border transition-all text-left group ${
-                                    selectedStockFolderId === folder.id ? 'bg-blue-500/20 border-blue-500/60' : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-blue-500/50'
+                                    selectedStockFolderId === folder.id ? 'bg-blue-500/20 border-blue-500/60' : 'bg-white/5 border hover:bg-white/10 hover:border-blue-500/50'
                                 }`}
                             >
                                 <div className="flex items-center gap-2 mb-1">
-                                    <Folder className="size-12 text-slate-600" />
+                                    <Folder className="size-12 text-muted-foreground" />
                                     <span className="text-[10px] font-bold text-white truncate flex-1">{folder.name}</span>
                                 </div>
                                 <div className="text-[8px] text-white/40">
@@ -134,7 +134,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
             {/* Clips Sections */}
             <div className="space-y-3">
                 {/* Initial Clips */}
-                <section className="p-3 bg-white/5 rounded-xl border border-white/10">
+                <section className="p-3 bg-white/5 rounded-xl border border">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-green-400">Initial Clips</h3>
                         <span className="text-[9px] bg-green-500/20 px-1.5 py-0.5 rounded text-green-300">{initialClips.length}</span>
@@ -156,7 +156,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                 </section>
 
                 {/* Intermediate Clips */}
-                <section className="p-3 bg-white/5 rounded-xl border border-white/10">
+                <section className="p-3 bg-white/5 rounded-xl border border">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-orange-400">Intermediate Clips</h3>
                         <span className="text-[9px] bg-orange-500/20 px-1.5 py-0.5 rounded text-orange-300">{intermediateClips.length}</span>
@@ -176,7 +176,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                 </section>
 
                 {/* Final Clips */}
-                <section className="p-3 bg-white/5 rounded-xl border border-white/10">
+                <section className="p-3 bg-white/5 rounded-xl border border">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-red-400">Final Clips</h3>
                         <span className="text-[9px] bg-red-500/20 px-1.5 py-0.5 rounded text-red-300">{finalClips.length}</span>
@@ -198,7 +198,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
 
             {/* Voiceover Section */}
             {selectedDriveGroup?.voiceover && (
-                <section className="p-4 bg-white/5 rounded-xl border border-white/10">
+                <section className="p-4 bg-white/5 rounded-xl border border">
                     <div className="flex items-center justify-between mb-3">
                         <h3 className="text-xs font-bold uppercase tracking-widest text-orange-400 flex items-center gap-2">
                             <span className="material-symbols-outlined text-sm">mic</span>

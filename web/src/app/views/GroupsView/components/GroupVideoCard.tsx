@@ -49,7 +49,7 @@ function editorBadge(status: string): { label: string; tone: BadgeTone } {
 
 function Badge({ label, tone }: { label: string; tone: BadgeTone }) {
     const toneClasses: Record<BadgeTone, string> = {
-        neutral: 'bg-slate-700/50 text-slate-200 border-slate-500/30',
+        neutral: 'bg-muted/50 text-foreground/80 border-white/30',
         amber: 'bg-amber-500/15 text-amber-200 border-amber-400/30',
         blue: 'bg-sky-500/15 text-sky-200 border-sky-400/30',
         green: 'bg-emerald-500/15 text-emerald-200 border-emerald-400/30',
@@ -103,8 +103,8 @@ export const GroupVideoCard: React.FC<GroupVideoCardProps> = ({
     const hasEditorUrl = !!video.editor_url;
 
     return (
-        <Card className="overflow-hidden border-white/10 bg-slate-900/80 transition hover:border-white/20 hover:bg-slate-900/90">
-            <div className="relative aspect-video w-full overflow-hidden bg-slate-800">
+        <Card className="overflow-hidden border bg-card/80 transition hover:border-white/20 hover:bg-card/90">
+            <div className="relative aspect-video w-full overflow-hidden bg-card">
                 {video.thumbnail_url ? (
                     <img
                         src={video.thumbnail_url}
@@ -113,7 +113,7 @@ export const GroupVideoCard: React.FC<GroupVideoCardProps> = ({
                         className="h-full w-full object-cover"
                     />
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
                         Nessuna miniatura
                     </div>
                 )}
@@ -127,12 +127,12 @@ export const GroupVideoCard: React.FC<GroupVideoCardProps> = ({
                     <h3 className="line-clamp-2 text-sm font-semibold text-white">
                         {video.title || '(senza titolo)'}
                     </h3>
-                    <p className="line-clamp-1 text-xs text-slate-400">
+                    <p className="line-clamp-1 text-xs text-muted-foreground">
                         {video.channel_name || 'Canale sconosciuto'}
                     </p>
                 </div>
                 <div className="flex items-center justify-between gap-2 pt-1">
-                    <span className="truncate text-[11px] text-slate-500">
+                    <span className="truncate text-[11px] text-muted-foreground">
                         {video.actual_privacy && video.actual_privacy !== video.privacy_status
                             ? `effettiva: ${video.actual_privacy}`
                             : ''}

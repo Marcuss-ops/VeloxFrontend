@@ -27,17 +27,17 @@ export const FileItem: React.FC<FileItemProps> = ({ name, type, size_formatted, 
             style={{ paddingLeft: `${12 + depth * 16}px` }}
             onClick={isFolder ? onClick : undefined}
         >
-            <span className={`material-symbols-rounded text-[20px] ${isFolder ? 'text-amber-400' : 'text-slate-400'}`}>
+            <span className={`material-symbols-rounded text-[20px] ${isFolder ? 'text-amber-400' : 'text-muted-foreground'}`}>
                 {isFolder ? 'folder' : getFileIcon(name)}
             </span>
             <div className="flex-1 min-w-0">
-                <span className="text-sm text-text-primary truncate">{name}</span>
+                <span className="text-sm text-foreground truncate">{name}</span>
                 {isFolder && file_count && (
-                    <span className="text-[10px] text-text-muted ml-2">({file_count} items)</span>
+                    <span className="text-[10px] text-muted-foreground ml-2">({file_count} items)</span>
                 )}
             </div>
             {size_formatted && (
-                <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                     {size_formatted}
                 </span>
             )}

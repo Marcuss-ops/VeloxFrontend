@@ -97,7 +97,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
             )}
 
             {/* Social Group Selector */}
-            <section className="p-4 bg-white/5 rounded-xl border border-white/10">
+            <section className="p-4 bg-white/5 rounded-xl border border">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
                         <Eye className="size-[18px] " />
@@ -121,7 +121,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                                 key={group.name}
                                 onClick={() => {}}
                                 className={`p-2 rounded-lg border transition-all ${
-                                    youtubeGroup === group.name ? 'bg-purple-500/30 border-purple-500 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                                    youtubeGroup === group.name ? 'bg-purple-500/30 border-purple-500 text-white' : 'bg-white/5 border text-white/70 hover:bg-white/10'
                                 }`}
                             >
                                 <div className="text-[10px] font-bold truncate">{group.name}</div>
@@ -149,7 +149,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
             </section>
 
             {/* Script Text Section */}
-            <section className="p-4 bg-white/5 rounded-xl border border-white/10 relative">
+            <section className="p-4 bg-white/5 rounded-xl border border relative">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-green-400 flex items-center gap-2">
                         <FileText className="size-4 " />
@@ -162,9 +162,9 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                                     <span className="material-symbols-outlined text-xs">history</span>Storico
                                 </button>
                                 {showScriptHistory && (
-                                    <div className="absolute top-full right-0 mt-1 w-72 max-h-48 overflow-y-auto bg-slate-900 border border-white/10 rounded-lg shadow-xl z-50">
+                                    <div className="absolute top-full right-0 mt-1 w-72 max-h-48 overflow-y-auto bg-card border border rounded-lg shadow-xl z-50">
                                         {scriptHistory.map((item, idx) => (
-                                            <button key={idx} onClick={() => { setScriptText(item); setShowScriptHistory(false); }} className="w-full text-left px-3 py-2 text-[10px] text-white/70 hover:bg-white/10 truncate border-b border-white/5 last:border-0">
+                                            <button key={idx} onClick={() => { setScriptText(item); setShowScriptHistory(false); }} className="w-full text-left px-3 py-2 text-[10px] text-white/70 hover:bg-white/10 truncate border-b border last:border-0">
                                                 {item.slice(0, 80)}...
                                             </button>
                                         ))}
@@ -181,12 +181,12 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                     onChange={(e) => setScriptText(e.target.value)}
                     placeholder="Inserisci lo script o le note per il video..."
                     rows={10}
-                    className="w-full bg-slate-950/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-green-500/40 outline-none resize-none transition-all hover:border-white/20"
+                    className="w-full bg-background/70 border border rounded-xl px-4 py-3 text-sm text-foreground/80 placeholder:text-muted-foreground focus:ring-1 focus:ring-green-500/40 outline-none resize-none transition-all hover:border-white/20"
                 />
             </section>
 
             {/* YouTube Links Section */}
-            <section className="p-4 bg-white/5 rounded-xl border border-white/10 relative">
+            <section className="p-4 bg-white/5 rounded-xl border border relative">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-red-400 flex items-center gap-2">
                         <Eye className="size-[18px] " />
@@ -199,9 +199,9 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                                     <span className="material-symbols-outlined text-xs">history</span>Storico
                                 </button>
                                 {showYoutubeHistory && (
-                                    <div className="absolute top-full right-0 mt-1 w-72 max-h-48 overflow-y-auto bg-slate-900 border border-white/10 rounded-lg shadow-xl z-50">
+                                    <div className="absolute top-full right-0 mt-1 w-72 max-h-48 overflow-y-auto bg-card border border rounded-lg shadow-xl z-50">
                                         {youtubeHistory.map((item, idx) => (
-                                            <button key={idx} onClick={() => { setShowYoutubeHistory(false); }} className="w-full text-left px-3 py-2 text-[10px] text-white/70 hover:bg-white/10 truncate border-b border-white/5 last:border-0">
+                                            <button key={idx} onClick={() => { setShowYoutubeHistory(false); }} className="w-full text-left px-3 py-2 text-[10px] text-white/70 hover:bg-white/10 truncate border-b border last:border-0">
                                                 {item}
                                             </button>
                                         ))}
@@ -220,7 +220,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                         value={newYoutubeLink}
                         onChange={(e) => setNewYoutubeLink(e.target.value)}
                         placeholder="https://www.youtube.com/watch?v=..."
-                        className="flex-1 bg-slate-950/70 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder:text-white/30 focus:ring-1 focus:ring-red-500/40 outline-none"
+                        className="flex-1 bg-background/70 border border rounded-lg px-3 py-2 text-xs text-white placeholder:text-white/30 focus:ring-1 focus:ring-red-500/40 outline-none"
                     />
                     <button
                         onClick={() => { if (newYoutubeLink.trim()) { setYoutubeLinks(prev => [...prev, newYoutubeLink.trim()]); setNewYoutubeLink(''); } }}
@@ -234,7 +234,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                 {youtubeLinks.length > 0 && (
                     <div className="space-y-2">
                         {youtubeLinks.map((link, idx) => (
-                            <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg border border-white/10">
+                            <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-lg border border">
                                 <Link className="size-4 text-green-400" />
                                 <a href={link} target="_blank" rel="noopener noreferrer" className="flex-1 text-[11px] text-blue-400 hover:text-blue-300 truncate">{link}</a>
                                 <button onClick={() => setYoutubeLinks(prev => prev.filter((_, i) => i !== idx))} className="text-white/30 hover:text-red-400 transition-colors">
@@ -247,7 +247,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
             </section>
 
             {/* Voiceover Paths Section */}
-            <section className="p-4 bg-white/5 rounded-xl border border-white/10 relative">
+            <section className="p-4 bg-white/5 rounded-xl border border relative">
                 <div className="flex items-center justify-between mb-3">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-orange-400 flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">mic</span>
@@ -267,7 +267,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                     }}
                     placeholder="Una riga per path/audio URL"
                     rows={4}
-                    className="w-full bg-slate-950/70 border border-white/10 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-600 focus:ring-1 focus:ring-orange-500/40 outline-none resize-none transition-all hover:border-white/20"
+                    className="w-full bg-background/70 border border rounded-xl px-4 py-3 text-sm text-foreground/80 placeholder:text-muted-foreground focus:ring-1 focus:ring-orange-500/40 outline-none resize-none transition-all hover:border-white/20"
                 />
                 <p className="mt-2 text-[10px] text-white/40">
                     Inserisci path o URL audio. Almeno uno serve per mettere il video in coda.

@@ -12,7 +12,7 @@ export const DeliveryStatusCell: React.FC<DeliveryStatusCellProps> = ({ jobId })
     const { deliveries, isLoading, isError, error } = useJobDeliveries(jobId);
 
     if (isLoading) {
-        return <span className="text-text-secondary text-xs animate-pulse">Caricamento...</span>;
+        return <span className="text-muted-foreground text-xs animate-pulse">Caricamento...</span>;
     }
 
     if (isError) {
@@ -27,7 +27,7 @@ export const DeliveryStatusCell: React.FC<DeliveryStatusCellProps> = ({ jobId })
     }
 
     if (deliveries.length === 0) {
-        return <span className="text-text-secondary text-xs">Nessuna consegna</span>;
+        return <span className="text-muted-foreground text-xs">Nessuna consegna</span>;
     }
 
     return (
@@ -59,9 +59,9 @@ export const DeliveryStatusCell: React.FC<DeliveryStatusCellProps> = ({ jobId })
                         >
                             <errorInfo.icon className="size-3.5" style={{ color: `var(--color-${errorInfo.color}-400)` }} />
                             Video: {label}
-                            <span className="hidden group-hover/yt:block absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-[11px] text-slate-200 shadow-xl whitespace-normal pointer-events-none">
+                            <span className="hidden group-hover/yt:block absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 w-72 px-3 py-2 bg-card border border rounded-lg text-[11px] text-foreground/80 shadow-xl whitespace-normal pointer-events-none">
                                 <div className="font-bold text-red-400 mb-1">{errorInfo.hint}</div>
-                                <div className="text-slate-300 break-words">{lastErrorMessage}</div>
+                                <div className="text-foreground/70 break-words">{lastErrorMessage}</div>
                             </span>
                         </span>
                     );

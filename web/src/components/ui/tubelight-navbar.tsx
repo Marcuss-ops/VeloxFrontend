@@ -40,7 +40,7 @@ export function NavBar({ items, activeTab, onTabChange, className }: NavBarProps
         >
             <div className="group relative flex items-center justify-center transition-all duration-300 ease-out">
                 <div className={cn(
-                    "flex items-center gap-2 bg-slate-950/60 border border-white/10 backdrop-blur-lg py-1 px-1 rounded-full shadow-xl transition-all duration-300",
+                    "flex items-center gap-2 bg-background/60 border border backdrop-blur-lg py-1 px-1 rounded-full shadow-xl transition-all duration-300",
                     "opacity-100 scale-100"
                 )}>
                     {items.map((item) => {
@@ -53,8 +53,8 @@ export function NavBar({ items, activeTab, onTabChange, className }: NavBarProps
                                 onClick={() => onTabChange(item.name)}
                                 className={cn(
                                     "relative cursor-pointer text-sm font-semibold px-6 py-2 rounded-full transition-all duration-200",
-                                    "text-slate-400 hover:text-white",
-                                    isActive ? "bg-slate-800/90 text-white shadow-lg ring-1 ring-white/10" : "bg-transparent",
+                                    "text-muted-foreground hover:text-white",
+                                    isActive ? "bg-card/90 text-white shadow-lg ring-1 ring-white/10" : "bg-transparent",
                                 )}
                             >
                                 {isActive && (

@@ -26,8 +26,8 @@ export const ClipPickerModal: React.FC<ClipPickerModalProps> = ({
     return (
         <div className="fixed inset-0 z-30 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-            <div className="relative z-10 w-[90vw] max-w-4xl max-h-[70vh] rounded-2xl border border-white/10 bg-[rgba(18,15,28,0.98)] backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                <header className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+            <div className="relative z-10 w-[90vw] max-w-4xl max-h-[70vh] rounded-2xl border border bg-[rgba(18,15,28,0.98)] backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                <header className="flex items-center justify-between px-5 py-3 border-b border">
                     <div>
                         <div className="text-xs uppercase tracking-widest text-white/50">{clipType} clips</div>
                         <div className="text-sm font-bold text-white">{folderName}</div>
@@ -50,7 +50,7 @@ export const ClipPickerModal: React.FC<ClipPickerModalProps> = ({
                                 <button
                                     key={file.id}
                                     onClick={() => addClipFromFile(file, clipType)}
-                                    className="text-left rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-colors p-2"
+                                    className="text-left rounded-lg border border bg-white/5 hover:bg-white/10 transition-colors p-2"
                                 >
                                     <div className="aspect-video rounded-md overflow-hidden bg-black/30 flex items-center justify-center mb-2">
                                         {file.thumbnailLink ? (

@@ -13,7 +13,7 @@ const statusColors: Record<BadgeStatus, string> = {
     ok: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     warning: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     error: 'bg-red-500/20 text-red-400 border-red-500/30',
-    unknown: 'bg-slate-500/20 text-slate-400 border-slate-500/30',
+    unknown: 'bg-white/20 text-muted-foreground border-white/30',
 };
 
 const statusIcons: Record<BadgeStatus, React.ElementType> = {

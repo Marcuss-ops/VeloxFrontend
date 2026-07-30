@@ -16,7 +16,7 @@ const LoadingView: React.FC = () => (
 
 export const ContentView: React.FC = () => {
     return (
-        <div className="h-full min-h-[calc(100vh-10rem)] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 shadow-2xl">
+        <div className="h-full min-h-[calc(100vh-10rem)] overflow-hidden rounded-2xl border border bg-background/30 shadow-2xl">
             <div className="flex h-full min-h-0 flex-col">
                 <main className="flex-1 overflow-auto p-4 md:p-6">
                     <Suspense fallback={<LoadingView />}>

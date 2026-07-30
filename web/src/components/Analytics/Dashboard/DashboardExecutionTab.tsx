@@ -101,12 +101,12 @@ export const DashboardExecutionTab: React.FC<DashboardExecutionTabProps> = ({ jo
                 </div>
             </div>
 
-            {jobs.length === 0 ? (                    <div className="col-span-full flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/50">
-                        <div className="size-16 rounded-full bg-slate-800 flex items-center justify-center mb-4 text-slate-600">
+            {jobs.length === 0 ? (                    <div className="col-span-full flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border rounded-xl bg-card/50">
+                        <div className="size-16 rounded-full bg-card flex items-center justify-center mb-4 text-muted-foreground">
                             <PauseCircle className="size-8" />
                         </div>
                     <h3 className="text-white font-bold text-lg mb-1">Nessun job in esecuzione</h3>
-                    <p className="text-slate-400 text-sm max-w-sm">
+                    <p className="text-muted-foreground text-sm max-w-sm">
                         Tutti i worker sono attualmente in attesa o non ci sono job nella coda.
                     </p>
                 </div>
@@ -122,7 +122,7 @@ export const DashboardExecutionTab: React.FC<DashboardExecutionTabProps> = ({ jo
                         return (
                             <div
                                 key={jobId}
-                                className="rounded-xl border border-white/10 bg-slate-900/80 backdrop-blur-xl rounded-xl p-5 relative overflow-hidden group hover:border-primary/50 transition-all duration-300"
+                                className="rounded-xl border border bg-card/80 backdrop-blur-xl rounded-xl p-5 relative overflow-hidden group hover:border-primary/50 transition-all duration-300"
                             >
                                 {/* Background Progress Bar */}
                                 <div className="absolute bottom-0 left-0 h-1 bg-primary/20 w-full">
@@ -157,7 +157,7 @@ export const DashboardExecutionTab: React.FC<DashboardExecutionTabProps> = ({ jo
                                     </div>
                                     {/* Worker Badge */}
                                     <div className="text-right">
-                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-800 border border-[#333] text-[10px] font-medium text-slate-400">
+                                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-card border border-[#333] text-[10px] font-medium text-muted-foreground">
                                             <span className="size-1.5 rounded-full bg-green-500 animate-pulse"></span>
                                             {workerDisplay}
                                         </div>
@@ -165,12 +165,12 @@ export const DashboardExecutionTab: React.FC<DashboardExecutionTabProps> = ({ jo
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 my-4 relative z-10">
-                                    <div className="bg-slate-800/50 rounded-lg p-2 border border-white/5">
-                                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Durata</div>
+                                    <div className="bg-card/50 rounded-lg p-2 border border">
+                                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Durata</div>
                                         <div className="text-xs font-mono text-white">{duration}</div>
                                     </div>
-                                    <div className="bg-slate-800/50 rounded-lg p-2 border border-white/5">
-                                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Status</div>
+                                    <div className="bg-card/50 rounded-lg p-2 border border">
+                                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold mb-1">Status</div>
                                         <div className="text-xs font-bold text-primary flex items-center gap-1">
                                             PROCESSING
                                             <span className="flex h-1.5 w-1.5 relative">

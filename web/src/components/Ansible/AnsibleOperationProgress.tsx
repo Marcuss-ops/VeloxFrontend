@@ -313,10 +313,10 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
-            <div className="w-full max-w-xl bg-slate-900/95 rounded-2xl border border-white/10 shadow-2xl overflow-hidden">
+            <div className="w-full max-w-xl bg-card/95 rounded-2xl border border shadow-2xl overflow-hidden">
                 
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-white/5">
+                <div className="px-6 py-5 border-b border">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className={`p-3 rounded-xl ${config.bgColor} border ${config.borderColor}`}>
@@ -328,7 +328,7 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold text-white">{config.title}</h2>
-                                <p className="text-sm text-slate-400">
+                                <p className="text-sm text-muted-foreground">
                                     {targets.length} target • {formatDuration(elapsedSeconds)}
                                 </p>
                             </div>
@@ -346,7 +346,7 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
                 <div className="px-6 py-5">
                     {/* Status Text */}
                     <div className="flex items-center justify-between mb-3">
-                        <span className="text-base text-slate-300 flex items-center">
+                        <span className="text-base text-foreground/70 flex items-center">
                             {currentPhase}
                             {!isComplete && <AnimatedDots />}
                         </span>
@@ -371,7 +371,7 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
                     <div className="flex items-center justify-center gap-8 mt-4 text-sm">
                         <div className="flex items-center gap-2">
                             <span className="size-2.5 rounded-full bg-emerald-500" />
-                            <span className="text-slate-400">{completedHosts} completati</span>
+                            <span className="text-muted-foreground">{completedHosts} completati</span>
                         </div>
                         {failedHosts > 0 && (
                             <div className="flex items-center gap-2">
@@ -381,7 +381,7 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
                         )}
                         <div className="flex items-center gap-2">
                             <span className="size-2.5 rounded-full bg-amber-500 animate-pulse" />
-                            <span className="text-slate-400">{targets.length - completedHosts - failedHosts} in corso</span>
+                            <span className="text-muted-foreground">{targets.length - completedHosts - failedHosts} in corso</span>
                         </div>
                     </div>
                 </div>
@@ -389,7 +389,7 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
                 {/* Summary Events */}
                 <div 
                     ref={eventsContainerRef}
-                    className="px-4 py-3 max-h-64 overflow-y-auto border-t border-white/5 bg-black/20"
+                    className="px-4 py-3 max-h-64 overflow-y-auto border-t border bg-black/20"
                 >
                     <div className="space-y-1">
                         {summaryEvents.map((event, index) => (
@@ -404,7 +404,7 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
 
                 {/* Footer */}
                 {isComplete && (
-                    <div className="px-6 py-4 border-t border-white/5 bg-black/10">
+                    <div className="px-6 py-4 border-t border bg-black/10">
                         <button
                             onClick={onClose}
                             className={`w-full py-3 rounded-xl font-medium text-sm transition-all ${

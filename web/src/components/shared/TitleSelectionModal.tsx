@@ -48,7 +48,7 @@ const TitleItem = React.memo<{
             className={`relative p-3 rounded-xl border transition-all group cursor-pointer ${
                 isSelected 
                     ? 'bg-amber-500/30 border-amber-500/50' 
-                    : 'border-white/10 bg-white/5 hover:bg-amber-500/10 hover:border-amber-500/30'
+                    : 'border bg-white/5 hover:bg-amber-500/10 hover:border-amber-500/30'
             }`}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -193,7 +193,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                 }}
             >
                 {/* Header */}
-                <header className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                <header className="flex items-center justify-between px-5 py-4 border-b border">
                     <div className="flex items-center gap-3">
                         <div className="w-1.5 h-6 bg-gradient-to-b from-amber-500 to-orange-600 rounded-full" />
                         <div>
@@ -211,7 +211,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
 
                 {/* Selected Titles Bar */}
                 {selectedCount > 0 && (
-                    <div className="px-5 py-3 border-b border-white/10 bg-purple-500/10">
+                    <div className="px-5 py-3 border-b border bg-purple-500/10">
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-semibold text-purple-300">
                                 {selectedCount} titolo{selectedCount > 1 ? 'i' : ''} selezionato{selectedCount > 1 ? 'i' : ''}
@@ -243,7 +243,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                 )}
 
                 {/* Search */}
-                <div className="px-5 py-3 border-b border-white/10">
+                <div className="px-5 py-3 border-b border">
                     <div className="relative">
                         <Search className="size-4" />
                         <input
@@ -251,7 +251,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                             placeholder="Cerca titolo..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
+                            className="w-full bg-white/5 border border rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50"
                             autoFocus
                         />
                     </div>
@@ -286,8 +286,8 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                         /* Categories View */
                         <div className="flex gap-0 h-full">
                             {/* Left Panel - Categories */}
-                            <div className="w-1/3 border-r border-white/10 bg-black/20">
-                                <div className="p-3 border-b border-white/10">
+                            <div className="w-1/3 border-r border bg-black/20">
+                                <div className="p-3 border-b border">
                                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Categorie</span>
                                 </div>
                                 <div className="overflow-y-auto max-h-[45vh]">
@@ -299,7 +299,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                                             <button
                                                 key={name}
                                                 onClick={() => setSelectedCategory(name)}
-                                                className={`w-full text-left px-4 py-3 border-b border-white/5 transition-all ${
+                                                className={`w-full text-left px-4 py-3 border-b border transition-all ${
                                                     isActive 
                                                         ? 'bg-purple-500/20 border-l-2 border-l-purple-500' 
                                                         : 'hover:bg-white/5 border-l-2 border-l-transparent'
@@ -315,7 +315,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
 
                             {/* Right Panel - Titles */}
                             <div className="flex-1 bg-black/10">
-                                <div className="p-3 border-b border-white/10">
+                                <div className="p-3 border-b border">
                                     <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">
                                         {selectedCategory || 'Seleziona categoria'}
                                     </span>
@@ -346,7 +346,7 @@ export const TitleSelectionModal: React.FC<TitleSelectionModalProps> = ({
                 </div>
 
                 {/* Footer */}
-                <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between">
+                <div className="px-5 py-3 border-t border flex items-center justify-between">
                     <div className="text-[10px] text-white/40">
                         {Object.keys(categories).length} categorie • {getAllTitles().length} titoli totali
                         {selectedCount > 0 && ` • ${selectedCount} selezionati`}

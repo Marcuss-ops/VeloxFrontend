@@ -33,7 +33,7 @@ const CalendarDayCell = memo<CalendarDayCellProps>(({
 }) => {
     return (
         <div
-            className="p-3 relative group cursor-pointer border-r border-b border-white/5 min-h-[100px] will-change-transform bg-transparent hover:bg-white/5"
+            className="p-3 relative group cursor-pointer border-r border-b border min-h-[100px] will-change-transform bg-transparent hover:bg-white/5"
             onClick={() => onDayClick(day)}
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, day)}
@@ -110,7 +110,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = memo(({
 }) => {
     return (
         <div className="flex-1 overflow-y-auto p-6">
-            <div className="h-full bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+            <div className="h-full bg-white/5 backdrop-blur-xl rounded-2xl border border overflow-hidden shadow-2xl">
                 {/* Days Grid - 4 columns, simple day numbers */}
                 <div className="grid grid-cols-4 gap-px bg-white/5" style={{ gridAutoRows: 'minmax(140px, 1fr)' }}>
                     {visibleDays.map(day => (

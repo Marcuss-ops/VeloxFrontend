@@ -29,7 +29,7 @@ export interface JobDetailData extends Job {
 
 // Status badge configuration with Lucide components
 export const statusConfig: Record<JobStatus, { label: string; color: string; bgColor: string; icon: React.ElementType; animate?: boolean }> = {
-    PENDING: { label: 'Pending', color: 'text-slate-400', bgColor: 'bg-slate-500/10 border-slate-500/20', icon: Clock },
+    PENDING: { label: 'Pending', color: 'text-muted-foreground', bgColor: 'bg-white/10 border-white/20', icon: Clock },
     PROCESSING: { label: 'Processing', color: 'text-primary', bgColor: 'bg-primary/10 border-primary/20', icon: RefreshCw, animate: true },
     COMPLETED: { label: 'Completed', color: 'text-green-400', bgColor: 'bg-green-500/10 border-green-500/20', icon: CheckCircle2 },
     ERROR: { label: 'Error', color: 'text-red-400', bgColor: 'bg-red-500/10 border-red-500/20', icon: AlertCircle },

@@ -20,8 +20,8 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
     return (
         <>
             {/* Processing Log - Modern Design */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-[#0c1017] border border-slate-700 dark:border-slate-800 rounded-2xl overflow-hidden shadow-lg">
-                <div className="px-5 py-3 flex items-center justify-between bg-slate-800/50 dark:bg-slate-900/50 border-b border-slate-700/50">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-900 dark:to-[#0c1017] border border dark:border rounded-2xl overflow-hidden shadow-lg">
+                <div className="px-5 py-3 flex items-center justify-between bg-card/50 dark:bg-card/50 border-b border/50">
                     <h3 className="font-semibold text-white flex items-center gap-2">
                         <Terminal className="size-[18px] text-emerald-400" />
                         Processing Log
@@ -32,16 +32,16 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
                         <span className="size-3 rounded-full bg-green-500/80"></span>
                     </div>
                 </div>
-                <div className="p-5 text-sm leading-relaxed text-slate-300 h-[75vh] min-h-[600px] max-h-[1000px] overflow-y-auto overflow-x-hidden flex flex-col gap-2 font-['Inter',system-ui,sans-serif]">
+                <div className="p-5 text-sm leading-relaxed text-foreground/70 h-[75vh] min-h-[600px] max-h-[1000px] overflow-y-auto overflow-x-hidden flex flex-col gap-2 font-['Inter',system-ui,sans-serif]">
                     {logs.length === 0 ? (
-                        <div className="flex items-center justify-center h-full text-slate-500 italic">
+                        <div className="flex items-center justify-center h-full text-muted-foreground italic">
                             Nessun log disponibile
                         </div>
                     ) : (
                         logs.map((log, idx) => (
                             <div key={idx} className="flex gap-3 items-start">
-                                <span className="text-slate-500 text-xs shrink-0 pt-0.5">[{formatTime(log.timestamp)}]</span>
-                                <span className={`${log.event_type === 'error' ? 'text-red-400' : 'text-slate-200'}`}>
+                                <span className="text-muted-foreground text-xs shrink-0 pt-0.5">[{formatTime(log.timestamp)}]</span>
+                                <span className={`${log.event_type === 'error' ? 'text-red-400' : 'text-foreground/80'}`}>
                                     {log.message}
                                 </span>
                             </div>
@@ -49,7 +49,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
                     )}
                     {job.status === 'PROCESSING' && (
                         <div className="flex gap-3 text-emerald-400 font-medium items-center">
-                            <span className="text-slate-500 text-xs">[{new Date().toLocaleTimeString()}]</span>
+                            <span className="text-muted-foreground text-xs">[{new Date().toLocaleTimeString()}]</span>
                             <span className="animate-pulse flex items-center gap-1">
                                 <span className="inline-block size-1.5 bg-emerald-400 rounded-full animate-ping"></span>
                                 Processing...
@@ -74,9 +74,9 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ job, logs }) => {
 
             {/* Upload Results */}
             {job.last_upload_result && (
-                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+                <div className="bg-white dark:bg-card/50 border border dark:border rounded-xl p-4">
                     <h4 className="font-semibold mb-3 flex items-center gap-2">
-                        <Upload className="size-[18px] text-slate-400" />
+                        <Upload className="size-[18px] text-muted-foreground" />
                         Upload Results
                     </h4>
                     <div className="flex flex-col gap-2">

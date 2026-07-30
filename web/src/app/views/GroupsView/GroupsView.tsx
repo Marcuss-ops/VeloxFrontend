@@ -148,7 +148,7 @@ const GroupsView: React.FC = () => {
                 <h1 className="text-2xl font-semibold tracking-tight text-white">
                     Video del gruppo
                 </h1>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-muted-foreground">
                     {groupId
                         ? `Gruppo #${groupId} · ${visibleTotal} video${visibleTotal === 1 ? '' : '.'}`
                         : 'Seleziona un gruppo per iniziare.'}
@@ -156,7 +156,7 @@ const GroupsView: React.FC = () => {
                 <button
                     type="button"
                     onClick={() => navigate(-1)}
-                    className="mt-1 w-fit text-xs text-slate-400 underline-offset-2 hover:text-white hover:underline"
+                    className="mt-1 w-fit text-xs text-muted-foreground underline-offset-2 hover:text-white hover:underline"
                 >
                     ← Torna indietro
                 </button>

@@ -147,7 +147,7 @@ export function ComputerCard({
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.03)' }}>
                 <div style={{ fontSize: 10, color: '#475569', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <User className="size-3 text-slate-500" />
+                    <User className="size-3 text-muted-foreground" />
                     {computer.ansible_user || 'root'}
                 </div>
                 <div style={{ fontSize: 10, color: '#475569' }}>

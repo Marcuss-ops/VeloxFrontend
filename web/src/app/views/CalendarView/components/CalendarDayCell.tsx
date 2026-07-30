@@ -126,7 +126,7 @@ export const CalendarDayCell = memo<CalendarDayCellProps>(({
     return (
         <div
             className={`
-                p-3 relative group cursor-pointer border-r border-b border-white/5 min-h-[100px]
+                p-3 relative group cursor-pointer border-r border-b border min-h-[100px]
                 transition-colors duration-150
                 ${isDropTarget ? 'bg-purple-500/20 ring-1 ring-purple-500/50' : 'bg-transparent hover:bg-white/5'}
                 ${isDragSource ? 'opacity-50' : ''}

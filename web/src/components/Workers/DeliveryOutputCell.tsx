@@ -10,7 +10,7 @@ export const DeliveryOutputCell: React.FC<DeliveryOutputCellProps> = ({ jobId })
     const { deliveries, isLoading, isError } = useJobDeliveries(jobId);
 
     if (isLoading) {
-        return <span className="text-text-secondary text-xs animate-pulse">Caricamento...</span>;
+        return <span className="text-muted-foreground text-xs animate-pulse">Caricamento...</span>;
     }
 
     if (isError) {

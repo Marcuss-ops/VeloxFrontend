@@ -18,7 +18,7 @@ export const ContentDashboard: React.FC = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight text-white">Contenuti</h1>
-                    <p className="mt-1 text-sm text-slate-400">
+                    <p className="mt-1 text-sm text-muted-foreground">
                         Crea e gestisci i tuoi contenuti video
                     </p>
                 </div>
@@ -32,7 +32,7 @@ export const ContentDashboard: React.FC = () => {
             </div>
 
             {/* Empty state */}
-            <Card className="border-dashed border-white/10 bg-white/[0.02] backdrop-blur-none">
+            <Card className="border-dashed border bg-white/[0.02] backdrop-blur-none">
                 <CardContent className="flex flex-col items-center justify-center px-6 py-20 text-center">
                     <div className="relative mb-6">
                         <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/20 to-violet-500/20 flex items-center justify-center ring-1 ring-purple-500/20">
@@ -42,8 +42,8 @@ export const ContentDashboard: React.FC = () => {
                             <Sparkles className="size-3.5 text-purple-300" />
                         </div>
                     </div>
-                    <h2 className="text-xl font-semibold text-slate-200">Nessun contenuto</h2>
-                    <p className="mt-2 max-w-md text-sm text-slate-500 leading-relaxed">
+                    <h2 className="text-xl font-semibold text-foreground/80">Nessun contenuto</h2>
+                    <p className="mt-2 max-w-md text-sm text-muted-foreground leading-relaxed">
                         Crea il tuo primo contenuto per iniziare a generare video con InstaEdit.
                     </p>
                     <Link

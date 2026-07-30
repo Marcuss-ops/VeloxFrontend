@@ -39,7 +39,7 @@ export const ContentDetailView: React.FC = () => {
             <div className="flex items-center gap-3">
                 <Link
                     to={APP_ROUTES.content}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
                 >
                     <ArrowLeft className="size-[18px] " />
                 </Link>
@@ -47,12 +47,12 @@ export const ContentDetailView: React.FC = () => {
                     <h1 className="text-2xl font-bold tracking-tight text-white">
                         Contenuto {contentId?.slice(0, 8)}...
                     </h1>
-                    <p className="mt-1 text-sm text-slate-400">Gestione contenuto</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Gestione contenuto</p>
                 </div>
             </div>
 
             {/* Sub-navigation tabs */}
-            <nav className="flex gap-1 border-b border-white/5 pb-2">
+            <nav className="flex gap-1 border-b border pb-2">
                 {SUB_TABS.map((tab) => {
                     const tabUrl = `${baseUrl}/${tab.to}`;
                     const isActive = location.pathname === tabUrl;
@@ -63,7 +63,7 @@ export const ContentDetailView: React.FC = () => {
                             className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors ${
                                 isActive
                                     ? 'bg-purple-600/20 text-purple-300'
-                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                    : 'text-muted-foreground hover:text-white hover:bg-white/5'
                             }`}
                         >
                             <span className="material-symbols-rounded text-base">{tab.icon}</span>

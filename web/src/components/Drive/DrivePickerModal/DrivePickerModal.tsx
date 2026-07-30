@@ -27,7 +27,7 @@ export const DrivePickerModal: React.FC<DrivePickerModalProps> = (props) => {
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={h.onClose} />
-            <div className="relative w-full max-w-4xl max-h-[86vh] bg-slate-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="relative w-full max-w-4xl max-h-[86vh] bg-card border border rounded-2xl shadow-2xl overflow-hidden">
                 <DrivePickerHeader
                     title={h.title}
                     mode={h.mode}

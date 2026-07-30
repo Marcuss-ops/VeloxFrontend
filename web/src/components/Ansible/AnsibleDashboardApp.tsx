@@ -46,7 +46,7 @@ const KpiCard: React.FC<KpiCardProps> = ({ title, value, icon, color }) => {
         <div className={`bg-gradient-to-br ${colorStyles[color]} border rounded-2xl p-4`}>
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{title}</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{title}</p>
                     <p className="text-2xl font-bold text-white">{value}</p>
                 </div>
                 <span className={`material-symbols-rounded ${iconColors[color]} text-[28px]`}>{icon}</span>
@@ -103,7 +103,7 @@ export const AnsibleDashboardApp: React.FC = () => {
                     <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-400 to-pink-400 bg-clip-text text-transparent">
                         Ansible Computers
                     </h1>
-                    <p className="text-text-secondary mt-1 text-sm">Gestione e monitoraggio infrastruttura server</p>
+                    <p className="text-muted-foreground mt-1 text-sm">Gestione e monitoraggio infrastruttura server</p>
                 </div>
                 <div className="flex items-center gap-4">
                     {error ? (
@@ -112,14 +112,14 @@ export const AnsibleDashboardApp: React.FC = () => {
                             Connessione persa
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border-dark text-xs font-medium text-text-secondary">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border text-xs font-medium text-muted-foreground">
                             <span className="size-2 rounded-full bg-green-500 animate-pulse" />
                             System Online
                         </div>
                     )}
                     <button
                         onClick={refresh}
-                        className="p-2 rounded-lg hover:bg-white/5 text-text-secondary hover:text-text-primary transition-colors group"
+                        className="p-2 rounded-lg hover:bg-white/5 text-muted-foreground hover:text-foreground transition-colors group"
                         title="Aggiorna dati"
                     >
                         <span className={`material-symbols-rounded group-hover:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin' : ''}`}>
@@ -137,17 +137,17 @@ export const AnsibleDashboardApp: React.FC = () => {
                 <KpiCard title="Worker Collegati" value={linkedWorkers} icon="link" color="warning" />
             </div>
 
-            <p className="text-sm text-text-secondary mb-2">
+            <p className="text-sm text-muted-foreground mb-2">
                 Nell&apos;infrastruttura sono presenti <strong className="text-white">10 computer</strong>; in elenco sono mostrati quelli configurati nel backend ({totalComputers}).
             </p>
 
             {/* Tab Navigation */}
-            <div className="flex items-center gap-2 mb-6 border-b border-border-dark pb-4">
+            <div className="flex items-center gap-2 mb-6 border-b border pb-4">
                 <button
                     onClick={() => handleTabChange('bundle')}
                     className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'bundle'
                             ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
-                            : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
                         }`}
                 >
                     <span className="material-symbols-rounded">inventory_2</span>
@@ -157,7 +157,7 @@ export const AnsibleDashboardApp: React.FC = () => {
                     onClick={() => handleTabChange('computers')}
                     className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'computers'
                             ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
                         }`}
                 >
                     <span className="material-symbols-rounded">dns</span>
@@ -179,7 +179,7 @@ export const AnsibleDashboardApp: React.FC = () => {
                         {/* ================================ */}
                         {activeTab === 'bundle' && (
                             <section className="animate-fadeIn space-y-4">
-                                <p className="text-sm text-text-secondary">
+                                <p className="text-sm text-muted-foreground">
                                     Il <strong className="text-white">bundle</strong> è il pacchetto (ZIP) distribuito ai computer Ansible per eseguire i job. Qui puoi esplorarne il contenuto e rigenerarlo se necessario.
                                 </p>
                                 <BundleExplorer />
@@ -195,7 +195,7 @@ export const AnsibleDashboardApp: React.FC = () => {
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
                                         <Terminal className="size-[18px] text-emerald-400" />
-                                        <h3 className="text-lg font-semibold text-text-primary">Comandi SSH</h3>
+                                        <h3 className="text-lg font-semibold text-foreground">Comandi SSH</h3>
                                     </div>
                                     <AnsibleShellTab
                                         computers={computers}
@@ -211,7 +211,7 @@ export const AnsibleDashboardApp: React.FC = () => {
                                 <div>
                                     <div className="flex items-center gap-2 mb-4">
                                         <span className="material-symbols-rounded text-primary">dns</span>
-                                        <h3 className="text-lg font-semibold text-text-primary">Computer ed Azioni</h3>
+                                        <h3 className="text-lg font-semibold text-foreground">Computer ed Azioni</h3>
                                     </div>
                                     <AnsibleComputersTab
                                         computers={computers}

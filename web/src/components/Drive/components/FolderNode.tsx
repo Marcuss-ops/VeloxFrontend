@@ -58,8 +58,8 @@ export const FolderTreeNode = ({
             <div
                 className={`
                     group flex items-center gap-3 p-3 my-1.5 rounded-xl
-                    bg-slate-900/60 border border-white/10
-                    hover:border-violet-500/30 hover:bg-slate-800/60
+                    bg-card/60 border border
+                    hover:border-violet-500/30 hover:bg-card/60
                     transition-all duration-200 cursor-pointer
                     ${isSelected ? 'border-violet-500/50 bg-violet-500/10' : ''}
                 `}
@@ -75,18 +75,18 @@ export const FolderTreeNode = ({
                         disabled={isLoading}
                     >
                         {isLoading ? (
-                            <Loader2 className="size-4 text-slate-400 animate-spin" />
+                            <Loader2 className="size-4 text-muted-foreground animate-spin" />
                         ) : animated ? (
                             <motion.span
                                 animate={{ rotate: isExpanded ? 90 : 0 }}
                                 transition={{ type: "spring", bounce: 0, duration: 0.4 }}
                                 className="flex"
                             >
-                                <ChevronRight className="size-4 text-slate-400" />
+                                <ChevronRight className="size-4 text-muted-foreground" />
                             </motion.span>
                         ) : (
                             <ChevronRight
-                                className={`size-4 text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
+                                className={`size-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}
                             />
                         )}
                     </button>
@@ -103,7 +103,7 @@ export const FolderTreeNode = ({
                         {isSelected ? (
                             <CheckCircle2 className="size-5 text-violet-400 fill-violet-400/20" />
                         ) : (
-                            <Circle className="size-5 text-slate-500" />
+                            <Circle className="size-5 text-muted-foreground" />
                         )}
                     </button>
                 )}
@@ -111,12 +111,12 @@ export const FolderTreeNode = ({
                 {isFolder ? (
                     <Folder className={`size-6 text-sky-400 fill-sky-400/30 ${!hasChildren ? 'ml-5' : ''}`} />
                 ) : (
-                    <File className="size-6 text-slate-400 ml-5" />
+                    <File className="size-6 text-muted-foreground ml-5" />
                 )}
 
                 <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-200 truncate">{node.name}</div>
-                    <div className="flex items-center gap-3 text-[10px] text-slate-500 mt-0.5">
+                    <div className="text-sm font-medium text-foreground/80 truncate">{node.name}</div>
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground mt-0.5">
                         {isFolder ? (
                             <span>{folderChildren.length} cartelle, {filteredFiles.length} file</span>
                         ) : (
@@ -186,7 +186,7 @@ export const FolderTreeNode = ({
                                     animate={{ height: "auto", opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
                                     transition={{ type: "spring", bounce: 0, duration: 0.4 }}
-                                    className="overflow-hidden ml-4 pl-4 border-l border-white/10"
+                                    className="overflow-hidden ml-4 pl-4 border-l border"
                                 >
                                     {content}
                                 </motion.div>
@@ -196,7 +196,7 @@ export const FolderTreeNode = ({
                 }
 
                 return isExpanded ? (
-                    <div className="ml-4 pl-4 border-l border-white/10">
+                    <div className="ml-4 pl-4 border-l border">
                         {content}
                     </div>
                 ) : null;
@@ -231,8 +231,8 @@ export const FileCard = ({
         <div
             className={`
                 group flex items-center gap-3 p-2.5 my-1 rounded-xl
-                bg-slate-950/50 border border-white/5
-                hover:border-white/15 hover:bg-slate-900/50
+                bg-background/50 border border
+                hover:border hover:bg-card/50
                 transition-all duration-200 cursor-pointer
                 ${isSelected ? 'border-violet-500/50 bg-violet-500/10' : ''}
             `}
@@ -244,13 +244,13 @@ export const FileCard = ({
                     {isSelected ? (
                         <CheckCircle2 className="size-4 text-violet-400 fill-violet-400/20" />
                     ) : (
-                        <Circle className="size-4 text-slate-600" />
+                        <Circle className="size-4 text-muted-foreground" />
                     )}
                 </button>
             )}
 
             {showThumbnail && (isVideo || isImage) && (
-                <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-black/30 border border-white/10 shrink-0">
+                <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-black/30 border border shrink-0">
                     <img
                         src={thumbnailUrl}
                         alt={file.name}
@@ -268,12 +268,12 @@ export const FileCard = ({
             )}
 
             {(!showThumbnail || (!isVideo && !isImage)) && (
-                <File className="size-5 text-slate-500" />
+                <File className="size-5 text-muted-foreground" />
             )}
 
             <div className="flex-1 min-w-0">
-                <div className="text-xs text-slate-300 truncate">{file.name}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">
+                <div className="text-xs text-foreground/70 truncate">{file.name}</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
                     {formatFileSize(file.size)} • {formatDate(file.modifiedTime)}
                 </div>
             </div>

@@ -22,10 +22,10 @@ export function DriveToolbar({
   onConfirm,
 }: DriveToolbarProps) {
   return (
-    <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10 bg-white/[0.02]">
+    <div className="flex items-center justify-between px-5 py-3.5 border-b border bg-white/[0.02]">
       <div>
         <h3 className="text-sm font-semibold text-white">{title}</h3>
-        <p className="text-[11px] text-slate-500 mt-0.5">
+        <p className="text-[11px] text-muted-foreground mt-0.5">
           {selectedIds.size > 0
             ? `${selectedIds.size} elemento${selectedIds.size !== 1 ? 'i' : ''} selezionat${selectedIds.size !== 1 ? 'i' : 'o'}`
             : "Seleziona file o cartelle"}
@@ -35,7 +35,7 @@ export function DriveToolbar({
         <button
           onClick={onRefresh}
           disabled={loading}
-          className="p-2 rounded-xl hover:bg-white/5 text-slate-400 hover:text-white transition-colors disabled:opacity-50"
+          className="p-2 rounded-xl hover:bg-white/5 text-muted-foreground hover:text-white transition-colors disabled:opacity-50"
           title="Aggiorna"
         >
           <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
@@ -44,7 +44,7 @@ export function DriveToolbar({
           <>
             <button
               onClick={onClearSelection}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10 transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-card/80 text-foreground/70 hover:bg-muted/80 border border transition-all"
             >
               <X className="size-3" />
               Annulla

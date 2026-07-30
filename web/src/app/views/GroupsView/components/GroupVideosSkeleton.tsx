@@ -25,7 +25,7 @@ export const GroupVideosSkeleton: React.FC = () => {
             {Array.from({ length: SKELETON_CARDS }).map((_, idx) => (
                 <Card
                     key={`gvs-skeleton-${idx}`}
-                    className="overflow-hidden border-white/10 bg-slate-900/40"
+                    className="overflow-hidden border bg-card/40"
                 >
                     <div className="aspect-video w-full animate-pulse bg-white/5" />
                     <div className="space-y-2 p-4">

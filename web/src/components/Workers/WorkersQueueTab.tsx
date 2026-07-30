@@ -49,8 +49,8 @@ export const WorkersQueueTab: React.FC<WorkersQueueTabProps> = ({ jobs, onRefres
         <div className="space-y-6 py-2">
             <div className="flex flex-wrap justify-between items-end gap-4">
                 <div className="flex flex-col gap-1">
-                    <h2 className="text-text-primary text-2xl font-bold tracking-tight">Coda di Elaborazione</h2>
-                    <span className="text-text-secondary text-sm">{jobs.length} job in attesa</span>
+                    <h2 className="text-foreground text-2xl font-bold tracking-tight">Coda di Elaborazione</h2>
+                    <span className="text-muted-foreground text-sm">{jobs.length} job in attesa</span>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -63,7 +63,7 @@ export const WorkersQueueTab: React.FC<WorkersQueueTabProps> = ({ jobs, onRefres
                     </button>
                     <button
                         onClick={cleanupAll}
-                        className="px-4 py-2 bg-surface hover:bg-[#252525] text-text-secondary hover:text-text-primary border border-[#333] rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2"
+                        className="px-4 py-2 bg-card hover:bg-[#252525] text-muted-foreground hover:text-foreground border border-[#333] rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2"
                     >
                         <Trash2 className="size-4 " />
                         Svuota Coda
@@ -71,16 +71,16 @@ export const WorkersQueueTab: React.FC<WorkersQueueTabProps> = ({ jobs, onRefres
                 </div>
             </div>
 
-            <div className="rounded-xl border border-border-dark bg-card-dark overflow-hidden shadow-card">
+            <div className="rounded-xl border border bg-card overflow-hidden shadow-sm">
                 <table className="w-full text-left">
-                    <thead className="bg-surface text-xs uppercase text-text-secondary border-b border-border-dark">
+                    <thead className="bg-card text-xs uppercase text-muted-foreground border-b border">
                         <tr>
                             <th className="p-4 w-12">
                                 <input
                                     type="checkbox"
                                     checked={selected.size === jobs.length && jobs.length > 0}
                                     onChange={toggleAll}
-                                    className="rounded border-border-dark bg-surface text-violet-500 cursor-pointer"
+                                    className="rounded border bg-card text-violet-500 cursor-pointer"
                                 />
                             </th>
                             <th className="p-4 w-16">Pos.</th>
@@ -104,32 +104,32 @@ export const WorkersQueueTab: React.FC<WorkersQueueTabProps> = ({ jobs, onRefres
                                             type="checkbox"
                                             checked={isChecked}
                                             onChange={() => toggleJob(jid)}
-                                            className="rounded border-border-dark bg-surface text-violet-500 cursor-pointer"
+                                            className="rounded border bg-card text-violet-500 cursor-pointer"
                                             onClick={e => e.stopPropagation()}
                                         />
                                     </td>
-                                    <td className="p-4 text-xs text-text-secondary font-mono">
+                                    <td className="p-4 text-xs text-muted-foreground font-mono">
                                         #{String(idx + 1).padStart(2, '0')}
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col">
-                                            <a href={`/jobs/detail/${encodeURIComponent(jid)}`} className="text-text-primary text-sm font-medium hover:text-violet-400 transition-colors">
+                                            <a href={`/jobs/detail/${encodeURIComponent(jid)}`} className="text-foreground text-sm font-medium hover:text-violet-400 transition-colors">
                                                 {vid}
                                             </a>
-                                            <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">
+                                            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                                                 ID: {jid.slice(0, 8)}...
                                             </span>
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-surface text-text-secondary border border-[#333]">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-card text-muted-foreground border border-[#333]">
                                             <span className="size-1.5 rounded-full bg-text-secondary" />
                                             PENDING
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
                                         <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
-                                            className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors">
+                                            className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-muted-foreground hover:text-foreground transition-colors">
                                             <Eye className="size-[18px] " />
                                         </a>
                                     </td>
@@ -138,7 +138,7 @@ export const WorkersQueueTab: React.FC<WorkersQueueTabProps> = ({ jobs, onRefres
                         })}
                         {jobs.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="p-8 text-center text-text-secondary text-sm italic">
+                                <td colSpan={5} className="p-8 text-center text-muted-foreground text-sm italic">
                                     Nessun job in coda.
                                 </td>
                             </tr>

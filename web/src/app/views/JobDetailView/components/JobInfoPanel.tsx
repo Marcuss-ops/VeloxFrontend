@@ -34,42 +34,42 @@ export const JobInfoPanel: React.FC<JobInfoPanelProps> = ({
             {/* Info Cards - Centered Row */}
             <div className="flex flex-wrap justify-center gap-4">
                 {/* Elapsed Time */}
-                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[160px]">
-                    <Timer className="size-6 text-slate-400" />
+                <div className="bg-white dark:bg-card/50 border border dark:border rounded-xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[160px]">
+                    <Timer className="size-6 text-muted-foreground" />
                     <div className="flex flex-col">
-                        <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Elapsed</span>
-                        <span className={`font-semibold font-mono text-lg ${job.status === 'PROCESSING' || job.status === 'PENDING' ? 'text-primary' : 'text-slate-700 dark:text-slate-200'}`}>
+                        <span className="text-muted-foreground dark:text-muted-foreground text-xs font-semibold uppercase tracking-wider">Elapsed</span>
+                        <span className={`font-semibold font-mono text-lg ${job.status === 'PROCESSING' || job.status === 'PENDING' ? 'text-primary' : 'text-foreground/70 dark:text-foreground/80'}`}>
                             {calculateElapsedTime()}
                         </span>
                     </div>
                 </div>
 
                 {/* Worker */}
-                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[180px]">
-                    <span className={`size-3 rounded-full shrink-0 ${job.status === 'PROCESSING' ? 'bg-green-500' : 'bg-slate-400'}`}></span>
+                <div className="bg-white dark:bg-card/50 border border dark:border rounded-xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[180px]">
+                    <span className={`size-3 rounded-full shrink-0 ${job.status === 'PROCESSING' ? 'bg-green-500' : 'bg-white/20'}`}></span>
                     <div className="flex flex-col">
-                        <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Worker</span>
-                        <span className="font-medium text-base text-slate-700 dark:text-slate-200 truncate max-w-[180px]">
+                        <span className="text-muted-foreground dark:text-muted-foreground text-xs font-semibold uppercase tracking-wider">Worker</span>
+                        <span className="font-medium text-base text-foreground/70 dark:text-foreground/80 truncate max-w-[180px]">
                             {(job.assigned_to || job.worker_id) ? (job.assigned_to || job.worker_id) : 'Not assigned'}
                         </span>
                     </div>
                 </div>
 
                 {/* Created */}
-                <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[160px]">
-                    <Clock className="size-6 text-slate-400" />
+                <div className="bg-white dark:bg-card/50 border border dark:border rounded-xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[160px]">
+                    <Clock className="size-6 text-muted-foreground" />
                     <div className="flex flex-col">
-                        <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Created</span>
-                        <span className="font-medium text-base text-slate-700 dark:text-slate-200">{formatTime(job.created_at).split(',')[1]?.trim() || '--'}</span>
+                        <span className="text-muted-foreground dark:text-muted-foreground text-xs font-semibold uppercase tracking-wider">Created</span>
+                        <span className="font-medium text-base text-foreground/70 dark:text-foreground/80">{formatTime(job.created_at).split(',')[1]?.trim() || '--'}</span>
                     </div>
                 </div>
 
                 {job.completed_at && (
-                    <div className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[160px]">
+                    <div className="bg-white dark:bg-card/50 border border dark:border rounded-xl px-6 py-4 flex items-center gap-4 shadow-sm min-w-[160px]">
                         <CheckCircle2 className="size-6 text-green-500" />
                         <div className="flex flex-col">
-                            <span className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Completed</span>
-                            <span className="font-medium text-base text-slate-700 dark:text-slate-200">{formatTime(job.completed_at).split(',')[1]?.trim() || '--'}</span>
+                            <span className="text-muted-foreground dark:text-muted-foreground text-xs font-semibold uppercase tracking-wider">Completed</span>
+                            <span className="font-medium text-base text-foreground/70 dark:text-foreground/80">{formatTime(job.completed_at).split(',')[1]?.trim() || '--'}</span>
                         </div>
                     </div>
                 )}
@@ -90,7 +90,7 @@ export const JobInfoPanel: React.FC<JobInfoPanelProps> = ({
                 {job.status === 'PROCESSING' && (
                     <button
                         onClick={handlePause}
-                        className="flex-1 min-w-[200px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
+                        className="flex-1 min-w-[200px] bg-white/40 hover:bg-slate-200 dark:bg-muted dark:hover:bg-muted text-foreground/80 dark:text-foreground/80 font-medium py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm"
                     >
                         <Pause className="size-5" />
                         Pause Processing

@@ -15,13 +15,13 @@ export const WorkersCompletedTab: React.FC<WorkersCompletedTabProps> = ({ jobs }
     return (
         <div className="space-y-6 py-2">
             <div className="flex items-center justify-between">
-                <h2 className="text-text-primary text-2xl font-bold tracking-tight">Storico Completati</h2>
-                <span className="text-text-secondary text-sm">Ultimi {paged.length} job</span>
+                <h2 className="text-foreground text-2xl font-bold tracking-tight">Storico Completati</h2>
+                <span className="text-muted-foreground text-sm">Ultimi {paged.length} job</span>
             </div>
 
-            <div className="rounded-xl border border-border-dark bg-card-dark overflow-hidden shadow-card">
+            <div className="rounded-xl border border bg-card overflow-hidden shadow-sm">
                 <table className="w-full text-left">
-                    <thead className="bg-surface text-xs uppercase text-text-secondary border-b border-border-dark">
+                    <thead className="bg-card text-xs uppercase text-muted-foreground border-b border">
                         <tr>
                             <th className="p-4">Data</th>
                             <th className="p-4">Video / ID</th>
@@ -40,11 +40,11 @@ export const WorkersCompletedTab: React.FC<WorkersCompletedTabProps> = ({ jobs }
                             const driveLink = driveResult?.link ?? null;
 
                             return (
-                                <tr key={jid} className="border-b border-[#1f1f1f] hover:bg-surface transition-colors group">
-                                    <td className="p-4 text-xs text-text-secondary whitespace-nowrap">{dateStr}</td>
+                                <tr key={jid} className="border-b border-[#1f1f1f] hover:bg-card transition-colors group">
+                                    <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">{dateStr}</td>
                                     <td className="p-4">
                                         <div className="flex flex-col">
-                                            <span className="text-text-primary text-sm font-medium">{vid}</span>
+                                            <span className="text-foreground text-sm font-medium">{vid}</span>
                                             <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
                                                 className="text-[10px] font-mono text-[#555] group-hover:text-violet-400 transition-colors">
                                                 #{jid.slice(0, 8)}
@@ -74,7 +74,7 @@ export const WorkersCompletedTab: React.FC<WorkersCompletedTabProps> = ({ jobs }
                                     </td>
                                     <td className="p-4 text-right">
                                         <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
-                                            className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors">
+                                            className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-muted-foreground hover:text-foreground transition-colors">
                                             <Eye className="size-[18px] " />
                                         </a>
                                     </td>
@@ -83,7 +83,7 @@ export const WorkersCompletedTab: React.FC<WorkersCompletedTabProps> = ({ jobs }
                         })}
                         {paged.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="p-8 text-center text-text-secondary italic">
+                                <td colSpan={5} className="p-8 text-center text-muted-foreground italic">
                                     Nessun job completato recente.
                                 </td>
                             </tr>

@@ -26,12 +26,12 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
         <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between">
                 <h2 className="text-white text-2xl font-bold tracking-tight">Storico Completati</h2>
-                <span className="text-slate-400 text-sm">Ultimi 100 job</span>
+                <span className="text-muted-foreground text-sm">Ultimi 100 job</span>
             </div>
             
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 overflow-hidden shadow-lg">
+            <div className="rounded-xl border border bg-card/80 overflow-hidden shadow-lg">
                 <table className="w-full text-left">
-                    <thead className="bg-slate-800 text-xs uppercase text-slate-400 border-b border-white/10">
+                    <thead className="bg-card text-xs uppercase text-muted-foreground border-b border">
                         <tr>
                             <th className="p-4">Data</th>
                             <th className="p-4">Video / ID</th>
@@ -43,7 +43,7 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                     <tbody className="divide-y divide-[#1f1f1f]">
                         {pagedJobs.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="p-8 text-center text-slate-400 italic">
+                                <td colSpan={5} className="p-8 text-center text-muted-foreground italic">
                                     Nessun job completato recente.
                                 </td>
                             </tr>
@@ -56,8 +56,8 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                                 const driveLink = getDriveLink(job);
                                 
                                 return (
-                                    <tr key={jobId} className="border-b border-[#1f1f1f] hover:bg-slate-800 transition-colors group">
-                                        <td className="p-4 text-xs text-slate-400">{dateStr}</td>
+                                    <tr key={jobId} className="border-b border-[#1f1f1f] hover:bg-card transition-colors group">
+                                        <td className="p-4 text-xs text-muted-foreground">{dateStr}</td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
                                                 <span className="text-white text-sm font-medium">{vid}</span>
@@ -83,7 +83,7 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                                             <DeliveryOutputCell jobId={jobId} />
                                         </td>
                                         <td className="p-4 text-right">
-                                            <a href={`/jobs/detail/${encodeURIComponent(jobId)}`} className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                                            <a href={`/jobs/detail/${encodeURIComponent(jobId)}`} className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-card text-muted-foreground hover:text-white transition-colors">
                                                 <Eye className="size-[18px]" />
                                             </a>
                                         </td>

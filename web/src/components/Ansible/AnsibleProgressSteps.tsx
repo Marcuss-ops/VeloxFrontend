@@ -38,7 +38,7 @@ export const SummaryEventLine: React.FC<{ event: SummaryEvent; isNew: boolean }>
         host_failed: { icon: 'error', color: 'text-red-400' },
         play: { icon: 'theaters', color: 'text-violet-400' },
         complete: { icon: 'verified', color: 'text-emerald-400' },
-        info: { icon: 'info', color: 'text-slate-400' },
+        info: { icon: 'info', color: 'text-muted-foreground' },
         progress: { icon: 'sync', color: 'text-amber-400' }
     };
 
@@ -55,8 +55,8 @@ export const SummaryEventLine: React.FC<{ event: SummaryEvent; isNew: boolean }>
             }`}>
                 {config.icon}
             </span>
-            <span className="text-xs text-slate-300 flex-1 truncate">{event.message}</span>
-            <span className="text-[10px] text-slate-500">
+            <span className="text-xs text-foreground/70 flex-1 truncate">{event.message}</span>
+            <span className="text-[10px] text-muted-foreground">
                 {event.timestamp.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </span>
         </div>

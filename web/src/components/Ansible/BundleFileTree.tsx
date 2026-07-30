@@ -20,17 +20,17 @@ const Breadcrumb: React.FC<{
         <div className="flex items-center gap-1 text-sm flex-wrap">
             <button
                 onClick={() => onNavigate('')}
-                className="flex items-center gap-1 px-2 py-1 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
             >
                 <Home className="size-4" />
                 <span>root</span>
             </button>
             {parts.map((part, index) => (
                 <React.Fragment key={index}>
-                    <ChevronRight className="size-3.5 text-slate-500" />
+                    <ChevronRight className="size-3.5 text-muted-foreground" />
                     <button
                         onClick={() => onNavigate(parts.slice(0, index + 1).join('/'))}
-                        className="px-2 py-1 rounded hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
+                        className="px-2 py-1 rounded hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
                     >
                         {part}
                     </button>
@@ -58,17 +58,17 @@ const FileItem: React.FC<{
             style={{ paddingLeft: `${12 + depth * 16}px` }}
             onClick={isFolder ? onClick : undefined}
         >
-            <span className={`material-symbols-rounded text-[20px] ${isFolder ? 'text-amber-400' : 'text-slate-400'}`}>
+            <span className={`material-symbols-rounded text-[20px] ${isFolder ? 'text-amber-400' : 'text-muted-foreground'}`}>
                 {isFolder ? 'folder' : (name.endsWith('.py') ? 'code' : name.endsWith('.txt') ? 'description' : name.endsWith('.json') ? 'data_object' : 'draft')}
             </span>
             <div className="flex-1 min-w-0">
-                <span className="text-sm text-text-primary truncate">{name}</span>
+                <span className="text-sm text-foreground truncate">{name}</span>
                 {isFolder && file_count && (
-                    <span className="text-[10px] text-text-muted ml-2">({file_count} items)</span>
+                    <span className="text-[10px] text-muted-foreground ml-2">({file_count} items)</span>
                 )}
             </div>
             {size_formatted && (
-                <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                     {size_formatted}
                 </span>
             )}
@@ -95,8 +95,8 @@ export const BundleFileTree: React.FC<BundleFileTreeProps> = ({
     setCurrentPath,
 }) => {
     return (
-        <div className="bg-card-dark border border-border-dark rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-border-dark flex items-center justify-between">
+        <div className="bg-card border border rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border flex items-center justify-between">
                 <Breadcrumb path={currentPath} onNavigate={onNavigate} />
                 {filesLoading && (
                     <RefreshCw className="size-4 animate-spin" />
@@ -122,7 +122,7 @@ export const BundleFileTree: React.FC<BundleFileTreeProps> = ({
                         );
                     })
                 ) : (
-                    <div className="p-8 text-center text-text-muted">
+                    <div className="p-8 text-center text-muted-foreground">
                         <span className="material-symbols-rounded text-[48px] mb-2">folder_off</span>
                         <p>Nessun file in questa cartella</p>
                     </div>

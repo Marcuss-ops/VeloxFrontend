@@ -47,7 +47,7 @@ export function DriveFileList({
 
   if (loading && rootNodes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-32 text-slate-400">
+      <div className="flex items-center justify-center h-32 text-muted-foreground">
         <Loader2 className="size-5 animate-spin mr-2" />
         <span className="text-sm">Caricamento...</span>
       </div>
@@ -64,7 +64,7 @@ export function DriveFileList({
 
   if (rootNodes.length === 0) {
     return (
-      <div className="text-sm text-slate-500 text-center py-8">
+      <div className="text-sm text-muted-foreground text-center py-8">
         Nessun elemento trovato
       </div>
     )
@@ -94,8 +94,8 @@ export function DriveFileList({
 
       {/* Files at root level */}
       {filteredFiles.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-white/5">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-2 px-3">
+        <div className="mt-3 pt-3 border-t border">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">
             File ({filteredFiles.length})
           </div>
           {filteredFiles.map((file) => (

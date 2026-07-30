@@ -79,15 +79,15 @@ export const WorkersErrorsTab: React.FC<WorkersErrorsTabProps> = ({ jobs, onRefr
     const colorMap: Record<string, string> = {
         blue: 'text-blue-400', amber: 'text-amber-400', orange: 'text-orange-400',
         purple: 'text-violet-400', red: 'text-red-400', cyan: 'text-cyan-400',
-        pink: 'text-pink-400', slate: 'text-slate-400',
+        pink: 'text-pink-400', slate: 'text-muted-foreground',
     };
 
     return (
         <div className="space-y-6 py-2">
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex flex-col gap-1">
-                    <h2 className="text-text-primary text-2xl font-bold tracking-tight">Error Log</h2>
-                    <p className="text-text-secondary text-sm">Fallimenti recenti • Auto-pulizia ogni 12h (mantieni 24h)</p>
+                    <h2 className="text-foreground text-2xl font-bold tracking-tight">Error Log</h2>
+                    <p className="text-muted-foreground text-sm">Fallimenti recenti • Auto-pulizia ogni 12h (mantieni 24h)</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -107,16 +107,16 @@ export const WorkersErrorsTab: React.FC<WorkersErrorsTabProps> = ({ jobs, onRefr
             </div>
 
             {/* Auto-cleanup info bar */}
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50 text-xs text-slate-400">
-                <Clock className="size-6 text-slate-400" />
-                <span>Prossima auto-pulizia tra: <span className="font-mono text-slate-300">{nextCleanup}</span></span>
-                <span className="text-slate-600">•</span>
+            <div className="flex items-center gap-2 px-3 py-2 bg-card/50 rounded-lg border border/50 text-xs text-muted-foreground">
+                <Clock className="size-6 text-muted-foreground" />
+                <span>Prossima auto-pulizia tra: <span className="font-mono text-foreground/70">{nextCleanup}</span></span>
+                <span className="text-muted-foreground">•</span>
                 <span>Errori mantenuti per 24h</span>
             </div>
 
-            <div className="rounded-xl border border-border-dark bg-card-dark overflow-hidden shadow-card">
+            <div className="rounded-xl border border bg-card overflow-hidden shadow-sm">
                 <table className="w-full text-left">
-                    <thead className="bg-surface text-xs uppercase text-text-secondary border-b border-border-dark">
+                    <thead className="bg-card text-xs uppercase text-muted-foreground border-b border">
                         <tr>
                             <th className="p-4">Quando</th>
                             <th className="p-4">Video / ID</th>
@@ -135,12 +135,12 @@ export const WorkersErrorsTab: React.FC<WorkersErrorsTabProps> = ({ jobs, onRefr
 
                             return (
                                 <tr key={jid} className="border-b border-red-900/10 hover:bg-red-900/5 transition-colors group">
-                                    <td className="p-4 text-xs text-text-secondary whitespace-nowrap">
+                                    <td className="p-4 text-xs text-muted-foreground whitespace-nowrap">
                                         {formatDateTime(job.updated_at)}
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col">
-                                            <span className="text-text-primary text-sm font-medium">{vid}</span>
+                                            <span className="text-foreground text-sm font-medium">{vid}</span>
                                             <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
                                                 className="text-[10px] font-mono text-[#555] group-hover:text-red-400 transition-colors">
                                                 #{jid.slice(0, 8)}
@@ -162,11 +162,11 @@ export const WorkersErrorsTab: React.FC<WorkersErrorsTabProps> = ({ jobs, onRefr
                                     <td className="p-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                             <button onClick={() => retry(jid)}
-                                                className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-text-primary text-xs font-medium border border-white/10 transition-colors flex items-center gap-1">
+                                                className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 text-foreground text-xs font-medium border border transition-colors flex items-center gap-1">
                                                 <RotateCcw className="size-3.5 " /> Retry
                                             </button>
                                             <a href={`/jobs/detail/${encodeURIComponent(jid)}`}
-                                                className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors">
+                                                className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-muted-foreground hover:text-foreground transition-colors">
                                                 <Eye className="size-[18px] " />
                                             </a>
                                         </div>
@@ -176,7 +176,7 @@ export const WorkersErrorsTab: React.FC<WorkersErrorsTabProps> = ({ jobs, onRefr
                         })}
                         {jobs.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="p-8 text-center text-text-secondary italic">
+                                <td colSpan={5} className="p-8 text-center text-muted-foreground italic">
                                     Nessun errore rilevato. Great job! 🎉
                                 </td>
                             </tr>

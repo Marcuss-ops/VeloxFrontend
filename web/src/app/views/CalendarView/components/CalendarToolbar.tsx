@@ -43,10 +43,10 @@ export const CalendarToolbar = memo<CalendarToolbarProps>(({
     }, [onSearchChange]);
 
     return (
-        <div className="h-12 border-b border-white/10 flex items-center justify-between px-6 bg-white/[0.03] backdrop-blur-xl">
+        <div className="h-12 border-b border flex items-center justify-between px-6 bg-white/[0.03] backdrop-blur-xl">
             <div className="flex items-center gap-4">
                 {/* Month Navigation */}
-                <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-xl p-1 backdrop-blur-sm">
+                <div className="flex items-center gap-1 bg-white/5 border border rounded-xl p-1 backdrop-blur-sm">
                     <button 
                         onClick={onPrevMonth}
                         className="p-1.5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white transition-colors"
@@ -69,7 +69,7 @@ export const CalendarToolbar = memo<CalendarToolbarProps>(({
                 {/* Today Button */}
                 <button 
                     onClick={onToday}
-                    className="text-xs font-medium text-white/60 hover:text-white border border-white/10 px-3 py-1 bg-white/5 rounded-xl backdrop-blur-sm transition-colors"
+                    className="text-xs font-medium text-white/60 hover:text-white border border px-3 py-1 bg-white/5 rounded-xl backdrop-blur-sm transition-colors"
                 >
                     Today
                 </button>
@@ -82,7 +82,7 @@ export const CalendarToolbar = memo<CalendarToolbarProps>(({
                         placeholder="Search projects..."
                         value={searchQuery}
                         onChange={handleSearchChange}
-                        className="bg-white/5 border border-white/10 rounded-xl pl-8 pr-8 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 w-48 transition-all"
+                        className="bg-white/5 border border rounded-xl pl-8 pr-8 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 w-48 transition-all"
                     />
                     {(searchQuery || hasActiveSearch) && (
                         <button

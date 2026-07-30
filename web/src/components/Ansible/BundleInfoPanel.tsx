@@ -86,10 +86,10 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
 }) => {
     if (loading) {
         return (
-            <div className="bg-card-dark border border-border-dark rounded-xl p-6">
+            <div className="bg-card border border rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-4">
                     <span className="material-symbols-rounded text-primary animate-pulse">inventory_2</span>
-                    <h3 className="text-lg font-bold text-text-primary">Bundle Explorer</h3>
+                    <h3 className="text-lg font-bold text-foreground">Bundle Explorer</h3>
                 </div>
                 <div className="space-y-3 animate-pulse">
                     {[1, 2, 3].map(i => <div key={i} className="h-12 bg-white/5 rounded-lg" />)}
@@ -100,10 +100,10 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
 
     if (error) {
         return (
-            <div className="bg-card-dark border border-red-500/30 rounded-xl p-6">
+            <div className="bg-card border border-red-500/30 rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-4">
                     <AlertCircle className="size-12 text-red-400" />
-                    <h3 className="text-lg font-bold text-text-primary">Bundle Explorer</h3>
+                    <h3 className="text-lg font-bold text-foreground">Bundle Explorer</h3>
                 </div>
                 <div className="text-red-400 text-sm">{error}</div>
                 <button onClick={() => fetchBundleInfo()} className="mt-3 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm">
@@ -119,13 +119,13 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
         <div className="space-y-6">
             {/* Header Card */}
             <div className="bg-gradient-to-br from-violet-500/10 to-pink-500/10 border border-violet-500/30 rounded-xl overflow-hidden">
-                <div className="px-6 py-4 border-b border-border-dark/50">
+                <div className="px-6 py-4 border-b border/50">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <span className="material-symbols-rounded text-primary text-[28px]">inventory_2</span>
                             <div>
-                                <h3 className="text-lg font-bold text-text-primary">Bundle Explorer</h3>
-                                <p className="text-xs text-text-muted">
+                                <h3 className="text-lg font-bold text-foreground">Bundle Explorer</h3>
+                                <p className="text-xs text-muted-foreground">
                                     Versione {bundleInfo.version} &bull; Build {bundleInfo.build_id?.slice(0, 8) || 'N/A'} &bull; Generato {formatDateTime(bundleInfo.created_at)}
                                 </p>
                             </div>
@@ -148,11 +148,11 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                             </button>
                             <div className="text-right">
                                 <div className="text-lg font-bold text-emerald-400">{bundleInfo.size_formatted ?? (typeof bundleInfo.size === 'number' ? `${(bundleInfo.size / 1024 / 1024).toFixed(1)} MB` : '\u2014')}</div>
-                                <div className="text-xs text-text-muted">{(bundleInfo.file_count ?? 0).toLocaleString()} file</div>
+                                <div className="text-xs text-muted-foreground">{(bundleInfo.file_count ?? 0).toLocaleString()} file</div>
                             </div>
                             <button
                                 onClick={() => fetchBundleInfo()}
-                                className="p-2 rounded-lg hover:bg-white/10 text-text-secondary hover:text-text-primary transition-colors"
+                                className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
                                 title="Aggiorna info"
                             >
                                 <RefreshCw className="size-5 " />
@@ -164,70 +164,70 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                 {/* Quick Stats */}
                 <div className="grid grid-cols-4 md:grid-cols-8 gap-px bg-border-dark/50">
                     {analysis.venv && (
-                        <div className="bg-card-dark p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('venv')}>
+                        <div className="bg-card p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('venv')}>
                             <span className={`material-symbols-rounded ${analysis.venv.exists ? 'text-emerald-400' : 'text-amber-400'}`}>
                                 {analysis.venv.exists ? 'check_circle' : 'warning'}
                             </span>
-                            <div className="text-[10px] text-text-muted mt-1">venv</div>
+                            <div className="text-[10px] text-muted-foreground mt-1">venv</div>
                         </div>
                     )}
                     {analysis.source && (
-                        <div className="bg-card-dark p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('src')}>
+                        <div className="bg-card p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('src')}>
                             <span className={`material-symbols-rounded ${analysis.source.exists ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {analysis.source.exists ? 'code' : 'error'}
                             </span>
-                            <div className="text-[10px] text-text-muted mt-1">codice</div>
+                            <div className="text-[10px] text-muted-foreground mt-1">codice</div>
                         </div>
                     )}
                     {analysis.remotion && (
-                        <div className="bg-card-dark p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('Remotion')}>
-                            <span className={`material-symbols-rounded ${analysis.remotion.exists ? 'text-violet-400' : 'text-slate-400'}`}>
+                        <div className="bg-card p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('Remotion')}>
+                            <span className={`material-symbols-rounded ${analysis.remotion.exists ? 'text-violet-400' : 'text-muted-foreground'}`}>
                                 movie
                             </span>
-                            <div className="text-[10px] text-text-muted mt-1">Remotion</div>
+                            <div className="text-[10px] text-muted-foreground mt-1">Remotion</div>
                         </div>
                     )}
                     {analysis.config && (
-                        <div className="bg-card-dark p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('config')}>
-                            <span className={`material-symbols-rounded ${analysis.config.exists ? 'text-blue-400' : 'text-slate-400'}`}>
+                        <div className="bg-card p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('config')}>
+                            <span className={`material-symbols-rounded ${analysis.config.exists ? 'text-blue-400' : 'text-muted-foreground'}`}>
                                 settings
                             </span>
-                            <div className="text-[10px] text-text-muted mt-1">config</div>
+                            <div className="text-[10px] text-muted-foreground mt-1">config</div>
                         </div>
                     )}
                     {analysis.tests && (
-                        <div className="bg-card-dark p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('tests')}>
+                        <div className="bg-card p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('tests')}>
                             <span className={`material-symbols-rounded ${analysis.tests.exists ? 'text-emerald-400' : 'text-amber-400'}`}>
                                 science
                             </span>
-                            <div className="text-[10px] text-text-muted mt-1">tests</div>
+                            <div className="text-[10px] text-muted-foreground mt-1">tests</div>
                         </div>
                     )}
                     {analysis.scripts && (
-                        <div className="bg-card-dark p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('scripts')}>
-                            <span className={`material-symbols-rounded ${analysis.scripts.exists ? 'text-blue-400' : 'text-slate-400'}`}>
+                        <div className="bg-card p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('scripts')}>
+                            <span className={`material-symbols-rounded ${analysis.scripts.exists ? 'text-blue-400' : 'text-muted-foreground'}`}>
                                 terminal
                             </span>
-                            <div className="text-[10px] text-text-muted mt-1">scripts</div>
+                            <div className="text-[10px] text-muted-foreground mt-1">scripts</div>
                         </div>
                     )}
                     {analysis.assets && (
-                        <div className="bg-card-dark p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('assets')}>
-                            <span className={`material-symbols-rounded ${analysis.assets.exists ? 'text-pink-400' : 'text-slate-400'}`}>
+                        <div className="bg-card p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('assets')}>
+                            <span className={`material-symbols-rounded ${analysis.assets.exists ? 'text-pink-400' : 'text-muted-foreground'}`}>
                                 perm_media
                             </span>
-                            <div className="text-[10px] text-text-muted mt-1">assets</div>
+                            <div className="text-[10px] text-muted-foreground mt-1">assets</div>
                         </div>
                     )}
-                    <div className="bg-card-dark p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('')}>
-                        <span className="material-symbols-rounded text-slate-400">folder_open</span>
-                        <div className="text-[10px] text-text-muted mt-1">tutto</div>
+                    <div className="bg-card p-3 text-center hover:bg-white/5 transition-colors cursor-pointer" onClick={() => setCurrentPath('')}>
+                        <span className="material-symbols-rounded text-muted-foreground">folder_open</span>
+                        <div className="text-[10px] text-muted-foreground mt-1">tutto</div>
                     </div>
                 </div>
 
                 {/* Runtime Status */}
-                <div className="px-6 py-4 border-t border-border-dark/50">
-                    <div className="text-[10px] text-text-muted mb-2 uppercase tracking-wider">Runtime inclusi nel bundle</div>
+                <div className="px-6 py-4 border-t border/50">
+                    <div className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider">Runtime inclusi nel bundle</div>
                     <div className="flex flex-wrap gap-2">
                         <SectionBadge
                             label="Node.js"
@@ -277,27 +277,27 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                         <div className="grid grid-cols-2 gap-2 text-xs">
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
                                 <span className="material-symbols-rounded text-blue-400">code</span>
-                                <span className="text-text-secondary">src/ &rarr; codice principale</span>
+                                <span className="text-muted-foreground">src/ &rarr; codice principale</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
                                 <Settings className="size-4 " />
-                                <span className="text-text-secondary">config/ &rarr; configurazioni</span>
+                                <span className="text-muted-foreground">config/ &rarr; configurazioni</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
                                 <span className="material-symbols-rounded text-emerald-400">science</span>
-                                <span className="text-text-secondary">tests/ &rarr; test</span>
+                                <span className="text-muted-foreground">tests/ &rarr; test</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
                                 <span className="material-symbols-rounded text-pink-400">perm_media</span>
-                                <span className="text-text-secondary">assets/ &rarr; risorse</span>
+                                <span className="text-muted-foreground">assets/ &rarr; risorse</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
                                 <Terminal className="size-[18px] text-emerald-400" />
-                                <span className="text-text-secondary">scripts/ &rarr; utility</span>
+                                <span className="text-muted-foreground">scripts/ &rarr; utility</span>
                             </div>
                             <div className="flex items-center gap-2 p-2 bg-white/5 rounded">
                                 <FileText className="size-4 " />
-                                <span className="text-text-secondary">logs/ &rarr; log runtime</span>
+                                <span className="text-muted-foreground">logs/ &rarr; log runtime</span>
                             </div>
                         </div>
                     </div>
@@ -313,20 +313,20 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                 >
                     <div className="mt-3 space-y-3">
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-text-secondary">Python Runtime</span>
+                            <span className="text-sm text-muted-foreground">Python Runtime</span>
                             <SectionBadge label="requirements.txt" status="ok" />
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-text-secondary">Dev/Test Dependencies</span>
+                            <span className="text-sm text-muted-foreground">Dev/Test Dependencies</span>
                             <SectionBadge label="dev-requirements.txt" status="unknown" />
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-sm text-text-secondary">Lock File</span>
+                            <span className="text-sm text-muted-foreground">Lock File</span>
                             <SectionBadge label="Pipfile.lock" status="unknown" />
                         </div>
                         <div className="mt-2 p-3 bg-black/30 rounded-lg">
-                            <div className="text-[10px] text-text-muted mb-2">DIPENDENZE PRINCIPALI</div>
-                            <div className="space-y-1 text-xs font-mono text-text-secondary">
+                            <div className="text-[10px] text-muted-foreground mb-2">DIPENDENZE PRINCIPALI</div>
+                            <div className="space-y-1 text-xs font-mono text-muted-foreground">
                                 <div>fastapi &ge; 0.100.0</div>
                                 <div>uvicorn &ge; 0.23.0</div>
                                 <div>pydantic &ge; 2.0.0</div>
@@ -349,12 +349,12 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                         {analysis.venv?.exists ? (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between p-2 bg-white/5 rounded">
-                                    <span className="text-sm text-text-secondary">Dimensione</span>
-                                    <span className="text-sm text-text-primary font-medium">{analysis.venv.size}</span>
+                                    <span className="text-sm text-muted-foreground">Dimensione</span>
+                                    <span className="text-sm text-foreground font-medium">{analysis.venv.size}</span>
                                 </div>
                                 <div className="flex items-center justify-between p-2 bg-white/5 rounded">
-                                    <span className="text-sm text-text-secondary">File</span>
-                                    <span className="text-sm text-text-primary font-medium">{analysis.venv.count != null ? Number(analysis.venv.count).toLocaleString() : '\u2014'}</span>
+                                    <span className="text-sm text-muted-foreground">File</span>
+                                    <span className="text-sm text-foreground font-medium">{analysis.venv.count != null ? Number(analysis.venv.count).toLocaleString() : '\u2014'}</span>
                                 </div>
                                 <div className="flex items-center gap-2 mt-2">
                                     <SectionBadge label="Presente" status="ok" />
@@ -382,21 +382,21 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                         <div className="grid grid-cols-3 gap-2">
                             <div className="text-center p-2 bg-white/5 rounded">
                                 <div className="text-lg font-bold text-emerald-400">--</div>
-                                <div className="text-[10px] text-text-muted">Unit Tests</div>
+                                <div className="text-[10px] text-muted-foreground">Unit Tests</div>
                             </div>
                             <div className="text-center p-2 bg-white/5 rounded">
                                 <div className="text-lg font-bold text-blue-400">--</div>
-                                <div className="text-[10px] text-text-muted">Integration</div>
+                                <div className="text-[10px] text-muted-foreground">Integration</div>
                             </div>
                             <div className="text-center p-2 bg-white/5 rounded">
                                 <div className="text-lg font-bold text-violet-400">--%</div>
-                                <div className="text-[10px] text-text-muted">Coverage</div>
+                                <div className="text-[10px] text-muted-foreground">Coverage</div>
                             </div>
                         </div>
                         <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                             <div className="h-full bg-gradient-to-r from-red-500 via-amber-500 to-emerald-500" style={{ width: '0%' }}></div>
                         </div>
-                        <div className="text-xs text-text-muted">
+                        <div className="text-xs text-muted-foreground">
                             Esegui <code className="bg-black/30 px-1 rounded">pytest --cov</code> per generare il report
                         </div>
                     </div>
@@ -420,8 +420,8 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                         ].map((item, i) => (
                             <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded">
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-rounded text-slate-400 text-[16px]">{item.icon}</span>
-                                    <span className="text-sm text-text-secondary">{item.name}</span>
+                                    <span className="material-symbols-rounded text-muted-foreground text-[16px]">{item.icon}</span>
+                                    <span className="text-sm text-muted-foreground">{item.name}</span>
                                 </div>
                                 <HelpCircle className="size-4 " />
                             </div>
@@ -447,8 +447,8 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                         ].map((item, i) => (
                             <div key={i} className="flex items-center justify-between p-2 bg-white/5 rounded">
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-rounded text-slate-400 text-[16px]">{item.icon}</span>
-                                    <span className="text-sm text-text-secondary">{item.name}</span>
+                                    <span className="material-symbols-rounded text-muted-foreground text-[16px]">{item.icon}</span>
+                                    <span className="text-sm text-muted-foreground">{item.name}</span>
                                 </div>
                                 <HelpCircle className="size-4 " />
                             </div>
@@ -464,7 +464,7 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                     collapsed={collapsedSections.deployChecklist}
                     onToggle={() => toggleSection('deployChecklist')}
                 >
-                    <div className="mt-3 text-sm text-text-muted">
+                    <div className="mt-3 text-sm text-muted-foreground">
                         La checklist deploy (Preflight, Provisioning, Self-test, Heartbeat, Smoke job, ONLINE, Monitor) è nel bundle: <code className="bg-black/30 px-1 rounded">RemoteCodex/DEPLOY_WORKER_CHECKLIST.md</code>. Usala sul remoto o da Ansible dopo l'installazione.
                     </div>
                 </SectionCard>
@@ -478,21 +478,21 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
                     onToggle={() => toggleSection('changelog')}
                 >
                     <div className="mt-3">
-                        <div className="text-xs text-text-muted mb-2">
+                        <div className="text-xs text-muted-foreground mb-2">
                             Versione {bundleInfo.version} &bull; {formatDateTime(bundleInfo.created_at)}
                         </div>
                         <div className="space-y-2 text-xs">
                             <div className="flex gap-2">
                                 <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 rounded text-[10px]">ADD</span>
-                                <span className="text-text-secondary">Bundle Explorer UI</span>
+                                <span className="text-muted-foreground">Bundle Explorer UI</span>
                             </div>
                             <div className="flex gap-2">
                                 <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-[10px]">FIX</span>
-                                <span className="text-text-secondary">Migliorata struttura cartelle</span>
+                                <span className="text-muted-foreground">Migliorata struttura cartelle</span>
                             </div>
                             <div className="flex gap-2">
                                 <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded text-[10px]">CHANGE</span>
-                                <span className="text-text-secondary">Aggiornato requirements.txt</span>
+                                <span className="text-muted-foreground">Aggiornato requirements.txt</span>
                             </div>
                         </div>
                         <button className="mt-3 text-xs text-primary hover:underline">
@@ -529,12 +529,12 @@ export const BundleInfoPanel: React.FC<BundleInfoPanelProps> = ({
 
             {/* Manifest Details */}
             {bundleInfo.manifest && (
-                <details className="bg-card-dark border border-border-dark rounded-xl group">
-                    <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer text-sm text-text-secondary hover:text-text-primary">
+                <details className="bg-card border border rounded-xl group">
+                    <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer text-sm text-muted-foreground hover:text-foreground">
                         <ChevronRight className="size-4 " />
                         <span>Manifest Completo (JSON)</span>
                     </summary>
-                    <pre className="p-4 text-xs text-text-muted overflow-x-auto font-mono border-t border-border-dark">
+                    <pre className="p-4 text-xs text-muted-foreground overflow-x-auto font-mono border-t border">
                         {JSON.stringify(bundleInfo.manifest, null, 2)}
                     </pre>
                 </details>

@@ -42,7 +42,7 @@ function getGreeting(): string {
 
 const SkeletonBlock: React.FC<{ className?: string }> = ({ className = '' }) => (
     <div
-        className={`animate-pulse rounded-xl border border-white/[0.06] bg-white/[0.03] ${className}`}
+        className={`animate-pulse rounded-xl border border bg-white/[0.03] ${className}`}
     >
         <div className="p-5 space-y-3">
             <div className="h-3 w-20 rounded bg-white/8" />
@@ -63,7 +63,7 @@ interface StatCardProps {
 }
 
 const StatCard: React.FC<StatCardProps> = ({ icon: Icon, label, value, trend }) => (
-    <div className="group rounded-xl border border-white/[0.06] bg-card p-5 transition-all duration-200 hover:border-white/10 hover:bg-white/[0.02]">
+    <div className="group rounded-xl border border bg-card p-5 transition-all duration-200 hover:border hover:bg-white/[0.02]">
         <div className="flex items-start justify-between mb-4">
             <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
                 <Icon className="size-[18px] text-primary" />
@@ -92,8 +92,8 @@ interface DashedCardProps {
 }
 
 const DashedCard: React.FC<DashedCardProps> = ({ icon: Icon, title, description }) => (
-    <button className="group flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-white/8 bg-white/[0.015] p-6 transition-all duration-200 hover:border-primary/25 hover:bg-primary/[0.025] active:scale-[0.98] w-full cursor-pointer" onClick={() => {}}>
-        <div className="w-10 h-10 rounded-full border-2 border-dashed border-white/15 flex items-center justify-center group-hover:border-primary/25 group-hover:bg-primary/10 transition-all duration-200">
+    <button className="group flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border bg-white/[0.015] p-6 transition-all duration-200 hover:border-primary/25 hover:bg-primary/[0.025] active:scale-[0.98] w-full cursor-pointer" onClick={() => {}}>
+        <div className="w-10 h-10 rounded-full border-2 border-dashed border flex items-center justify-center group-hover:border-primary/25 group-hover:bg-primary/10 transition-all duration-200">
             <Plus className="size-5 text-white/25 group-hover:text-primary transition-colors duration-200" />
         </div>
         <div className="text-center">            <p className="text-sm font-medium text-white/45 group-hover:text-white/65 transition-colors duration-200">
@@ -113,7 +113,7 @@ const DashedCard: React.FC<DashedCardProps> = ({ icon: Icon, title, description 
 const GroupCard: React.FC<{ group: GroupSummary }> = ({ group }) => (
     <Link
         to={`/groups/${group.id}/videos`}
-        className="group flex items-center justify-between rounded-xl border border-white/[0.06] bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.03] hover:ring-1 hover:ring-primary/30 active:scale-[0.98]"
+        className="group flex items-center justify-between rounded-xl border border bg-card p-4 transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.03] hover:ring-1 hover:ring-primary/30 active:scale-[0.98]"
     >
         <div className="flex items-center gap-3 min-w-0">
             <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
@@ -279,7 +279,7 @@ const DashboardView: React.FC = () => {
 
                 {/* ── Empty state ── */}
                 {groupCount === 0 ? (
-                    <div className="rounded-xl border border-white/[0.06] bg-card p-12 text-center">
+                    <div className="rounded-xl border border bg-card p-12 text-center">
                         <div className="w-14 h-14 rounded-xl bg-white/[0.03] flex items-center justify-center mx-auto mb-4 ring-1 ring-white/8">
                             <FolderClosed className="size-7 text-white/25" />
                         </div>
