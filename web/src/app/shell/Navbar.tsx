@@ -1,50 +1,11 @@
 /**
- * Navbar — dock trasparente stile Google Flow
- *
- * - Solo icone, niente label (tranne logo)
- * - Sfondo glass/blur
- * - Scompare scroll giù, riappare scroll su
+ * Navbar — minimal, solo logo InstaEdit
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { APP_ROUTES } from '../routes';
-
-const NAV_ITEMS = [
-    { href: APP_ROUTES.dashboard, icon: 'grid_view', label: 'Canali' },
-    { href: APP_ROUTES.content, icon: 'edit_square', label: 'Contenuti' },
-    { href: APP_ROUTES.calendar, icon: 'calendar_month', label: 'Calendario' },
-    { href: APP_ROUTES.analytics, icon: 'analytics', label: 'Analytics' },
-    { href: APP_ROUTES.drive, icon: 'folder', label: 'Media' },
-];
-
-function isActive(path: string, currentPath: string): boolean {
-    return currentPath === path || currentPath.startsWith(`${path}/`);
-}
+import React from 'react';
+import { Link } from 'react-router-dom';
 
 export const Navbar: React.FC = () => {
-    const location = useLocation();
-    const [visible, setVisible] = useState(true);
-    const lastScrollY = useRef(0);
-
-    useEffect(() => {
-        const el = document.getElementById('main-scroll-container');
-        if (!el) return;
-
-        const handleScroll = () => {
-            const currentY = el.scrollTop;
-            if (currentY > lastScrollY.current && currentY > 20) {
-                setVisible(false);
-            } else {
-                setVisible(true);
-            }
-            lastScrollY.current = currentY;
-        };
-
-        el.addEventListener('scroll', handleScroll, { passive: true });
-        return () => el.removeEventListener('scroll', handleScroll);
-    }, []);
-
     return (
         <nav
             style={{
@@ -62,13 +23,10 @@ export const Navbar: React.FC = () => {
                 left: 0,
                 right: 0,
                 zIndex: 100,
-                transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: visible ? 'translateY(0)' : 'translateY(-100%)',
             }}
         >
-            {/* Logo */}
             <Link
-                to={APP_ROUTES.dashboard}
+                to="/"
                 title="InstaEdit"
                 style={{
                     display: 'flex',
@@ -87,58 +45,7 @@ export const Navbar: React.FC = () => {
                 <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.2px', color: '#f1f5f9' }}>
                     InstaEdit
                 </span>
-                </Link>
-
-            {/* Icone nav */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    borderLeft: '1px solid #1a1a1a',
-                    paddingLeft: 6,
-                    marginLeft: 2,
-                }}>
-                    {NAV_ITEMS.map(item => {
-                        const active = isActive(item.href, location.pathname);
-                        return (
-                            <Link
-                                key={item.href}
-                                to={item.href}
-                                title={item.label}
-                                style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 8,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    textDecoration: 'none',
-                                    color: active ? '#c084fc' : 'rgba(148,163,184,0.60)',
-                                    background: active ? 'rgba(192,132,252,0.12)' : 'transparent',
-                                    transition: 'all 0.15s',
-                                }}
-                                onMouseEnter={e => {
-                                    if (!active) {
-                                        (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)';
-                                        (e.currentTarget as HTMLElement).style.color = '#e2e8f0';
-                                    }
-                                }}
-                                onMouseLeave={e => {
-                                    if (!active) {
-                                        (e.currentTarget as HTMLElement).style.background = 'transparent';
-                                        (e.currentTarget as HTMLElement).style.color = 'rgba(148,163,184,0.60)';
-                                    }
-                                }}
-                            >
-                                <span className="material-symbols-rounded" style={{ fontSize: 20 }}>
-                                    {item.icon}
-                                </span>
-                            </Link>
-                        );
-                    })}
-                </div>
-            </div>
+            </Link>
         </nav>
     );
 };
