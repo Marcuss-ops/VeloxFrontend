@@ -1,4 +1,5 @@
 import React from 'react';
+import { RotateCcw, Eye } from 'lucide-react';
 import { Job } from '../../Workers/types';
 import { getVideoName, formatDateTime, categorizeYouTubeError } from '../../Workers/jobUtils';
 import { Button } from '../../ui/button';
@@ -23,8 +24,8 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
         <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex flex-col gap-1">
-                    <h2 className="text-text-primary text-2xl font-bold tracking-tight">Error Log</h2>
-                    <p className="text-text-secondary text-sm">Fallimenti recenti che richiedono attenzione</p>
+                    <h2 className="text-white text-2xl font-bold tracking-tight">Error Log</h2>
+                    <p className="text-slate-400 text-sm">Fallimenti recenti che richiedono attenzione</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full text-xs font-bold">
@@ -33,9 +34,9 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                 </div>
             </div>
 
-            <div className="rounded-xl border border-border-dark bg-card-dark overflow-hidden shadow-card">
+            <div className="rounded-xl border border-white/10 bg-slate-900/80 overflow-hidden shadow-lg">
                 <table className="w-full text-left">
-                    <thead className="bg-surface text-xs uppercase text-text-secondary border-b border-border-dark">
+                    <thead className="bg-slate-800 text-xs uppercase text-slate-400 border-b border-white/10">
                         <tr>
                             <th className="p-4">Quando</th>
                             <th className="p-4">Video / ID</th>
@@ -46,7 +47,7 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                     <tbody className="divide-y divide-[#1f1f1f]">
                         {jobs.length === 0 ? (
                             <tr>
-                                <td colSpan={4} className="p-8 text-center text-text-secondary italic">
+                                <td colSpan={4} className="p-8 text-center text-slate-400 italic">
                                     Nessun errore rilevato. Great job!
                                 </td>
                             </tr>
@@ -60,10 +61,10 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                                 
                                 return (
                                     <tr key={jobId} className="border-b border-red-900/10 hover:bg-red-900/5 transition-colors group">
-                                        <td className="p-4 text-xs text-text-secondary">{dateStr}</td>
+                                        <td className="p-4 text-xs text-slate-400">{dateStr}</td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
-                                                <span className="text-text-primary text-sm font-medium">{vid}</span>
+                                                <span className="text-white text-sm font-medium">{vid}</span>
                                                 <a href={`/jobs/detail/${encodeURIComponent(jobId)}`} className="text-[10px] font-mono text-[#555] group-hover:text-red-400 transition-colors">
                                                     #{jobId.slice(0, 8)}
                                                 </a>
@@ -91,13 +92,13 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                                                     size="sm"
                                                     onClick={() => handleRetry(jobId)}
                                                 >
-                                                    <span className="material-symbols-rounded text-[14px]">replay</span> Retry
+                                                    <RotateCcw className="size-3.5" /> Retry
                                                 </Button>
                                                 <a 
                                                     href={`/jobs/detail/${encodeURIComponent(jobId)}`} 
-                                                    className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors"
+                                                    className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
                                                 >
-                                                    <span className="material-symbols-rounded text-[18px]">visibility</span>
+                                                    <Eye className="size-[18px]" />
                                                 </a>
                                             </div>
                                         </td>

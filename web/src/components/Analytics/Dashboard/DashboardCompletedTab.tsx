@@ -1,4 +1,5 @@
 import React from 'react';
+import { CloudUpload, Eye } from 'lucide-react';
 import { Job } from '../../Workers/types';
 import { getVideoName, formatDateTime } from '../../Workers/jobUtils';
 import { DeliveryStatusCell } from '../../Workers/DeliveryStatusCell';
@@ -24,13 +25,13 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
     return (
         <div className="space-y-6 animate-fadeIn">
             <div className="flex items-center justify-between">
-                <h2 className="text-text-primary text-2xl font-bold tracking-tight">Storico Completati</h2>
-                <span className="text-text-secondary text-sm">Ultimi 100 job</span>
+                <h2 className="text-white text-2xl font-bold tracking-tight">Storico Completati</h2>
+                <span className="text-slate-400 text-sm">Ultimi 100 job</span>
             </div>
             
-            <div className="rounded-xl border border-border-dark bg-card-dark overflow-hidden shadow-card">
+            <div className="rounded-xl border border-white/10 bg-slate-900/80 overflow-hidden shadow-lg">
                 <table className="w-full text-left">
-                    <thead className="bg-surface text-xs uppercase text-text-secondary border-b border-border-dark">
+                    <thead className="bg-slate-800 text-xs uppercase text-slate-400 border-b border-white/10">
                         <tr>
                             <th className="p-4">Data</th>
                             <th className="p-4">Video / ID</th>
@@ -42,7 +43,7 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                     <tbody className="divide-y divide-[#1f1f1f]">
                         {pagedJobs.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="p-8 text-center text-text-secondary italic">
+                                <td colSpan={5} className="p-8 text-center text-slate-400 italic">
                                     Nessun job completato recente.
                                 </td>
                             </tr>
@@ -55,11 +56,11 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                                 const driveLink = getDriveLink(job);
                                 
                                 return (
-                                    <tr key={jobId} className="border-b border-[#1f1f1f] hover:bg-surface transition-colors group">
-                                        <td className="p-4 text-xs text-text-secondary">{dateStr}</td>
+                                    <tr key={jobId} className="border-b border-[#1f1f1f] hover:bg-slate-800 transition-colors group">
+                                        <td className="p-4 text-xs text-slate-400">{dateStr}</td>
                                         <td className="p-4">
                                             <div className="flex flex-col">
-                                                <span className="text-text-primary text-sm font-medium">{vid}</span>
+                                                <span className="text-white text-sm font-medium">{vid}</span>
                                                 <a href={`/jobs/detail/${encodeURIComponent(jobId)}`} className="text-[10px] font-mono text-[#555] group-hover:text-primary transition-colors">
                                                     #{jobId.slice(0, 8)}
                                                 </a>
@@ -67,23 +68,23 @@ export const DashboardCompletedTab: React.FC<DashboardCompletedTabProps> = ({ jo
                                         </td>
                                         <td className="p-4">
                                             {driveSuccess && (
-                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold uppercase mr-2">
-                                                    <span className="material-symbols-rounded text-[12px]">cloud_upload</span> Drive OK
+                                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-bold uppercase mr-2">
+                                                    <CloudUpload className="size-3" /> Drive OK
                                                 </span>
                                             )}
                                             <DeliveryStatusCell jobId={jobId} />
                                         </td>
                                         <td className="p-4">
                                             {driveLink && (
-                                                <a href={driveLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded text-xs hover:bg-primary/20 mr-2">
-                                                    <span className="material-symbols-rounded text-[14px]">cloud_upload</span> Drive
+                                                <a href={driveLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-purple-500/10 text-purple-300 rounded text-xs hover:bg-purple-500/20 mr-2 transition-colors">
+                                                    <CloudUpload className="size-3.5" /> Drive
                                                 </a>
                                             )}
                                             <DeliveryOutputCell jobId={jobId} />
                                         </td>
                                         <td className="p-4 text-right">
-                                            <a href={`/jobs/detail/${encodeURIComponent(jobId)}`} className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-[#333] text-text-secondary hover:text-text-primary transition-colors">
-                                                <span className="material-symbols-rounded text-[18px]">visibility</span>
+                                            <a href={`/jobs/detail/${encodeURIComponent(jobId)}`} className="size-8 inline-flex items-center justify-center rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors">
+                                                <Eye className="size-[18px]" />
                                             </a>
                                         </td>
                                     </tr>

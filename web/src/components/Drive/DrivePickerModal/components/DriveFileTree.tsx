@@ -1,4 +1,5 @@
 import React, { Dispatch, SetStateAction } from 'react';
+import { FolderOpen, Eye, FileText } from 'lucide-react';
 
 interface DriveEntry {
     id: string;
@@ -87,10 +88,10 @@ export const DriveFileTree: React.FC<DriveFileTreeProps> = ({
                                 <div key={f.id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-950/60 border border-white/10">
                                     <button
                                         onClick={() => loadFolder(f.id, [...path, { id: f.id, name: f.name }])}
-                                        className="text-slate-300 hover:text-white"
+                                        className="text-slate-300 hover:text-white transition-colors"
                                         title="Apri cartella"
                                     >
-                                        <span className="material-symbols-outlined">folder_open</span>
+                                        <FolderOpen className="size-5" />
                                     </button>
                                     <div className="flex-1 text-sm text-slate-200 truncate">{f.name}</div>
                                     <button
@@ -150,7 +151,7 @@ export const DriveFileTree: React.FC<DriveFileTreeProps> = ({
                                                             loading="lazy"
                                                         />
                                                         <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
-                                                            <span className="material-symbols-outlined text-white/90 text-[18px]">visibility</span>
+                                                            <Eye className="size-[18px] text-white/90" />
                                                         </div>
                                                     </>
                                                 )}
@@ -186,7 +187,7 @@ export const DriveFileTree: React.FC<DriveFileTreeProps> = ({
                             <div className="space-y-1">
                                 {txtFiles.map((f) => (
                                     <div key={f.id} className="flex items-center gap-2 p-2 rounded-lg bg-slate-950/60 border border-white/10">
-                                        <span className="material-symbols-outlined text-slate-400 text-[16px]">description</span>
+                                        <FileText className="size-4 text-slate-400" />
                                         <div className="flex-1 text-xs text-slate-300 truncate">{f.name}</div>
                                         <button
                                             onClick={() => openTxtFile(f)}

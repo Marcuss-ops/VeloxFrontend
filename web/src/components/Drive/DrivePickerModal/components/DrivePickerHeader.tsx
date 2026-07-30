@@ -1,4 +1,5 @@
 import React from 'react';
+import { X } from 'lucide-react';
 
 interface FolderNode {
     id: string;
@@ -52,8 +53,8 @@ export const DrivePickerHeader: React.FC<DrivePickerHeaderProps> = ({
                         Modalità: {mode} • {currentFolderName}
                     </div>
                 </div>
-                <button onClick={onClose} className="text-slate-400 hover:text-white">
-                    <span className="material-symbols-outlined">close</span>
+                <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+                    <X className="size-5" />
                 </button>
             </div>
 
