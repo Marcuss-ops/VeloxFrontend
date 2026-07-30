@@ -30,17 +30,17 @@ const SkeletonCard: React.FC = () => (
 const GroupCard: React.FC<{ group: GroupSummary }> = ({ group }) => (
     <Link
         to={`/groups/${group.id}/videos`}
-        className="group flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] p-5 transition-all duration-200 hover:border-purple-500/30 hover:bg-purple-500/[0.04] hover:shadow-lg hover:shadow-purple-500/5 active:scale-[0.99]"
+        className="group flex items-center justify-between rounded-xl border border-white/[0.06] bg-card p-5 transition-all duration-200 hover:border-primary/30 hover:bg-primary/[0.03] active:scale-[0.99]"
     >
         <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/15 to-violet-500/15 flex items-center justify-center ring-1 ring-purple-500/20 group-hover:ring-purple-500/30 transition-all">
-                <Folder className="size-5 text-purple-400" />
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Folder className="size-5 text-primary" />
             </div>
-            <span className="text-sm font-medium text-slate-200 group-hover:text-purple-300 transition-colors">
+            <span className="text-sm font-medium text-white/80 group-hover:text-primary transition-colors">
                 {group.name}
             </span>
         </div>
-        <ArrowRight className="size-4 text-slate-600 group-hover:text-purple-400 transition-colors group-hover:translate-x-0.5 transition-transform" />
+        <ArrowRight className="size-4 text-white/20 group-hover:text-primary transition-colors" />
     </Link>
 );
 
@@ -56,19 +56,20 @@ const DashboardView: React.FC = () => {
     return (
         <div className="mx-auto max-w-2xl px-4 py-12">
             {/* Header */}
-            <div className="mb-10 text-center">
-                <div className="relative inline-flex mb-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500/20 to-violet-500/20 flex items-center justify-center ring-1 ring-purple-500/25">
-                        <Sparkles className="size-7 text-purple-400" />
+            <div className="mb-10">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
+                        <Sparkles className="size-6 text-primary" />
                     </div>
-                    <div className="absolute -inset-1 bg-purple-500/10 rounded-3xl blur-md" />
+                    <div>
+                        <h1 className="text-xl font-bold tracking-tight text-white/90">
+                            InstaEdit
+                        </h1>
+                        <p className="text-sm text-white/40">
+                            Seleziona un gruppo per modificare le thumbnail
+                        </p>
+                    </div>
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight text-white">
-                    InstaEdit
-                </h1>
-                <p className="mt-2 text-sm text-slate-400 max-w-xs mx-auto">
-                    Seleziona un gruppo per modificare le thumbnail dei tuoi video YouTube.
-                </p>
             </div>
 
             {/* Loading */}
@@ -106,7 +107,7 @@ const DashboardView: React.FC = () => {
 
             {/* Groups list */}
             {!isLoading && !isError && data && data.groups.length > 0 && (
-                <div className="space-y-2.5">
+                <div className="grid grid-cols-1 gap-2">
                     {data.groups.map((group) => (
                         <GroupCard key={group.id} group={group} />
                     ))}

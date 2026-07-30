@@ -57,63 +57,53 @@ export const Navbar: React.FC = () => {
     return (
         <nav
             className={`
-                fixed top-0 left-0 right-0 z-[100] h-14
-                flex items-center justify-between px-6
-                bg-slate-950/70 backdrop-blur-2xl
-                border-b border-purple-500/10
+                fixed top-0 left-0 right-0 z-[100] h-12
+                flex items-center justify-between px-5
+                bg-background/90 backdrop-blur-2xl
+                border-b border-border
                 transition-transform duration-300 ease-out
                 ${visible ? 'translate-y-0' : '-translate-y-full'}
             `}
         >
-            {/* Gradient glow orl */}
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-purple-500/40 to-transparent" />
-
             {/* Logo */}
             <Link
                 to={APP_ROUTES.dashboard}
                 title="InstaEdit"
-                className="flex items-center gap-2 no-underline text-white group"
+                className="flex items-center gap-2.5 no-underline group"
             >
-                <div className="relative">
-                    <Sparkles className="size-5 text-purple-400 group-hover:text-purple-300 transition-colors" />
-                    <div className="absolute -inset-1 bg-purple-500/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/15">
+                    <Sparkles className="size-4 text-primary" />
                 </div>
-                <span className="text-sm font-semibold tracking-tight text-slate-100">
+                <span className="text-sm font-semibold tracking-tight text-white/90">
                     InstaEdit
                 </span>
             </Link>
 
-            {/* Nav items */}
-            <div className="flex items-center gap-1">
-                <div className="flex items-center gap-0.5 border-l border-white/5 pl-2 ml-2">
-                    {NAV_ITEMS.map(item => {
-                        const active = isActive(item.href, location.pathname);
-                        const Icon = item.icon;
+            {/* Nav items - pill style */}
+            <div className="flex items-center gap-1 p-0.5 bg-white/[0.04] rounded-xl border border-white/[0.06]">
+                {NAV_ITEMS.map(item => {
+                    const active = isActive(item.href, location.pathname);
+                    const Icon = item.icon;
 
-                        return (
-                            <Link
-                                key={item.href}
-                                to={item.href}
-                                title={item.label}
-                                className={`
-                                    relative size-9 rounded-lg
-                                    flex items-center justify-center
-                                    no-underline
-                                    transition-all duration-200
-                                    ${active 
-                                        ? 'text-purple-300 bg-purple-500/15' 
-                                        : 'text-slate-500 hover:text-slate-200 hover:bg-white/5'
-                                    }
-                                `}
-                            >
-                                {active && (
-                                    <span className="absolute inset-0 rounded-lg ring-1 ring-purple-500/30" />
-                                )}
-                                <Icon className="size-[18px]" />
-                            </Link>
-                        );
-                    })}
-                </div>
+                    return (
+                        <Link
+                            key={item.href}
+                            to={item.href}
+                            title={item.label}
+                            className={`
+                                relative flex items-center gap-2 px-3 py-1.5 rounded-lg
+                                no-underline transition-all duration-200
+                                ${active 
+                                    ? 'text-white bg-primary/20' 
+                                    : 'text-white/40 hover:text-white/70 hover:bg-white/[0.06]'
+                                }
+                            `}
+                        >
+                            <Icon className="size-4" />
+                            <span className="text-xs font-medium hidden sm:inline">{item.label}</span>
+                        </Link>
+                    );
+                })}
             </div>
         </nav>
     );
