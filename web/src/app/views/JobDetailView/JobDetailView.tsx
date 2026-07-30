@@ -112,11 +112,11 @@ export const JobDetailView: React.FC = () => {
                             </div>
                         </div>
                         <Link
-                            to={`${APP_ROUTES.veloxJobDetail}/${jobId}`}
+                            to={`${APP_ROUTES.contentJobDetail}/${jobId}`}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm font-medium"
                         >
                             <span className="material-symbols-outlined text-[18px]">movie</span>
-                            Stato Velox
+                            Stato job
                         </Link>
                     </div>
                 </div>

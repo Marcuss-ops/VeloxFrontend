@@ -8,7 +8,7 @@
  */
 
 import React, { Suspense, lazy } from 'react';
-import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate, Outlet, useParams } from 'react-router-dom';
 
 // Shell components
 import { Navbar } from './shell/Navbar';
@@ -54,6 +54,12 @@ const LoadingView: React.FC = () => (
         <div className="h-64 animate-pulse rounded-xl bg-white/5" />
     </div>
 );
+
+/** Redirect /velox/jobs/:jobId → /jobs/:jobId (legacy, temporary) */
+const VeloxJobRedirect: React.FC = () => {
+    const { jobId } = useParams<{ jobId: string }>();
+    return <Navigate to={`${APP_ROUTES.contentJobDetail}/${jobId}`} replace />;
+};
 
 /**
  * App Shell - wraps all routes with navbar and main layout
@@ -164,9 +170,9 @@ export const router = createBrowserRouter([
                 element: <JobDetailView />
             },
 
-            // --- Velox Job Detail ---
+            // --- Content Job Detail (formerly Velox) ---
             {
-                path: `${APP_ROUTES.veloxJobDetail}/:jobId`,
+                path: `${APP_ROUTES.contentJobDetail}/:jobId`,
                 element: <VeloxJobDetailView />
             },
 
@@ -185,6 +191,12 @@ export const router = createBrowserRouter([
                 path: from,
                 element: <Navigate to={APP_ROUTES[to]} replace />,
             })),
+
+            // --- Legacy: /velox/jobs → /jobs (preserves :jobId, temporary) ---
+            {
+                path: '/velox/jobs/:jobId',
+                element: <VeloxJobRedirect />,
+            },
 
             // --- Default redirect ---
             {

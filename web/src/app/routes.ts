@@ -7,7 +7,7 @@ export const APP_ROUTES = {
     analytics: '/analytics',
     drive: '/drive',
     jobDetail: '/jobs/detail',
-    veloxJobDetail: '/velox/jobs',
+    contentJobDetail: '/jobs',
     /**
      * /groups/:groupId/videos — the per-group YouTube video card grid
      * (P0 one-click flow). The card click handler routes through

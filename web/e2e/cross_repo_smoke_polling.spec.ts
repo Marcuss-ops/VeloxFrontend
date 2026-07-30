@@ -213,7 +213,7 @@ test('cross-repo polling smoke: 5-second poll re-hit re-renders social_delivery_
     // (No dark_editor navigation; the polling hook lives in
     // useVeloxJobDetail which is consumed by VeloxJobDetailView
     // on :3000.)
-    await page.goto(`${VITE_SPA_BASE}/velox/jobs/${EXPECTED_JOB_ID}`);
+    await page.goto(`${VITE_SPA_BASE}/jobs/${EXPECTED_JOB_ID}`);
 
     // First fetch: mock returns PROCESSING (non-terminal so polling
     // fires) + empty socialDeliveryId -> fallback row.
