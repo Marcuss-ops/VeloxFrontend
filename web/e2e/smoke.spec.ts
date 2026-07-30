@@ -49,11 +49,11 @@ test.describe('Smoke Tests - Workers', () => {
 });
 
 test.describe('Smoke Tests - Legacy Redirect', () => {
-    test('should redirect creator_studio_app to dashboard-channels', async ({ page }) => {
+    test('should redirect creator_studio_app to content (InstaEdit)', async ({ page }) => {
         await page.goto('/creator_studio_app');
         
-        // Legacy route should redirect to dashboard-channels
-        await expect(page).toHaveURL(/.*dashboard-channels/);
+        // Legacy route should now redirect to /content
+        await expect(page).toHaveURL(/.*\/content/);
         await expect(page.locator('body')).toBeVisible();
     });
 });

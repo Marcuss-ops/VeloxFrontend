@@ -14,7 +14,7 @@ import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-rou
 import { Navbar } from './shell/Navbar';
 import { AppProviders } from './providers/AppProviders';
 import { ErrorBoundary } from './providers/ErrorBoundary';
-import { APP_ROUTES } from './routes';
+import { APP_ROUTES, LEGACY_REDIRECTS } from './routes';
 
 // Lazy-loaded views
 const DashboardView = lazy(() => import('./views/DashboardView'));
@@ -180,11 +180,11 @@ export const router = createBrowserRouter([
                 )
             },
 
-            // --- Legacy Creator Studio redirect ---
-            {
-                path: '/creator_studio_app/*',
-                element: <Navigate to={APP_ROUTES.dashboard} replace />
-            },
+            // --- Legacy redirects (temporary — driven by LEGACY_REDIRECTS) ---
+            ...LEGACY_REDIRECTS.map(({ from, to }) => ({
+                path: from,
+                element: <Navigate to={APP_ROUTES[to]} replace />,
+            })),
 
             // --- Default redirect ---
             {
