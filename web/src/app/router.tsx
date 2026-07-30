@@ -66,9 +66,9 @@ const VeloxJobRedirect: React.FC = () => {
  */
 const AppShell: React.FC = () => {
     return (
-        <div className="flex flex-col h-screen overflow-hidden w-full">
+        <div className="flex flex-col h-screen overflow-hidden w-full bg-background">
             <Navbar />
-            <main id="main-scroll-container" className="flex-1 overflow-auto min-w-0 pt-[56px]">
+            <main id="main-scroll-container" className="flex-1 overflow-auto min-w-0 pt-12">
                 <Suspense fallback={<LoadingView />}>
                     <Outlet />
                 </Suspense>
@@ -82,7 +82,7 @@ const AppShell: React.FC = () => {
  */
 const DashboardShell: React.FC = () => {
     return (
-        <div className="h-full min-h-[calc(100vh-10rem)] overflow-hidden rounded-2xl border border-white/10 bg-slate-950/30 shadow-2xl">
+        <div className="h-full min-h-[calc(100vh-10rem)] overflow-hidden rounded-xl border border-border bg-card">
             <div className="flex h-full min-h-0 flex-col">
                 <main className="flex-1 overflow-auto p-4 md:p-6">
                     <Suspense fallback={<LoadingView />}>
