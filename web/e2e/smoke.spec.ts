@@ -48,11 +48,12 @@ test.describe('Smoke Tests - Workers', () => {
     });
 });
 
-test.describe('Smoke Tests - Creator Studio', () => {
-    test('should navigate to creator studio', async ({ page }) => {
+test.describe('Smoke Tests - Legacy Redirect', () => {
+    test('should redirect creator_studio_app to dashboard-channels', async ({ page }) => {
         await page.goto('/creator_studio_app');
         
-        // Creator studio should render
+        // Legacy route should redirect to dashboard-channels
+        await expect(page).toHaveURL(/.*dashboard-channels/);
         await expect(page.locator('body')).toBeVisible();
     });
 });
