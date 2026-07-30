@@ -17,14 +17,20 @@ export const APP_ROUTES = {
 } as const;
 
 /**
- * LEGACY_REDIRECTS — temporary redirects for old URLs.
- *
- * These are kept SEPARATE from APP_ROUTES to avoid polluting the
- * canonical route registry. Marked for removal once traffic to
- * these URLs drops to zero.
- *
- * Format: { from: string, to: keyof typeof APP_ROUTES }
+ * Legacy redirects — old routes mapped to new canonical paths.
+ * Applied via router.tsx as Navigate components.
  */
-export const LEGACY_REDIRECTS = [
-    { from: '/creator_studio_app/*', to: 'content' as const },
-] as const;
+export const LEGACY_REDIRECTS: { from: string; to: keyof typeof APP_ROUTES }[] = [
+    { from: '/creator_studio_app', to: 'dashboard' },
+    { from: '/creator_studio_app/*', to: 'dashboard' },
+    { from: '/studio', to: 'dashboard' },
+    { from: '/dashboard', to: 'dashboard' },
+    { from: '/overview', to: 'dashboard' },
+    { from: '/panorama', to: 'dashboard' },
+    { from: '/finance', to: 'dashboard' },
+    { from: '/workers', to: 'workersAnsible' },
+    { from: '/workers/dashboard', to: 'workersAnsible' },
+    { from: '/ansible_computers', to: 'workersAnsible' },
+    { from: '/drive/explorer', to: 'drive' },
+    { from: '/analytics/dashboard', to: 'analytics' },
+];
