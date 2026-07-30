@@ -13,7 +13,8 @@ import {
     Folder, 
     ArrowRight, 
     AlertCircle, 
-    FolderClosed 
+    FolderClosed,
+    RefreshCw
 } from 'lucide-react';
 import { listGroups, type GroupSummary } from '@/lib/api/youtubeGroupsApi';
 
@@ -47,10 +48,11 @@ const GroupCard: React.FC<{ group: GroupSummary }> = ({ group }) => (
 // ---- View ------------------------------------------------------------------
 
 const DashboardView: React.FC = () => {
-    const { data, isLoading, isError } = useQuery({
+    const { data, isLoading, isError, refetch } = useQuery({
         queryKey: ['groups'],
         queryFn: () => listGroups(),
         staleTime: 1000 * 60 * 5,
+        retry: 1,
     });
 
     return (
@@ -83,13 +85,20 @@ const DashboardView: React.FC = () => {
 
             {/* Error */}
             {isError && (
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-6 text-center">
-                    <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mx-auto mb-3 ring-1 ring-red-500/20">
+                <div className="rounded-xl border border-red-500/20 bg-red-500/[0.03] p-8 text-center">
+                    <div className="w-12 h-12 rounded-lg bg-red-500/10 flex items-center justify-center mx-auto mb-4">
                         <AlertCircle className="size-6 text-red-400" />
                     </div>
-                    <p className="text-sm text-red-300">
-                        Impossibile caricare i gruppi. Riprova più tardi.
+                    <p className="text-sm text-red-400/80 mb-4 max-w-xs mx-auto leading-relaxed">
+                        Impossibile caricare i gruppi. Il server potrebbe non essere raggiungibile.
                     </p>
+                    <button
+                        onClick={() => refetch()}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors border border-red-500/20"
+                    >
+                        <RefreshCw className="size-3.5" />
+                        Riprova
+                    </button>
                 </div>
             )}
 
