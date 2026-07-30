@@ -83,6 +83,7 @@ const DashboardShell: React.FC = () => {
  * 
  * Primary routes (canonical paths, one per view):
  *   /dashboard-channels  → Dashboard (main entry)
+ *   /content             → Content (InstaEdit)
  *   /calendar            → Calendar
  *   /workers-ansible     → Workers + Ansible
  *   /analytics           → Analytics Dashboard
@@ -124,6 +125,12 @@ export const router = createBrowserRouter([
             {
                 path: APP_ROUTES.drive,
                 element: <DriveFileExplorer />
+            },
+
+            // --- Content (InstaEdit) ---
+            {
+                path: APP_ROUTES.content,
+                element: <LoadingView />
             },
 
             // --- Job Detail ---

@@ -11,9 +11,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { APP_ROUTES } from '../routes';
 
 const NAV_ITEMS = [
-    { href: APP_ROUTES.dashboard, icon: 'grid_view', label: 'Panoramica' },
+    { href: APP_ROUTES.dashboard, icon: 'grid_view', label: 'Canali' },
+    { href: APP_ROUTES.content, icon: 'edit_square', label: 'Contenuti' },
     { href: APP_ROUTES.calendar, icon: 'calendar_month', label: 'Calendario' },
-    { href: APP_ROUTES.workersAnsible, icon: 'engineering', label: 'Workers' },
+    { href: APP_ROUTES.analytics, icon: 'analytics', label: 'Analytics' },
+    { href: APP_ROUTES.drive, icon: 'folder', label: 'Media' },
 ];
 
 function isActive(path: string, currentPath: string): boolean {
@@ -67,7 +69,7 @@ export const Navbar: React.FC = () => {
             {/* Logo */}
             <Link
                 to={APP_ROUTES.dashboard}
-                title="Velox"
+                title="InstaEdit"
                 style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -80,10 +82,10 @@ export const Navbar: React.FC = () => {
                     className="material-symbols-rounded"
                     style={{ fontSize: 22, fontWeight: 500, color: '#c084fc' }}
                 >
-                    hub
+                    auto_awesome
                 </span>
                 <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.2px', color: '#f1f5f9' }}>
-                    Velox
+                    InstaEdit
                 </span>
                 </Link>
 

@@ -1,6 +1,7 @@
 export const APP_ROUTES = {
     home: '/dashboard-channels',
     dashboard: '/dashboard-channels',
+    content: '/content',
     calendar: '/calendar',
     workersAnsible: '/workers-ansible',
     analytics: '/analytics',
