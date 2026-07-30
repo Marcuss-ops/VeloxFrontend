@@ -36,6 +36,16 @@ const WorkersAnsibleView = lazy(() => import('./views/WorkersAnsibleView'));
 const AnalyticsDashboardApp = lazy(() => import('../components/Analytics/Dashboard/DashboardApp').then(m => ({ default: m.DashboardApp })));
 const DriveFileExplorer = lazy(() => import('../components/Drive/DriveFileExplorer').then(m => ({ default: m.DriveFileExplorer })));
 
+// Content views (InstaEdit)
+const ContentView = lazy(() => import('./views/ContentView/ContentView'));
+const ContentDashboard = lazy(() => import('./views/ContentView/ContentDashboard'));
+const NewContentWizard = lazy(() => import('./views/ContentView/NewContentWizard'));
+const ContentDetailView = lazy(() => import('./views/ContentView/ContentDetailView'));
+const ScriptWorkspace = lazy(() => import('./views/ContentView/ScriptWorkspace'));
+const VoiceoverWorkspace = lazy(() => import('./views/ContentView/VoiceoverWorkspace'));
+const MediaLibrary = lazy(() => import('./views/ContentView/MediaLibrary'));
+const PublishView = lazy(() => import('./views/ContentView/PublishView'));
+
 // Loading fallback
 const LoadingView: React.FC = () => (
     <div className="space-y-3 p-4">
@@ -130,7 +140,22 @@ export const router = createBrowserRouter([
             // --- Content (InstaEdit) ---
             {
                 path: APP_ROUTES.content,
-                element: <LoadingView />
+                element: <ContentView />,
+                children: [
+                    { index: true, element: <ContentDashboard /> },
+                    { path: 'new', element: <NewContentWizard /> },
+                    {
+                        path: ':contentId',
+                        element: <ContentDetailView />,
+                        children: [
+                            { index: true, element: null },
+                            { path: 'script', element: <ScriptWorkspace /> },
+                            { path: 'voiceover', element: <VoiceoverWorkspace /> },
+                            { path: 'media', element: <MediaLibrary /> },
+                            { path: 'publish', element: <PublishView /> },
+                        ],
+                    },
+                ]
             },
 
             // --- Job Detail ---
