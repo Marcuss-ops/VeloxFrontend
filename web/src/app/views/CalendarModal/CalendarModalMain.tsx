@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { TitleSelectionModal } from '@/components/Script/modals/TitleSelectionModal';
+import { TitleSelectionModal } from '@/components/shared/TitleSelectionModal';
 import type { CalendarModalProps, CalendarEvent as CalendarEventType } from './types';
 import { useCalendarState } from './useCalendarState';
 import { InfoTab } from './InfoTab';

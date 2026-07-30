@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { driveLinksApi, type ProjectStatus } from '@/lib/api';
 import type { DriveLink } from '@/lib/api';
-import { loadCategories } from '@/components/Script/data/titleCategoriesData';
+import { loadCategories } from '@/lib/api/titleCategories';
 import type { VideoClip, YouTubeGroup, DriveGroup, DriveFolderLite, DriveFile, ClipType } from './types';
 import { parseDriveFoldersResponse, parseDriveFilesAsFolders, fetchDriveFiles, groupDriveLinksIntoDriveGroups } from './types';
 

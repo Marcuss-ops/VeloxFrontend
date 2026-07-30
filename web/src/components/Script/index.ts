@@ -50,7 +50,7 @@ export { StyleGroupSelector } from './config/StyleGroupSelector';
 export { useScriptGenerator } from './hooks/useScriptGenerator';
 
 // Data
-export { loadCategories } from './data/titleCategoriesData';
+export { loadCategories } from '@/lib/api/titleCategories';
 
 // Types
 export type { VideoStyle, VideoProject } from './types';

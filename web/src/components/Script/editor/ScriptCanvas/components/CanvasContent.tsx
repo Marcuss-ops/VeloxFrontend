@@ -5,7 +5,7 @@ import { LanguageSelectors } from '../../../config/LanguageSelectors';
 import { AssetConfig } from '../../../config/AssetConfig';
 import { AssetManagementHub } from '../../../AssetManagementHub';
 import { AIPromptSection } from '../../../config/AIPromptSection';
-import { DrivePickerModal } from '../../../modals/DrivePickerModal';
+import { DrivePickerModal } from '@/components/Drive/DrivePickerModal';
 import { RemoteStatusPanel } from '../../../RemoteStatusPanel';
 import { GenerationProgress } from '../../../GenerationProgress';
 import { TitleLinkHistoryModal } from '../../../modals/TitleLinkHistoryModal';

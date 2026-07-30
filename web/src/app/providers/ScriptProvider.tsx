@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { createDefaultVideoProject, type VideoProject } from '../../components/Script/types';
+import { createDefaultVideoProject, type VideoProject } from '@/types/studioTypes';
 
 export interface GenerationProgress {
     percent: number;
