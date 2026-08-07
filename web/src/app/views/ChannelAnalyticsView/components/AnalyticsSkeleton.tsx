@@ -4,7 +4,7 @@
  * instead of jumping from "blank" to "populated".
  *
  * Uses the project-wide `animate-pulse` Tailwind convention already
- * present in GroupsView/components/GroupVideosSkeleton.tsx.
+ * present in the dashboard loading surface.
  */
 
 export interface AnalyticsSkeletonProps {

@@ -11,7 +11,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
     Sparkles,
-    LayoutDashboard, 
     SquarePen, 
     Calendar,
     BarChart3,
@@ -20,7 +19,6 @@ import {
 import { APP_ROUTES } from '../routes';
 
 const NAV_ITEMS = [
-    { href: APP_ROUTES.dashboard, icon: LayoutDashboard, label: 'Canali' },
     { href: APP_ROUTES.content, icon: SquarePen, label: 'Contenuti' },
     { href: APP_ROUTES.calendar, icon: Calendar, label: 'Calendario' },
     { href: APP_ROUTES.analytics, icon: BarChart3, label: 'Analytics' },
@@ -67,7 +65,7 @@ export const Navbar: React.FC = () => {
         >
             {/* Logo */}
             <Link
-                to={APP_ROUTES.dashboard}
+                to={APP_ROUTES.content}
                 title="InstaEdit"
                 className="flex items-center gap-2.5 no-underline group"
             >

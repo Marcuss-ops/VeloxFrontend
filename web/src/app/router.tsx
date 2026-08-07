@@ -17,10 +17,8 @@ import { ErrorBoundary } from './providers/ErrorBoundary';
 import { APP_ROUTES, LEGACY_REDIRECTS } from './routes';
 
 // Lazy-loaded views
-const DashboardView = lazy(() => import('./views/DashboardView'));
 const JobDetailView = lazy(() => import('./views/JobDetailView'));
 const VeloxJobDetailView = lazy(() => import('./views/VeloxJobDetailView'));
-const GroupsView = lazy(() => import('./views/GroupsView'));
 const CalendarView = lazy(() => import('./views/CalendarView').then(async m => {
     const { CalendarErrorBoundary } = await import('./views/CalendarView/CalendarErrorBoundary');
     return {
@@ -78,27 +76,10 @@ const AppShell: React.FC = () => {
 };
 
 /**
- * Dashboard Shell - wraps dashboard views with header
- */
-const DashboardShell: React.FC = () => {
-    return (
-        <div className="h-full min-h-[calc(100vh-10rem)] overflow-hidden rounded-xl border border-border bg-card">
-            <div className="flex h-full min-h-0 flex-col">
-                <main className="flex-1 overflow-auto p-4 md:p-6">
-                    <Suspense fallback={<LoadingView />}>
-                        <Outlet />
-                    </Suspense>
-                </main>
-            </div>
-        </div>
-    );
-};
-
-/**
  * Router configuration
  * 
  * Primary routes (canonical paths, one per view):
- *   /dashboard-channels  → Dashboard (main entry)
+ *   /content             → Content (main entry)
  *   /content             → Content (InstaEdit)
  *   /calendar            → Calendar
  *   /workers-ansible     → Workers + Ansible
@@ -110,15 +91,6 @@ export const router = createBrowserRouter([
     {
         element: <AppShell />,
         children: [
-            // --- Dashboard ---
-            {
-                path: APP_ROUTES.dashboard,
-                element: <DashboardShell />,
-                children: [
-                    { index: true, element: <DashboardView /> },
-                ]
-            },
-
             // --- Calendar ---
             {
                 path: APP_ROUTES.calendar,
@@ -176,16 +148,6 @@ export const router = createBrowserRouter([
                 element: <VeloxJobDetailView />
             },
 
-            // --- Groups (per-group video card grid for P0 one-click) ---
-            {
-                path: `${APP_ROUTES.groupsVideosBase}/:groupId/videos`,
-                element: (
-                    <ErrorBoundary>
-                        <GroupsView />
-                    </ErrorBoundary>
-                )
-            },
-
             // --- Legacy redirects (temporary — driven by LEGACY_REDIRECTS) ---
             ...LEGACY_REDIRECTS.map(({ from, to }) => ({
                 path: from,
@@ -201,16 +163,13 @@ export const router = createBrowserRouter([
             // --- Default redirect ---
             {
                 path: '/',
-                element: <DashboardShell />,
-                children: [
-                    { index: true, element: <DashboardView /> },
-                ]
+                element: <Navigate to={APP_ROUTES.content} replace />,
             },
 
             // --- 404 fallback ---
             {
                 path: '*',
-                element: <Navigate to={APP_ROUTES.dashboard} replace />
+                element: <Navigate to={APP_ROUTES.content} replace />
             }
         ]
     }
