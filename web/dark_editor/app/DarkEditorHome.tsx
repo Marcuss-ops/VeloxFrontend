@@ -60,7 +60,7 @@ export default function DarkEditorHome() {
             </div>
             <p className="text-sm leading-6 text-muted-foreground">
               Qui restano canvas, template, asset e operazioni di editing. Velox produce gli artifact;
-              non gestisce account, token o pubblicazioni social.
+              non gestisce account, gruppi, canali o pubblicazioni social.
             </p>
           </div>
 
@@ -70,7 +70,7 @@ export default function DarkEditorHome() {
               <h2 className="text-lg font-bold">Pubblicazione social</h2>
             </div>
             <p className="mb-4 text-sm leading-6 text-muted-foreground">
-              Collegamento account, destinazioni, programmazione e pubblicazione appartengono esclusivamente a InstaEdit.
+              Collegamento account, gruppi, canali, destinazioni, programmazione e pubblicazione appartengono esclusivamente a InstaEdit.
             </p>
             {INSTAEDIT_URL ? (
               <a
