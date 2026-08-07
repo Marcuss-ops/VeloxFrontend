@@ -23,7 +23,10 @@ describe('demo data cleanup', () => {
   it('uses the reversible quarantine utility for known demo fingerprints only', () => {
     const script = read('../../scripts/quarantine-dark-editor-demo-projects.sh');
 
-    expect(script).toContain('cp --preserve=mode,timestamps');
+    expect(script).toContain('--apply');
+    expect(script).toContain("const sourceSha256 = crypto.createHash('sha256')");
+    expect(script).toContain('mkdir "$LOCK_DIR"');
+    expect(script).toContain('fs.renameSync(tmpFile, dataFile);');
     expect(script).toContain('QUARANTINE_FILE');
     expect(script).toContain("project.velox_project_id || project.instaedit_project_id");
     expect(script).toContain("project.canvas_json.bar === 2");

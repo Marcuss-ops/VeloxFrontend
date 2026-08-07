@@ -14,19 +14,22 @@ channel, competitor, or feed records as real social data.
 Before changing a deployed or shared data directory:
 
 1. Stop writes to the target environment or use its normal maintenance window.
-2. Run the reversible utility from the repository root, optionally setting the actual runtime
-   data directory. The default is `web/dark_editor/data`:
+2. Run the utility from the repository root in dry-run mode first. The default is read-only;
+   `--apply` is mandatory for any change. Optionally set the actual runtime data directory:
 
    ```sh
-   ./scripts/quarantine-dark-editor-demo-projects.sh
-   # or: DARK_EDITOR_DATA_DIR=/srv/velox/data ./scripts/quarantine-dark-editor-demo-projects.sh
+   ./scripts/quarantine-dark-editor-demo-projects.sh --report ./operator/demo-cleanup-dry-run.json
+   # after reviewing the report:
+   ./scripts/quarantine-dark-editor-demo-projects.sh --apply --report ./operator/demo-cleanup-applied.json
+   # or: DARK_EDITOR_DATA_DIR=/srv/velox/data ./scripts/quarantine-dark-editor-demo-projects.sh --apply
    ```
 
-3. The utility creates a timestamped `.bak` copy and a `.quarantine.json` manifest, then writes
-   only the surviving records back to `projects.json`. The current `projects-store.ts` resolves
+3. On apply, the utility takes a checksum-backed timestamped `.bak` copy, writes a
+   `.quarantine.json` manifest and atomically replaces `projects.json`. A lock prevents
+   concurrent cleanup. The current `projects-store.ts` resolves
    its default file as `<process.cwd()>/data/projects.json`; use `DARK_EDITOR_DATA_DIR` only when
    the utility is pointed at an explicitly configured external data directory.
-4. Inspect both artifacts and record a checksum:
+4. Inspect the dry-run/apply report and both artifacts; the report records SHA-256 checksums:
 
    ```sh
    sha256sum "$DARK_EDITOR_DATA_DIR"/projects.json.* 2>/dev/null || true
@@ -36,8 +39,10 @@ Before changing a deployed or shared data directory:
    `id-A`/`id-B` fingerprints, rejects records with bridge fields, and preserves every other
    record. If any record is ambiguous, it is left untouched.
 
-This repository change keeps the tracked local seed at `[]`. The utility does not run a database
-DELETE and does not touch Velox editor content belonging to an authorized project.
+This repository keeps the tracked local seed at `[]`. The utility does not run a database
+DELETE and does not touch Velox editor content belonging to an authorized project. It only
+operates on the explicitly selected JSON data directory; the Velox SQLite file and remote
+production databases require separate, reviewed maintenance procedures.
 
 ## Verification
 
