@@ -7,7 +7,7 @@
 //
 // This module is the single source of truth for wire-level shapes
 // exchanged by mediaClient / projectClient / presetClient /
-// folderClient / driveClient. Clients import their types from here
+// folderClient. Clients import their types from here
 // so the barrel in lib/api.ts only has to re-export them once.
 
 // ------------------------------------------------------------------
@@ -132,39 +132,4 @@ export interface ProjectFolder {
   name: string;
   parent_id: string | null;
   created_at?: string;
-}
-
-// ------------------------------------------------------------------
-// Drive
-// ------------------------------------------------------------------
-
-export interface DriveGroup {
-  name: string;
-  folder_id?: string;
-  channels?: Array<{
-    id?: string;
-    channel?: string;
-    url?: string;
-    title?: string;
-    thumbnail?: string;
-  }>;
-}
-
-export interface DriveFile {
-  id: string;
-  name: string;
-  mimeType: string;
-  thumbnailLink?: string;
-  webViewLink?: string;
-  size?: number;
-}
-
-export interface DriveLink {
-  id: string;
-  name: string;
-  link: string;
-  parentId?: string;
-  language?: string;
-  createdAt?: number;
-  updatedAt?: number;
 }
