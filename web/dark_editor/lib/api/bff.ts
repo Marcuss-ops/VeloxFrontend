@@ -145,6 +145,22 @@ export {
 } from './bff/broadcast';
 
 export {
+  type GroupSummary,
+  type GroupVideo,
+  type GroupVideosResponse,
+  type ProjectTargetContext,
+} from './bff/youtubeGroups';
+
+export {
+  createYouTubeThumbnailBatch,
+  getYouTubeThumbnailBatch,
+  type YouTubeThumbnailBatchItemRequest,
+  type YouTubeThumbnailBatchCreateResponse,
+  type YouTubeThumbnailBatchItemStatus,
+  type YouTubeThumbnailBatchStatusResponse,
+} from './bff/youtubeThumbnailBatches';
+
+export {
   uploadMediaAsset,
   updateEditorSessionThumbnail,
 } from './bff/upload';

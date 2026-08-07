@@ -154,6 +154,7 @@ export interface EditorSessionDetail {
   platform_account_id: number;
   youtube_video_id: string;
   velox_project_id: string;
+  channel_id?: string;
   source_thumbnail_url?: string;
   thumbnail_media_id?: string | null;
   desired_privacy: string;
