@@ -3,13 +3,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Slider } from '@/components/ui/Slider';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
-import { Download, Loader2, FolderOpen, Youtube, CheckCircle2, ExternalLink, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { getCSRFHeaders, getDriveGroups, uploadToDrive, DriveGroup, createDriveFolder, getDriveLinks, DriveLink, getCopertineFolders, uploadImage, translateText } from '@/lib/api';
+import { Download, Loader2, Youtube, CheckCircle2, ExternalLink, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { getCSRFHeaders, translateText } from '@/lib/api';
 import { useProjectStore } from '@/stores/projectStore';
 import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
 import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
@@ -107,21 +106,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
   const [quality, setQuality] = useState(90);
   const [selectedOnly, setSelectedOnly] = useState(false);
 
-  // Drive integration state
-  const [driveGroups, setDriveGroups] = useState<DriveGroup[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<string>('');
-  const [uploadToDriveEnabled, setUploadToDriveEnabled] = useState(false);
-  const [createProjectFolder, setCreateProjectFolder] = useState(true);
-  const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
-  const [driveUploadComplete, setDriveUploadComplete] = useState(false);
-  const [uploadedFileUrl, setUploadedFileUrl] = useState<string>('');
-  const [loadingGroups, setLoadingGroups] = useState(false);
-
-  // Copertine folders state (for thumbnail exports linked to channels)
-  const [copertineFolders, setCopertineFolders] = useState<DriveLink[]>([]);
-  const [selectedCopertina, setSelectedCopertina] = useState<string>('');
-  const [loadingCopertine, setLoadingCopertine] = useState(false);
-
   // YouTube integration state
   const [uploadToYouTube] = useState(true);
   const [isUploadingToYouTube, setIsUploadingToYouTube] = useState(false);
@@ -203,13 +187,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     currentProjectId: isEditorSession ? currentProject?.id : undefined,
     currentProjectName: currentProject?.name,
   });
-  // Compatibility aliases for the legacy, unreachable render kept below
-  // while the new workspace is rolled out.
-  const selectedYouTubeGroup = selectedYouTubeGroupDetails?.name ?? '';
   const sortedVideos = visiblePrivateVideos;
-  const setSelectedYouTubeGroup = (name: string) => {
-    setSelectedCanonicalGroupId(canonicalGroups.find((group) => group.name === name)?.id ?? null);
-  };
   const canvasSignature = React.useMemo(
     () => canvasStateSignature(objects, EXPORT_WIDTH, EXPORT_HEIGHT),
     [objects],
@@ -244,33 +222,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       setVariantPreviews({});
     }
   }, [selectedObject?.id, selectedObject?.text]);
-
-  const loadDriveGroups = useCallback(async () => {
-    setLoadingGroups(true);
-    try {
-      const groups = await getDriveGroups();
-      setDriveGroups(groups);
-      if (groups.length > 0 && !selectedGroup) {
-        setSelectedGroup(groups[0].name);
-      }
-    } catch (error) {
-      console.error('Failed to load Drive groups:', error);
-    } finally {
-      setLoadingGroups(false);
-    }
-  }, [selectedGroup]);
-
-  const loadCopertineFolders = useCallback(async () => {
-    setLoadingCopertine(true);
-    try {
-      const folders = await getCopertineFolders();
-      setCopertineFolders(folders);
-    } catch (error) {
-      console.error('Failed to load copertine folders:', error);
-    } finally {
-      setLoadingCopertine(false);
-    }
-  }, []);
 
   const captureSnapshot = useCallback(async (): Promise<CanvasSnapshot | null> => {
     // Read the store at capture time. Do not rely on the render that created
@@ -308,8 +259,8 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
   }, [captureSnapshot]);
 
   // Repair old sessions whose persisted source image is dead or missing.
-  // The group endpoint is the same source used by the orange cards, so the
-  // canvas and the list cannot silently diverge anymore.
+  // The authorized project context is the same source used by the cards, so
+  // the canvas and the project payload cannot silently diverge anymore.
   useEffect(() => {
     if (!isEditorSession || !currentProject?.id || privateVideos.length === 0) return;
     const source = objects.find((object) => object.type === 'image' && object.name?.toLowerCase().includes('source thumbnail'));
@@ -530,8 +481,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     if (open) {
       resetSelection();
       setYoutubeUploadResults({});
-      setDriveUploadComplete(false);
-      setUploadedFileUrl('');
       setYoutubeUploadComplete(false);
       setYoutubeVideoId('');
       setYoutubePublishResult(null);
@@ -558,114 +507,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       };
     }
   }, [open, resetSelection]);
-
-  // Get copertina folder for selected group (matches by language/name)
-  const getCopertinaForGroup = (groupName: string): DriveLink | undefined => {
-    const normalizedName = groupName.toLowerCase();
-    return copertineFolders.find(folder => {
-      const folderName = folder.name?.toLowerCase() || '';
-      const folderLanguage = folder.language?.toLowerCase() || '';
-      return folderName === normalizedName ||
-             folderLanguage === normalizedName ||
-             folderName.includes(normalizedName) ||
-             normalizedName.includes(folderName);
-    });
-  };
-
-  // Get all copertine folders as options for the dropdown
-  const getCopertineOptions = (): DriveLink[] => {
-    // Return folders under the Copertine parent (parentId === '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ')
-    const copertineParentId = '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ';
-    return copertineFolders.filter(folder =>
-      folder.parentId === copertineParentId || folder.id === copertineParentId
-    );
-  };
-
-  // Get or create project folder in Drive
-  const getOrCreateProjectFolder = async (groupName: string, projectName: string): Promise<string | undefined> => {
-    const group = driveGroups.find(g => g.name === groupName);
-    if (!group?.folder_id) {
-      // Try to create folder with project name at root
-      try {
-        const folder = await createDriveFolder(projectName);
-        return folder.id;
-      } catch (error) {
-        console.error('Failed to create project folder:', error);
-        return undefined;
-      }
-    }
-
-    // Create subfolder with project name under group folder
-    try {
-      const folder = await createDriveFolder(projectName, group.folder_id);
-      return folder.id;
-    } catch (error) {
-      // Folder might already exist, return group folder
-      console.error('Failed to create project subfolder:', error);
-      return group.folder_id;
-    }
-  };
-
-  // Upload to Drive with project folder
-  const handleDriveUpload = async (blob: Blob, filename: string): Promise<{ success: boolean; fileId?: string; fileUrl?: string }> => {
-    if (!uploadToDriveEnabled || !selectedGroup) {
-      return { success: false };
-    }
-
-    setIsUploadingToDrive(true);
-    try {
-      // Determine target folder - prefer copertina folder if selected or auto-matched
-      let targetFolderId: string | undefined;
-
-      // Check if a copertina folder is selected or auto-matched
-      const copertinaFolder = selectedCopertina
-        ? copertineFolders.find(f => f.id === selectedCopertina)
-        : getCopertinaForGroup(selectedGroup);
-
-      if (copertinaFolder) {
-        // Use copertina folder for thumbnail exports
-        targetFolderId = copertinaFolder.id;
-
-        // Optionally create a subfolder with project name inside copertina
-        if (createProjectFolder && currentProject?.name) {
-          try {
-            const subfolder = await createDriveFolder(currentProject.name, copertinaFolder.id);
-            targetFolderId = subfolder.id;
-          } catch (error) {
-            console.error('Failed to create subfolder in copertina:', error);
-            // Continue with copertina folder directly
-          }
-        }
-      } else if (createProjectFolder && currentProject?.name) {
-        // Fall back to group folder structure
-        targetFolderId = await getOrCreateProjectFolder(selectedGroup, currentProject.name);
-      } else {
-        const group = driveGroups.find(g => g.name === selectedGroup);
-        targetFolderId = group?.folder_id;
-      }
-
-      // Create file from blob
-      const file = new File([blob], filename, { type: blob.type || 'image/png' });
-
-      // Upload to Drive
-      const result = await uploadToDrive(file, targetFolderId);
-
-      if (result.success) {
-        setDriveUploadComplete(true);
-        setUploadedFileUrl(result.web_view_link || '');
-        addToast({ type: 'success', message: `Uploaded to Drive: ${filename}` });
-        return { success: true, fileId: result.file_id, fileUrl: result.web_view_link };
-      } else {
-        throw new Error('Upload failed');
-      }
-    } catch (error: any) {
-      console.error('Drive upload failed:', error);
-      addToast({ type: 'error', message: `Drive upload failed: ${error?.message || 'Unknown error'}` });
-      return { success: false };
-    } finally {
-      setIsUploadingToDrive(false);
-    }
-  };
 
   const handleExport = useCallback(async () => {
     const liveState = useEditorStore.getState();
@@ -702,11 +543,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     if (format !== 'png') setCoverPreviewUrl(URL.createObjectURL(blob));
     setExportComplete(true);
 
-    let driveSuccess = false;
     let youtubeSuccess = false;
-    if (uploadToDriveEnabled && selectedGroup) {
-      driveSuccess = (await handleDriveUpload(blob, downloadName)).success;
-    }
 
     if (uploadToYouTube && targetVideos.length > 0) {
       setIsUploadingToYouTube(true);
@@ -790,8 +627,8 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
         setIsUploadingToYouTube(false);
       }
     }
-    if (driveSuccess || youtubeSuccess) addToast({ type: 'success', message: 'Export e upload completati' });
-  }, [addToast, allSelectedVariantsReady, captureSnapshot, canvasRef, currentProject, format, handleDriveUpload, quality, selectedGroup, selectedYouTubeGroupDetails, snapshotStale, targetVideos, uploadToDriveEnabled, uploadToYouTube, variantPreviews, youtubeTags]);
+    if (youtubeSuccess) addToast({ type: 'success', message: 'Export e upload completati' });
+  }, [addToast, allSelectedVariantsReady, captureSnapshot, canvasRef, currentProject, format, quality, selectedYouTubeGroupDetails, snapshotStale, targetVideos, uploadToYouTube, variantPreviews, youtubeTags]);
 
   if (open) {
     return (
@@ -904,8 +741,9 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
 
           <DialogFooter className="h-[70px] shrink-0 items-center justify-end gap-3 border-t border-white/[0.07] bg-[#111318]/95 px-5 backdrop-blur-xl">
             <Button variant="outline" onClick={handleClose} className="h-10 rounded-[10px] border-white/[0.09] px-4 text-sm text-white/75">Annulla</Button>
-            <Button onClick={() => { if (uploadToYouTube && targetVideos.length > 0) { if (snapshotStale || !snapshotRef.current) void captureSnapshot(); else if (!allSelectedVariantsReady) return; else void handleExport(); } else void handleExport(); }} disabled={isExporting || isUploadingToDrive || isUploadingToYouTube || isGeneratingPreviews} className="h-10 rounded-[10px] bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-500">
-              {(isExporting || isUploadingToDrive || isUploadingToYouTube || isGeneratingPreviews) ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isGeneratingPreviews ? 'Generazione…' : 'Applicazione…'}</> : <><Youtube className="mr-2 h-4 w-4" />{uploadToYouTube && targetVideos.length > 0 ? (snapshotStale || !allSelectedVariantsReady ? 'Generazione automatica…' : `Applica ${targetVideos.length} copertine`) : 'Esporta'}</>}
+            <Button onClick={() => { if (uploadToYouTube && targetVideos.length > 0) { if (snapshotStale || !snapshotRef.current) void captureSnapshot(); else if (!allSelectedVariantsReady) return; else void handleExport(); } else void handleExport(); }}                disabled={isExporting || isUploadingToYouTube || isGeneratingPreviews} className="h-10 rounded-[10px] bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-500">
+                  {(isExporting || isUploadingToYouTube || isGeneratingPreviews) ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isGeneratingPreviews ? 'Generazione…' : 'Applicazione…'}</> : <><Youtube className="mr-2 h-4 w-4" />{uploadToYouTube && targetVideos.length > 0 ? (snapshotStale || !allSelectedVariantsReady ? 'Generazione automatica…' : `Applica ${targetVideos.length} copertine`) : 'Esporta'}</>}
+
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1007,29 +845,13 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
               <div className="space-y-4">
                 {isEditorSession && (
                   <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 text-sm text-emerald-200">
-                    Video corrente del flusso InstaEdit. Puoi aggiungere altri video scegliendo un gruppo qui sotto.
+                    Video corrente del flusso InstaEdit. Gli eventuali video aggiuntivi arrivano solo dal contesto autorizzato del progetto.
                     {privateVideos[0]?.title && <div className="mt-1 font-semibold">{privateVideos[0].title}</div>}
                   </div>
                 )}
-                <div className="relative z-50 flex items-center justify-end gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 shadow-sm">
-                  <label className="text-xs font-semibold text-slate-400">Gruppo YouTube</label>
-                  <Select value={selectedYouTubeGroup} onValueChange={(value) => {
-                    setSelectedYouTubeGroup(value);
-                    setSelectedCanonicalGroupId(canonicalGroups.find((group) => group.name === value)?.id ?? null);
-                    setSelectedVideoIds([]);
-                  }}>
-                    <SelectTrigger className="h-8 w-48 border-slate-700 bg-slate-950 text-xs text-white">
-                      <SelectValue placeholder={canonicalGroups.length ? 'Seleziona un gruppo' : 'Nessun gruppo disponibile'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {canonicalGroups.map((g) => (
-                        <SelectItem key={g.name} value={g.name}>
-                          {g.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <p className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-400">
+                  Il gruppo, il canale e il video arrivano dal contesto di progetto autorizzato da InstaEdit.
+                </p>
 
                 {/* Video Selection List */}
                 <div className="space-y-2">
@@ -1237,7 +1059,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
         )}
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          {(driveUploadComplete || youtubeUploadComplete) ? (
+          {youtubeUploadComplete ? (
             <>
               <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
                 Done
@@ -1256,18 +1078,18 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                     else void handleExport();
                   } else void handleExport();
                 }}
-                disabled={isExporting || isUploadingToDrive || isUploadingToYouTube || isGeneratingPreviews}
+                disabled={isExporting || isUploadingToYouTube || isGeneratingPreviews}
                 className="w-full sm:w-auto"
               >
-                {(isExporting || isUploadingToDrive || isUploadingToYouTube || isGeneratingPreviews) ? (
+                {(isExporting || isUploadingToYouTube || isGeneratingPreviews) ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isUploadingToDrive ? 'Uploading to Drive...' : isUploadingToYouTube ? 'Uploading to YouTube...' : isGeneratingPreviews ? 'Generazione anteprime…' : 'Exporting...'}
+                    {isUploadingToYouTube ? 'Uploading to YouTube...' : isGeneratingPreviews ? 'Generazione anteprime…' : 'Exporting...'}
                   </>
                 ) : (
                   <>
                     {uploadToYouTube ? <Youtube className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-                    {uploadToYouTube && targetVideos.length > 0 ? (snapshotStale || !allSelectedVariantsReady ? 'Generazione automatica…' : `Applica ${targetVideos.length} copertine`) : uploadToDriveEnabled ? 'Export & Upload' : 'Export'}
+                    {uploadToYouTube && targetVideos.length > 0 ? (snapshotStale || !allSelectedVariantsReady ? 'Generazione automatica…' : `Applica ${targetVideos.length} copertine`) : 'Export'}
                   </>
                 )}
               </Button>
@@ -1278,7 +1100,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                     const ids = latestPrivateVideos.map((video) => video.video_id);
                     setSelectedVideoIds(ids);
                   }}
-                  disabled={isExporting || isUploadingToDrive || isUploadingToYouTube || loadingPrivateVideos}
+                  disabled={isExporting || isUploadingToYouTube || loadingPrivateVideos}
                   className="w-full sm:w-auto"
                   title="Seleziona l'ultimo video privato di ogni canale e genera le anteprime"
                 >
