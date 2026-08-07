@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Smartphone, Monitor, Eye, MoreVertical, Compass, Home, Clock } from 'lucide-react';
-import { mockCompetitors } from './FeedPreview/mockData';
 import { useEditorStore } from '@/stores/editorStore';
 import { exportStageToBlob } from '@/lib/canvasExport';
 
@@ -23,10 +22,10 @@ interface FeedPreviewDialogProps {
 export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPreviewDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [deviceMode, setDeviceMode] = useState<'desktop' | 'mobile'>('desktop');
-  const [videoTitle, setVideoTitle] = useState('AMISH STORIES: The Untold Truth of Secrets & Traditions');
-  const [channelName, setChannelName] = useState('Amish Stories');
-  const [viewCount, setViewCount] = useState('143K views');
-  const [publishTime, setPublishTime] = useState('3 hours ago');
+  const [videoTitle, setVideoTitle] = useState('');
+  const [channelName, setChannelName] = useState('');
+  const [viewCount, setViewCount] = useState('');
+  const [publishTime, setPublishTime] = useState('');
 
   // Track the blob URL we hand to <img src=...> so we can revoke it on
   // re-capture / close — otherwise we leak one URL per open.
@@ -178,38 +177,30 @@ export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPr
                         </div>
                       )}
                       <span className="absolute bottom-2 right-2 bg-black/85 text-[11px] font-medium px-1.5 py-0.5 rounded text-white tracking-wider">
-                        14:25
+                        --
                       </span>
                     </div>
 
                     <div className="flex gap-2.5 mt-1.5">
                       <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs uppercase border border-primary/30 shrink-0">
-                        {channelName.slice(0, 2)}
+                        {(channelName || '—').slice(0, 2)}
                       </div>
                       <div className="flex flex-col min-w-0">
                         <h4 className="text-sm font-semibold text-white leading-snug line-clamp-2 hover:text-slate-100">
-                          {videoTitle}
+                          {videoTitle || 'Titolo non impostato'}
                         </h4>
                         <span className="text-[12px] text-[#aaa] mt-1 hover:text-white transition-colors">
-                          {channelName}
+                          {channelName || 'Canale non impostato'}
                         </span>
                         <div className="text-[12px] text-[#aaa] mt-0.5 flex items-center gap-1.5">
-                          <span>{viewCount}</span>
-                          <span className="before:content-['•'] before:mr-1.5">{publishTime}</span>
+                          <span>{viewCount || '--'}</span>
+                          <span className="before:content-['•'] before:mr-1.5">{publishTime || '--'}</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Competitor / adjacent cards */}
-                  {mockCompetitors.map((video) => (
-                    <div key={video.id} className="flex flex-col gap-2 group cursor-pointer p-2 rounded-2xl hover:bg-white/5 transition-colors">
-                      <div className="relative aspect-video w-full bg-slate-800 rounded-xl overflow-hidden shadow-md">
-                        <img src={video.thumbnail} alt={video.title} className="object-cover w-full h-full" />
-                        <span className="absolute bottom-2 right-2 bg-black/85 text-[11px] font-medium px-1.5 py-0.5 rounded text-white tracking-wider">
-                          11:40
-                        </span>
-                      </div>
+                </div>
 
                       <div className="flex gap-2.5 mt-1.5">
                         <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
@@ -265,17 +256,17 @@ export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPr
                         </div>
                       )}
                       <span className="absolute bottom-2 right-2 bg-black/85 text-[10px] font-bold px-1.5 py-0.5 rounded text-white">
-                        14:25
+                        --
                       </span>
                     </div>
 
                     <div className="flex gap-2.5 mt-1">
                       <div className="w-9 h-9 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs border border-primary/30 shrink-0">
-                        {channelName.slice(0, 2)}
+                        {(channelName || '—').slice(0, 2)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="text-xs font-bold text-white leading-tight line-clamp-2">
-                          {videoTitle}
+                          {videoTitle || 'Titolo non impostato'}
                         </h4>
                         <div className="text-[10px] text-[#aaa] mt-1 flex items-center gap-1.5 flex-wrap">
                           <span>{channelName}</span>
@@ -289,15 +280,10 @@ export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPr
                     </div>
                   </div>
 
-                  {/* Competitor Card Mobile */}
-                  {mockCompetitors.slice(0, 2).map((video) => (
-                    <div key={video.id} className="border-b-4 border-slate-900 p-3 flex flex-col gap-2">
-                      <div className="relative aspect-video w-full bg-slate-800 rounded-lg overflow-hidden">
-                        <img src={video.thumbnail} alt={video.title} className="object-cover w-full h-full" />
-                        <span className="absolute bottom-2 right-2 bg-black/85 text-[10px] font-bold px-1.5 py-0.5 rounded text-white">
-                          11:40
-                        </span>
-                      </div>
+                  <div className="border-b-4 border-slate-900 p-3 text-center text-xs text-slate-500">
+                    Nessun altro video viene mostrato: il contesto del feed deve arrivare da InstaEdit.
+                  </div>
+                </div>
 
                       <div className="flex gap-2.5 mt-1">
                         <div className="w-9 h-9 rounded-full overflow-hidden shrink-0">
