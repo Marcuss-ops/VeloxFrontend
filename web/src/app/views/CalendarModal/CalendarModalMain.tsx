@@ -2,7 +2,7 @@
  * Calendar Modal Component — Main Entry Point
  *
  * Video Production Calendar - Google Drive Integration
- * With YouTube Group selection and automatic Drive folder association
+ * Folder context is supplied explicitly by the authorized project flow.
  *
  * Modularized architecture:
  * - types.ts: Shared types and utilities
@@ -28,6 +28,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
     selectedDay,
     selectedMonth,
     selectedYear,
+    projectContext,
     onClose,
     onSave,
     onDelete
@@ -37,13 +38,13 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
         selectedMonth,
         selectedYear,
         initialEvent: event,
+        projectContext,
         onClose,
     });
 
     const {
         title, setTitle, titles, setTitles, youtubeGroup,
         stockFootage, initialClips, intermediateClips, finalClips,
-        youtubeGroups, driveGroups, loadingGroups,
         stockSubfolders, clipSubfolders, loadingStockSubfolders, loadingClipSubfolders,
         selectedStockFolderId, setSelectedStockFolderId,
         selectedInitialClipFolderId, setSelectedInitialClipFolderId,
@@ -61,13 +62,11 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
         clipDetailFiles, clipDetailLoading, setClipDetailLoading,
         audioPlayerUrl, setAudioPlayerUrl, textContent, setTextContent,
         textContentLoading, setTextContentLoading,
-        selectedDriveGroup: selectedDriveGroupRaw, monthName, clipFolderNameById, stockFolderNameById,
+        monthName, clipFolderNameById, stockFolderNameById,
         handleRemoveClip, handleSave, openClipPicker, scheduleClipPicker,
         cancelClipPickerHover, addClipFromFile, handleClipHoverPreview,
         setClipDetailFiles, setClipDetailLoading: setClipDetailLoadingState,
     } = state;
-
-    const selectedDriveGroup = selectedDriveGroupRaw || null;
 
     // Override handleSave to call parent onSave
     const handleSaveWithParent = () => {
@@ -174,11 +173,6 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                             setTitle={setTitle}
                             titles={titles}
                             setTitles={setTitles}
-                            youtubeGroup={youtubeGroup}
-                            youtubeGroups={youtubeGroups}
-                            driveGroups={driveGroups}
-                            loadingGroups={loadingGroups}
-                            selectedDriveGroup={selectedDriveGroup}
                             scriptText={scriptText}
                             setScriptText={setScriptText}
                             youtubeLinks={youtubeLinks}
@@ -224,7 +218,6 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                             openClipPicker={openClipPicker}
                             scheduleClipPicker={scheduleClipPicker}
                             cancelClipPickerHover={cancelClipPickerHover}
-                            selectedDriveGroup={selectedDriveGroup}
                         />
                     )}
                 </div>

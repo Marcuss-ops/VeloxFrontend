@@ -8,7 +8,7 @@
 import React from 'react';
 import { Folder, RefreshCw } from 'lucide-react';
 import { ClipThumbnail } from './ClipThumbnail';
-import type { VideoClip, DriveFolderLite, DriveGroup, ClipType } from './types';
+import type { VideoClip, DriveFolderLite, ClipType } from './types';
 
 interface ClipsTabProps {
     stockSubfolders: DriveFolderLite[];
@@ -34,7 +34,6 @@ interface ClipsTabProps {
     openClipPicker: (folder: DriveFolderLite, type: ClipType) => void;
     scheduleClipPicker: (folder: DriveFolderLite, type: ClipType) => void;
     cancelClipPickerHover: () => void;
-    selectedDriveGroup: DriveGroup | null;
 }
 
 export const ClipsTab: React.FC<ClipsTabProps> = ({
@@ -47,7 +46,6 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
     initialClips, intermediateClips, finalClips,
     handleRemoveClip, handleClipHoverPreview,
     openClipPicker, scheduleClipPicker, cancelClipPickerHover,
-    selectedDriveGroup,
 }) => {
     const renderClipFolderPicker = (selectedId: string, onSelect: (id: string) => void, type: ClipType) => {
         if (loadingClipSubfolders) {
@@ -60,7 +58,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
         if (clipSubfolders.length === 0) {
             return (
                 <div className="text-center py-3 text-white/30 text-[10px]">
-                    {selectedDriveGroup?.clip ? 'No clip subfolders found' : 'Select a social group to load clip folders'}
+                    No clip folders available for this project context
                 </div>
             );
         }
@@ -126,7 +124,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                     </div>
                 ) : (
                     <div className="text-center py-4 text-white/30 text-xs">
-                        {selectedDriveGroup?.stock ? 'No subfolders found' : 'Select a social group to load stock folders'}
+                        No stock folders available for this project context
                     </div>
                 )}
             </section>
@@ -149,7 +147,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                         ))}
                         {initialClips.length === 0 && (
                             <div className="col-span-full text-center py-3 text-white/30 text-xs">
-                                {selectedDriveGroup?.clip ? 'Seleziona cartella clip sopra' : 'Select group'}
+                                Seleziona cartella clip sopra
                             </div>
                         )}
                     </div>
@@ -196,23 +194,6 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
                 </section>
             </div>
 
-            {/* Voiceover Section */}
-            {selectedDriveGroup?.voiceover && (
-                <section className="p-4 bg-white/5 rounded-xl border border">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-orange-400 flex items-center gap-2">
-                            <span className="material-symbols-outlined text-sm">mic</span>
-                            Voiceover
-                        </h3>
-                        <span className="text-[9px] bg-orange-500/20 px-2 py-1 rounded text-orange-300">{selectedDriveGroup.voiceover.name}</span>
-                    </div>
-                    <div className="text-center py-6 text-white/30 text-xs">
-                        <span className="material-symbols-outlined text-3xl mb-2 block opacity-30">mic</span>
-                        Cartella voiceover: {selectedDriveGroup.voiceover.name}
-                        <br /><span className="text-[10px]">Clicca per visualizzare i file audio</span>
-                    </div>
-                </section>
-            )}
         </>
     );
 };

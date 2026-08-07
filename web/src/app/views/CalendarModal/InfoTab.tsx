@@ -2,23 +2,17 @@
  * Info Tab Component
  *
  * Renders the Info tab of the Calendar Modal:
- * Title input, YouTube group selector, script text, and YouTube links.
+ * Title input, project metadata, script text, and YouTube links.
  */
 
 import React from 'react';
-import { Eye, FileText, Link, RefreshCw, X } from 'lucide-react';
-import type { YouTubeGroup, DriveGroup } from './types';
+import { Eye, FileText, Link, X } from 'lucide-react';
 
 interface InfoTabProps {
     title: string;
     setTitle: (v: string) => void;
     titles: string[];
     setTitles: (fn: (prev: string[]) => string[]) => void;
-    youtubeGroup: string;
-    youtubeGroups: YouTubeGroup[];
-    driveGroups: DriveGroup[];
-    loadingGroups: boolean;
-    selectedDriveGroup: DriveGroup | null;
     scriptText: string;
     setScriptText: (v: string) => void;
     youtubeLinks: string[];
@@ -40,8 +34,7 @@ interface InfoTabProps {
 }
 
 export const InfoTab: React.FC<InfoTabProps> = ({
-    title, setTitle, titles, setTitles, youtubeGroup,
-    youtubeGroups, loadingGroups, selectedDriveGroup,
+    title, setTitle, titles, setTitles,
     scriptText, setScriptText, youtubeLinks, setYoutubeLinks,
     newYoutubeLink, setNewYoutubeLink,
     voiceoverPaths, setVoiceoverPaths,
@@ -96,56 +89,11 @@ export const InfoTab: React.FC<InfoTabProps> = ({
                 </div>
             )}
 
-            {/* Social Group Selector */}
-            <section className="p-4 bg-white/5 rounded-xl border border">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400 flex items-center gap-2">
-                        <Eye className="size-[18px] " />
-                        Social Group
-                    </h3>
-                    {selectedDriveGroup && (
-                        <span className="text-[9px] bg-green-500/20 px-2 py-1 rounded text-green-300">
-                            Drive: {selectedDriveGroup.display}
-                        </span>
-                    )}
-                </div>
-
-                {loadingGroups ? (
-                    <div className="flex items-center justify-center py-4">
-                        <RefreshCw className="size-4 animate-spin" />
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                        {youtubeGroups.map(group => (
-                            <button
-                                key={group.name}
-                                onClick={() => {}}
-                                className={`p-2 rounded-lg border transition-all ${
-                                    youtubeGroup === group.name ? 'bg-purple-500/30 border-purple-500 text-white' : 'bg-white/5 border text-white/70 hover:bg-white/10'
-                                }`}
-                            >
-                                <div className="text-[10px] font-bold truncate">{group.name}</div>
-                                <div className="text-[8px] text-white/40">{group.channels?.length || 0} ch</div>
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                {youtubeGroup && selectedDriveGroup && (
-                    <div className="mt-3 p-2 bg-black/30 rounded-lg text-[10px] text-white/50">
-                        <div className="flex gap-4">
-                            {selectedDriveGroup.stock && (
-                                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-400 rounded-full"></span>Stock: {selectedDriveGroup.stock.name}</span>
-                            )}
-                            {selectedDriveGroup.clip && (
-                                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full"></span>Clips: {selectedDriveGroup.clip.name}</span>
-                            )}
-                            {selectedDriveGroup.voiceover && (
-                                <span className="flex items-center gap-1"><span className="w-2 h-2 bg-orange-400 rounded-full"></span>Voiceover: {selectedDriveGroup.voiceover.name}</span>
-                            )}
-                        </div>
-                    </div>
-                )}
+            <section className="rounded-xl border border-dashed border-purple-400/20 bg-purple-500/[0.04] p-4">
+                <p className="text-[11px] leading-relaxed text-white/55">
+                    Gruppi, canali e cartelle social non sono gestiti dal calendario Velox.
+                    Per collegare nuovi asset apri il progetto dal contesto autorizzato di InstaEdit.
+                </p>
             </section>
 
             {/* Script Text Section */}

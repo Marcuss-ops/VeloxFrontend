@@ -111,7 +111,9 @@ system. The only cross-service project reference is the opaque
 `instaedit.velox.project-bridge.v1`.
 
 The editor receives one authorized project context from InstaEdit and owns
-only canvas state, scenes, layers, timelines, revisions and render jobs.
+only canvas state, scenes, layers, timelines, revisions and render jobs. Any
+Drive folder IDs used by auxiliary project UI are opaque, project-scoped bridge
+context; they are never resolved from global groups or Drive-link catalogs.
 Velox must not list or mutate global groups/channels, persist membership
 snapshots, share InstaEdit's database, or run bidirectional synchronization.
 Global catalog routes return `410 Gone` with `owner: instaedit`. The editor

@@ -10,10 +10,6 @@ interface DrivePickerModalProps {
     title: string;
     initialFolderId?: string | null;
     initialFolderName?: string | null;
-    /** Gruppo YouTube selezionato in tab Script: apre il modal già nella cartella corrispondente (clip/stock/voiceover) */
-    selectedGroup?: string | null;
-    /** ID cartella master (Clips / Stock / Voiceover) per risolvere selectedGroup da drive_links */
-    masterFolderId?: string | null;
     onSelectFolder: (folder: { id: string; name: string }) => void;
     onSelectClip?: (clip: { id: string; name: string; url: string }) => void;
     onSelectClips?: (clips: Array<{ id: string; name: string; url: string }>) => void;

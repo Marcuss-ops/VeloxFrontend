@@ -102,7 +102,8 @@ interface CalendarEvent {
     date: number;           // Giorno del mese (1-31)
     month: number;          // Mese (0-11, come Date.getMonth())
     year: number;           // Anno completo (es. 2025)
-    youtubeGroup?: string;  // Nome gruppo YouTube associato
+    /** Campo wire legacy, conservato solo per round-trip degli eventi esistenti. */
+    youtubeGroup?: string;
     stockFootage: VideoClip[];
     initialClips: VideoClip[];
     intermediateClips: VideoClip[];
@@ -326,7 +327,9 @@ const file = await driveApi.getFile(fileId);
 
 ## Drive Links API (driveLinksApi.ts)
 
-API per gestire i link Drive associati ai gruppi YouTube.
+API legacy per compatibilità con flussi esistenti. Il calendario non usa questo
+catalogo per ricostruire gruppi o autorizzare cartelle: il contesto Drive deve
+arrivare dal project bridge di InstaEdit.
 
 ### Tipi
 

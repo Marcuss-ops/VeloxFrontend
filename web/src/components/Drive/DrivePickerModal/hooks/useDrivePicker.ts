@@ -24,10 +24,6 @@ interface DrivePickerModalProps {
     title: string;
     initialFolderId?: string | null;
     initialFolderName?: string | null;
-    /** Gruppo YouTube selezionato in tab Script: apre il modal già nella cartella corrispondente (clip/stock/voiceover) */
-    selectedGroup?: string | null;
-    /** ID cartella master (Clips / Stock / Voiceover) per risolvere selectedGroup da drive_links */
-    masterFolderId?: string | null;
     onSelectFolder: (folder: { id: string; name: string }) => void;
     onSelectClip?: (clip: { id: string; name: string; url: string }) => void;
     onSelectClips?: (clips: Array<{ id: string; name: string; url: string }>) => void;
@@ -38,8 +34,6 @@ interface FolderNode {
     name: string;
 }
 
-const normalizeGroup = (s: string) => (s || '').trim().toLowerCase();
-
 export const useDrivePicker = ({
     open,
     onClose,
@@ -47,8 +41,6 @@ export const useDrivePicker = ({
     title,
     initialFolderId,
     initialFolderName,
-    selectedGroup,
-    masterFolderId,
     onSelectFolder,
     onSelectClip,
     onSelectClips,
@@ -126,52 +118,12 @@ export const useDrivePicker = ({
 
             if (folderId) {
                 startPath = [{ id: folderId, name: folderName }];
-            } else if (selectedGroup && masterFolderId) {
-                setLoading(true);
-                setError(null);
-                try {
-                    const apiBase = (window.API_BASE_URL || '').toString().trim();
-                    const res = await fetch(`${apiBase}/api/drive/folders`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ parent_id: masterFolderId }),
-                    });
-                    const data = await res.json();
-                    if (res.ok && data?.folders && Array.isArray(data.folders)) {
-                        const want = normalizeGroup(selectedGroup);
-                        const matched = data.folders.find(
-                            (f: { id?: string; name?: string; language?: string }) => {
-                                const n = normalizeGroup((f.name || '').toString());
-                                const lang = normalizeGroup((f.language || '').toString());
-                                return n === want || lang === want || n.includes(want) || want.includes(n);
-                            },
-                        );
-                        if (matched?.id) {
-                            const resolvedId = matched.id;
-                            const resolvedName = (matched.name || selectedGroup || '').toString();
-                            folderId = resolvedId;
-                            folderName = resolvedName;
-                            startPath = [
-                                { id: masterFolderId as string, name: 'Master' },
-                                { id: resolvedId, name: resolvedName },
-                            ];
-                        }
-                    }
-                } catch (e) {
-                    setError((e as Error)?.message || 'Errore caricamento gruppi');
-                } finally {
-                    setLoading(false);
-                }
             }
 
             if (!folderId) {
                 setFolders([]);
                 setFiles([]);
-                if (!selectedGroup || !masterFolderId) {
-                    setError('Cartella base non configurata per questo gruppo.');
-                } else {
-                    setError('Nessuna cartella trovata per il gruppo "' + (selectedGroup || '') + '". Seleziona una cartella manualmente.');
-                }
+                setError('Cartella base non configurata per questo progetto.');
                 setPath([]);
                 return;
             }
@@ -180,7 +132,7 @@ export const useDrivePicker = ({
         };
 
         run();
-    }, [open, initialFolderId, initialFolderName, selectedGroup, masterFolderId]);
+    }, [open, initialFolderId, initialFolderName]);
 
     useEffect(() => () => {
         if (previewTimer) window.clearTimeout(previewTimer);

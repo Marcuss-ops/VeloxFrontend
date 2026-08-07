@@ -2,7 +2,7 @@
 
 ## Panoramica
 
-Il modulo Calendar fornisce un'interfaccia calendario completa per la gestione dei progetti video. Supporta drag-and-drop degli eventi, integrazione con Google Drive per lo stock footage e i clip, e selezione gruppi YouTube per l'associazione automatica delle cartelle Drive.
+Il modulo Calendar fornisce un'interfaccia calendario completa per la gestione dei progetti video. Supporta drag-and-drop degli eventi e l'uso di cartelle Drive esclusivamente tramite contesto di progetto autorizzato.
 L'evento calendario può ora anche essere collegato a un job video in coda, con stato sincronizzato dal backend.
 
 ## Struttura File
@@ -282,7 +282,8 @@ interface CalendarEvent {
     date: number;          // Giorno del mese
     month: number;         // Mese (0-11)
     year: number;          // Anno
-    youtubeGroup?: string; // Gruppo YouTube associato
+    /** Campo wire legacy, conservato solo per round-trip degli eventi esistenti. */
+    youtubeGroup?: string;
     stockFootage: VideoClip[];
     initialClips: VideoClip[];
     intermediateClips: VideoClip[];
@@ -324,13 +325,13 @@ calendarApi.getByDateRange(startMonth, startYear, endMonth, endYear)  // Eventi 
 
 ## CalendarModal
 
-Modal completo per creare/modificare eventi con integrazione Google Drive e YouTube.
+Modal completo per creare/modificare eventi con asset Drive forniti dal contesto di progetto autorizzato.
 
 ### Sistema di Tab
 
 Il modal è organizzato in 3 tab principali:
 
-1. **Info** - Informazioni base, gruppo YouTube, stock footage e clip
+1. **Info** - Informazioni base, metadati progetto, stock footage e clip
 2. **Script** - Gestione titoli, categorie, script e link YouTube
 3. **Clips** - Panoramica tutti i clip con modal dettagli
 
@@ -342,8 +343,7 @@ Il modal è organizzato in 3 tab principali:
    - Supporto titoli multipli separati da virgola
    - Tag modificabili singolarmente
    - Pulsante "Scegli Titolo" per selezione da categorie
-2. **YouTube Group Selector** - Selezione gruppo canali YouTube
-3. **Drive Integration** - Associazione automatica cartelle Drive per:
+2. **Project-scoped Drive Integration** - Cartelle ricevute dal bridge autorizzato per:
    - Stock Footage
    - Initial Clips
    - Intermediate Clips
@@ -405,24 +405,12 @@ Le funzioni Nvadia per i titoli sono integrate tramite:
 
 ### Integrazione Drive
 
-Quando si seleziona un gruppo YouTube:
-1. Il sistema cerca il gruppo Drive corrispondente
-2. Carica le sottocartelle per stock e clip
-3. Permette di selezionare file specifici da aggiungere
+Quando InstaEdit apre il calendario con un contesto di progetto autorizzato:
+1. Passa gli ID opachi delle cartelle stock/clip eventualmente disponibili
+2. Velox carica solo le sottocartelle di quegli ID
+3. L'utente può selezionare file specifici da aggiungere
 
-```typescript
-// Flusso integrazione
-YouTube Group Selection
-        │
-        ▼
-Drive Group Match (per lingua/nome)
-        │
-        ▼
-Load Subfolders (stock, clip, voiceover)
-        │
-        ▼
-File Selection (per tipo clip)
-```
+Senza contesto di progetto, il calendario non effettua lookup globali e mostra uno stato vuoto sicuro.
 
 ## Routing
 
@@ -456,8 +444,7 @@ navigate('/calendar?month=2&year=2025');
 
 1. Click su un giorno vuoto
 2. Inserisci titolo
-3. Seleziona gruppo YouTube (opzionale)
-4. Aggiungi stock footage e clip
+3. Se il bridge fornisce cartelle autorizzate, aggiungi stock footage e clip
 5. Salva
 
 ### Modifica Evento
@@ -491,7 +478,6 @@ navigate('/calendar?month=2&year=2025');
 
 - [ ] Vista settimanale
 - [ ] Vista giornaliera
-- [ ] Filtro per gruppo YouTube
 - [ ] Esportazione calendario
 - [ ] Notifiche eventi
 - [ ] Ricorrenze eventi

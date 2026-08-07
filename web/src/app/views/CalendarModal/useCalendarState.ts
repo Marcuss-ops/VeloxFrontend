@@ -6,17 +6,17 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { driveLinksApi, type ProjectStatus } from '@/lib/api';
-import type { DriveLink } from '@/lib/api';
+import type { ProjectStatus } from '@/lib/api';
 import { loadCategories } from '@/lib/api/titleCategories';
-import type { VideoClip, YouTubeGroup, DriveGroup, DriveFolderLite, DriveFile, ClipType } from './types';
-import { parseDriveFoldersResponse, parseDriveFilesAsFolders, fetchDriveFiles, groupDriveLinksIntoDriveGroups } from './types';
+import type { CalendarProjectFolderContext, VideoClip, DriveFolderLite, DriveFile, ClipType } from './types';
+import { fetchDriveFiles } from './types';
 
 interface UseCalendarStateProps {
     selectedDay: number;
     selectedMonth: number;
     selectedYear: number;
     initialEvent: CalendarEventInternal | null;
+    projectContext?: CalendarProjectFolderContext;
     onClose: () => void;
 }
 
@@ -26,6 +26,7 @@ interface CalendarEventInternal {
     date: number;
     month: number;
     year: number;
+    /** Legacy wire field; never used for folder lookup or authorization. */
     youtubeGroup?: string;
     status?: ProjectStatus;
     stockFootage: VideoClip[];
@@ -41,7 +42,7 @@ interface CalendarEventInternal {
     projectStatus?: ProjectStatus;
 }
 
-export function useCalendarState({ selectedDay, selectedMonth, selectedYear, initialEvent, onClose }: UseCalendarStateProps) {
+export function useCalendarState({ selectedDay, selectedMonth, selectedYear, initialEvent, projectContext, onClose }: UseCalendarStateProps) {
     const [title, setTitle] = useState(initialEvent?.title || '');
     const [titles, setTitles] = useState<string[]>([]);
     const [youtubeGroup, setYoutubeGroup] = useState(initialEvent?.youtubeGroup || '');
@@ -51,10 +52,6 @@ export function useCalendarState({ selectedDay, selectedMonth, selectedYear, ini
     const [finalClips, setFinalClips] = useState<VideoClip[]>(initialEvent?.finalClips || []);
 
     // Data from APIs
-    const [youtubeGroups, setYoutubeGroups] = useState<YouTubeGroup[]>([]);
-    const [driveGroups, setDriveGroups] = useState<DriveGroup[]>([]);
-    const [driveLinks, setDriveLinks] = useState<DriveLink[]>([]);
-    const [loadingGroups, setLoadingGroups] = useState(true);
     const [stockSubfolders, setStockSubfolders] = useState<DriveFolderLite[]>([]);
     const [clipSubfolders, setClipSubfolders] = useState<DriveFolderLite[]>([]);
     const [loadingStockSubfolders, setLoadingStockSubfolders] = useState(false);
@@ -141,7 +138,7 @@ export function useCalendarState({ selectedDay, selectedMonth, selectedYear, ini
                     const draft = JSON.parse(saved);
                     if (draft.title) setTitle(draft.title);
                     if (draft.titles) setTitles(draft.titles);
-                    if (draft.youtubeGroup) setYoutubeGroup(draft.youtubeGroup);
+                    if (typeof draft.youtubeGroup === 'string') setYoutubeGroup(draft.youtubeGroup);
                     if (draft.scriptText) setScriptText(draft.scriptText);
                     if (draft.youtubeLinks) setYoutubeLinks(draft.youtubeLinks);
                     if (draft.voiceoverPaths) setVoiceoverPaths(draft.voiceoverPaths);
@@ -167,111 +164,77 @@ export function useCalendarState({ selectedDay, selectedMonth, selectedYear, ini
         return () => window.clearTimeout(timer);
     }, [initialEvent, title, titles, youtubeGroup, scriptText, youtubeLinks, voiceoverPaths, selectedCategory, projectStatus, stockFootage, initialClips, intermediateClips, finalClips, saveDraft]);
 
-    // Load Drive groups (YouTube Manager removed)
+    // Folder lists are loaded only from explicit project folder context. Velox does
+    // not enumerate drive_links or infer folders from a social/group label.
     useEffect(() => {
-        const loadGroups = async () => {
-            setLoadingGroups(true);
-            try {
-                const driveLinksResult = await driveLinksApi.list();
-                if (driveLinksResult?.links) {
-                    const links = driveLinksResult.links as DriveLink[];
-                    setDriveLinks(links);
-                    setDriveGroups(groupDriveLinksIntoDriveGroups(links));
-                }
-            } catch (err) {
-                console.error('[CalendarModal] Failed to load groups:', err);
-            } finally {
-                setLoadingGroups(false);
-            }
-        };
-        loadGroups();
-    }, []);
+        setStockSubfolders([]);
+        setClipSubfolders([]);
+        setSelectedStockFolderId('');
+        setSelectedInitialClipFolderId('');
+        setSelectedIntermediateClipFolderId('');
+        setSelectedFinalClipFolderId('');
+    }, [initialEvent?.id]);
 
-    // Selected drive group
-    const selectedDriveGroup = useMemo(() => {
-        if (!youtubeGroup || driveGroups.length === 0) return null;
-        let match = driveGroups.find(g => g.group.toLowerCase() === youtubeGroup.toLowerCase());
-        if (!match) {
-            match = driveGroups.find(g =>
-                g.group.toLowerCase().includes(youtubeGroup.toLowerCase()) ||
-                youtubeGroup.toLowerCase().includes(g.group.toLowerCase())
-            );
-        }
-        return match;
-    }, [youtubeGroup, driveGroups]);
-
-    // Load subfolders when group changes
+    // Load only the explicit folder context supplied by the project bridge.
+    // No global Drive-link catalog or social/group matching is performed.
     useEffect(() => {
-        if (!selectedDriveGroup) {
-            setStockSubfolders([]);
-            setClipSubfolders([]);
-            return;
-        }
+        const controller = new AbortController();
+        setStockSubfolders([]);
+        setClipSubfolders([]);
+        setStockFolderCounts({});
+        setSelectedStockFolderId('');
+        setSelectedInitialClipFolderId('');
+        setSelectedIntermediateClipFolderId('');
+        setSelectedFinalClipFolderId('');
 
-        setLoadingStockSubfolders(true);
-        setLoadingClipSubfolders(true);
-
-        const stockParentId = (selectedDriveGroup.stock?.id || selectedDriveGroup.clip?.id);
-        const clipParentId = selectedDriveGroup.clip?.id;
-
-        const fetchFolders = async (parentId?: string, signal?: AbortSignal) => {
-            if (!parentId) return [] as DriveFolderLite[];
-            const res = await fetch('/api/drive/folders', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ parent_id: parentId }),
-                signal,
-            });
-            const folders = await parseDriveFoldersResponse(res);
-            if (folders.length === 0) {
-                const filesRes = await fetch('/api/drive/files', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ folder_id: parentId }),
-                    signal,
-                });
-                const filesAsFolders = await parseDriveFilesAsFolders(filesRes);
-                if (filesAsFolders.length > 0) return filesAsFolders;
-            }
-            return folders;
-        };
-
-        const loadSubfolders = async (signal?: AbortSignal) => {
+        const loadSubfolders = async () => {
+            setLoadingStockSubfolders(Boolean(projectContext?.stockFolderId));
+            setLoadingClipSubfolders(Boolean(projectContext?.clipFolderId));
             try {
-                const [stockApi, clipApi] = await Promise.all([
-                    fetchFolders(stockParentId, signal),
-                    fetchFolders(clipParentId, signal),
+                const [stockResponse, clipResponse] = await Promise.all([
+                    projectContext?.stockFolderId
+                        ? fetch(`/api/drive/folders`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ parent_id: projectContext.stockFolderId }),
+                            signal: controller.signal,
+                        })
+                        : null,
+                    projectContext?.clipFolderId
+                        ? fetch(`/api/drive/folders`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ parent_id: projectContext.clipFolderId }),
+                            signal: controller.signal,
+                        })
+                        : null,
                 ]);
 
-                const stockFallback = stockParentId
-                    ? driveLinks.filter(link => link.parentId === stockParentId).map(link => ({ id: link.id, name: link.name, parentId: link.parentId }))
-                    : [];
-                const clipFallback = clipParentId
-                    ? driveLinks.filter(link => link.parentId === clipParentId).map(link => ({ id: link.id, name: link.name, parentId: link.parentId }))
-                    : [];
-
-                const stockFolders = stockApi.length > 0 ? stockApi : stockFallback;
-                const clipFolders = clipApi.length > 0 ? clipApi : clipFallback;
-
+                const parseFolders = async (response: Response | null) => {
+                    if (!response || !response.ok) return [] as DriveFolderLite[];
+                    const data = await response.json().catch(() => null) as { folders?: DriveFolderLite[] } | null;
+                    return Array.isArray(data?.folders) ? data.folders : [];
+                };
+                const stockFolders = await parseFolders(stockResponse);
+                const clipFolders = await parseFolders(clipResponse);
                 setStockSubfolders(stockFolders);
                 setClipSubfolders(clipFolders);
                 setSelectedStockFolderId(stockFolders[0]?.id || '');
                 setSelectedInitialClipFolderId(clipFolders[0]?.id || '');
                 setSelectedIntermediateClipFolderId(clipFolders[0]?.id || '');
                 setSelectedFinalClipFolderId(clipFolders[0]?.id || '');
-            } catch (err) {
-                if (signal?.aborted) return;
-                console.error('[CalendarModal] Failed to load Drive subfolders:', err);
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    console.error('[CalendarModal] Failed to load project folders:', error);
+                }
             } finally {
                 setLoadingStockSubfolders(false);
                 setLoadingClipSubfolders(false);
             }
         };
-
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => { loadSubfolders(controller.signal); }, 150);
-        return () => { window.clearTimeout(timer); controller.abort(); };
-    }, [selectedDriveGroup, driveLinks]);
+        loadSubfolders();
+        return () => controller.abort();
+    }, [projectContext?.stockFolderId, projectContext?.clipFolderId]);
 
     // Load stock folder counts
     useEffect(() => {
@@ -428,7 +391,6 @@ export function useCalendarState({ selectedDay, selectedMonth, selectedYear, ini
         // State
         title, setTitle, titles, setTitles, youtubeGroup, setYoutubeGroup,
         stockFootage, setStockFootage, initialClips, intermediateClips, finalClips,
-        youtubeGroups, driveGroups, driveLinks, loadingGroups,
         stockSubfolders, clipSubfolders, loadingStockSubfolders, loadingClipSubfolders,
         selectedStockFolderId, setSelectedStockFolderId,
         selectedInitialClipFolderId, setSelectedInitialClipFolderId,
@@ -447,7 +409,7 @@ export function useCalendarState({ selectedDay, selectedMonth, selectedYear, ini
         audioPlayerUrl, setAudioPlayerUrl, textContent, setTextContent,
         textContentLoading, setTextContentLoading,
         // Computed
-        selectedDriveGroup, monthName, clipFolderNameById, stockFolderNameById,
+        monthName, clipFolderNameById, stockFolderNameById,
         // Handlers
         handleRemoveClip, handleSave, openClipPicker, scheduleClipPicker,
         cancelClipPickerHover, addClipFromFile, handleClipHoverPreview,
