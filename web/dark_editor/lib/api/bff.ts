@@ -7,8 +7,8 @@
  *
  * LIVE-UPDATE EXTENSION (this commit):
  *
- * The Groups card in the main Vite app (web/src/app/views/GroupsView)
- * needs to reflect the publish outcome the instant the POST resolves,
+ * The InstaEdit Social SPA (deployed separately) reflects the publish
+ * outcome the instant the POST resolves,
  * plus the eventual drift reconciler's actual_privacy update. The
  * following surface additions ship in this file:
  *
@@ -32,9 +32,9 @@
  *     drift reconciler without an SSE endpoint.
  *
  *  4. publishBroadcast() — fires a `BroadcastChannel('instaedit-publish')`
- *     event so the main Vite app's Groups card can apply the
- *     optimistic update synchronously without polling. Same-origin
- *     same-browser only; cross-tab within the same InstaEdit domain.
+ *     event so the InstaEdit Social SPA can apply the optimistic update
+ *     synchronously without polling. Same-origin same-browser only;
+ *     cross-tab within the same InstaEdit domain.
  */
 
 // All shared HTTP infrastructure (bffFetch CSRF-aware JSON fetch +
@@ -145,20 +145,10 @@ export {
 } from './bff/broadcast';
 
 export {
-  type GroupSummary,
   type GroupVideo,
   type GroupVideosResponse,
   type ProjectTargetContext,
 } from './bff/youtubeGroups';
-
-export {
-  createYouTubeThumbnailBatch,
-  getYouTubeThumbnailBatch,
-  type YouTubeThumbnailBatchItemRequest,
-  type YouTubeThumbnailBatchCreateResponse,
-  type YouTubeThumbnailBatchItemStatus,
-  type YouTubeThumbnailBatchStatusResponse,
-} from './bff/youtubeThumbnailBatches';
 
 export {
   uploadMediaAsset,

@@ -43,7 +43,6 @@ describe('useBatchYouTubeTargets project context', () => {
       '/dark_editor_v2/api/v1/youtube/editor-sessions/by-project/ve_project-1',
       expect.objectContaining({ credentials: 'include', cache: 'no-store' }),
     );
-    expect(result.current.groups).toEqual([]);
     expect(result.current.videos).toHaveLength(1);
     expect(result.current.videos[0]).toMatchObject({
       video_id: 'video-1',
@@ -73,7 +72,6 @@ describe('useBatchYouTubeTargets project context', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toMatch(/context unavailable/i);
-    expect(result.current.groups).toEqual([]);
     expect(result.current.videos).toEqual([]);
     expect(fetchMock).toHaveBeenCalledOnce();
   });

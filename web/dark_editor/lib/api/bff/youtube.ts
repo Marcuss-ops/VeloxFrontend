@@ -59,7 +59,7 @@ export interface YouTubeTranslation {
 //
 // LIVE-UPDATE EXTENSION:
 // The response now ALSO ships the three optimistic-update targets the
-// Groups card consumes (see publishBroadcast + the main SPA's
+// InstaEdit Social SPA consumes (see publishBroadcast + the main SPA's
 // useEditorSessionLiveUpdate hook):
 //   - status                  'published' after the orchestrator
 //     stamps the row
@@ -128,7 +128,7 @@ export async function publishEditorSession(
     }
   );
 
-  // Contract guard: the Groups card relies on this field for optimistic
+  // Contract guard: the InstaEdit Social SPA relies on this field for optimistic
   // updates. A backend response that omits it would silently break the
   // cross-SPA broadcast, so fail fast instead of propagating an undefined
   // value.

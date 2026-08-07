@@ -3,9 +3,8 @@
 //
 // Lives in lib/api/bff/broadcast.ts (commit 7 of the api-bff refactor
 // series; the FINAL structural commit). The dark editor (publisher)
-// and the main Vite app's GroupsView (listener) MUST use the same
-// channel name — see web/src/lib/broadcast/publishChannel.ts for the
-// listener-side declaration of the same constant.
+// and the InstaEdit Social SPA (listener) MUST use the same channel
+// name — the InstaEdit Social app owns the listener side.
 //
 // Re-exported at lib/api/bff.ts (the barrel) so legacy
 // `@/lib/api/bff` callers (ExportDialog + useEditorSessionLiveUpdate +
@@ -41,9 +40,9 @@ export interface PublishBroadcastPayload {
 }
 
 /**
- * publishBroadcast — fire a BroadcastChannel event so the main Vite
- * app's Groups card can apply the optimistic update synchronously
- * without polling.
+ * publishBroadcast — fire a BroadcastChannel event so the InstaEdit
+ * Social SPA can apply the optimistic update synchronously without
+ * polling.
  *
  * Defensive in headless/test environments: if BroadcastChannel is
  * undefined (Node, Vitest, JSDOM without polyfill), this is a no-op.
