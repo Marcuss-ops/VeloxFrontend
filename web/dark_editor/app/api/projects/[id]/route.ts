@@ -1,50 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProject, updateProject, deleteProject } from '@/lib/projects-store';
+import { deleteProject, getProject, updateProject } from '@/lib/projects-store';
+import { authorizeEditorProject } from '@/lib/editor-ownership';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/projects/[id] - get single project
-export async function GET(
-  _request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
-    const project = getProject(id);
+type Context = { params: Promise<{ id: string }> };
 
-    if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
-
-    return NextResponse.json(project);
-  } catch (error) {
-    console.error('[projects] Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { error: 'Failed to get project' },
-      { status: 500 }
-    );
-  }
+async function authorize(request: NextRequest, id: string): Promise<NextResponse | null> {
+  const result = await authorizeEditorProject(request, id);
+  return result.ok ? null : NextResponse.json(
+    { ok: false, error: result.error, owner: 'instaedit' },
+    { status: result.status },
+  );
 }
 
-// DELETE /api/projects/[id] - delete project
-export async function DELETE(
-  _request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
-    const deleted = deleteProject(id);
+export async function GET(request: NextRequest, context: Context) {
+  const { id } = await context.params;
+  const denied = await authorize(request, id);
+  if (denied) return denied;
+  const project = getProject(id);
+  return project
+    ? NextResponse.json(project)
+    : NextResponse.json({ error: 'Project not found' }, { status: 404 });
+}
 
-    if (!deleted) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
-    }
+export async function POST(request: NextRequest, context: Context) {
+  const { id } = await context.params;
+  const denied = await authorize(request, id);
+  if (denied) return denied;
+  const body = await request.json();
+  const project = updateProject(id, body);
+  return project
+    ? NextResponse.json(project)
+    : NextResponse.json({ error: 'Project not found' }, { status: 404 });
+}
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('[projects] Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { error: 'Failed to delete project' },
-      { status: 500 }
-    );
-  }
+export async function DELETE(request: NextRequest, context: Context) {
+  const { id } = await context.params;
+  const denied = await authorize(request, id);
+  if (denied) return denied;
+  return deleteProject(id)
+    ? NextResponse.json({ success: true })
+    : NextResponse.json({ error: 'Project not found' }, { status: 404 });
 }

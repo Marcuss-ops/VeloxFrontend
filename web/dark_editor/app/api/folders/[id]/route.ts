@@ -1,78 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getFolder, updateFolder, deleteFolder } from '@/lib/folders';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/folders/[id] - get single folder
-export async function GET(
-  _request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
-    const folder = getFolder(id);
-
-    if (!folder) {
-      return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
-    }
-
-    return NextResponse.json(folder);
-  } catch (error) {
-    console.error('[folders] Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { error: 'Failed to get folder' },
-      { status: 500 }
-    );
-  }
+/** Individual folders are not part of the Velox editor context. */
+export async function GET() {
+  return NextResponse.json(
+    { ok: false, error: 'editor_folder_catalog_removed', owner: 'instaedit' },
+    { status: 410 },
+  );
 }
 
-// PUT /api/folders/[id] - update folder
-export async function PUT(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
-    const body = await request.json();
-
-    const updated = updateFolder(id, {
-      name: body.name,
-      parent_id: body.parent_id,
-    });
-
-    if (!updated) {
-      return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
-    }
-
-    return NextResponse.json(updated);
-  } catch (error) {
-    console.error('[folders] Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { error: 'Failed to update folder' },
-      { status: 500 }
-    );
-  }
+export async function PUT() {
+  return NextResponse.json(
+    { ok: false, error: 'editor_folder_catalog_removed', owner: 'instaedit' },
+    { status: 410 },
+  );
 }
 
-// DELETE /api/folders/[id] - delete folder
-export async function DELETE(
-  _request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await context.params;
-    const deleted = deleteFolder(id);
-
-    if (!deleted) {
-      return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('[folders] Error:', error instanceof Error ? error.message : error);
-    return NextResponse.json(
-      { error: 'Failed to delete folder' },
-      { status: 500 }
-    );
-  }
+export async function DELETE() {
+  return NextResponse.json(
+    { ok: false, error: 'editor_folder_catalog_removed', owner: 'instaedit' },
+    { status: 410 },
+  );
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EditorSessionDetail } from '@/lib/api/bff/youtube';
-import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
+import type { GroupSummary, GroupVideo } from '@/lib/api/bff/youtubeGroups';
 
 interface UseBatchYouTubeTargetsOptions {
   enabled: boolean;
@@ -16,6 +16,7 @@ interface UseBatchYouTubeTargetsOptions {
  * absent from this state machine; those domains remain InstaEdit-owned.
  */
 export type ProjectEditorTarget = GroupVideo;
+type CompatibilityGroup = GroupSummary & { workspace_id?: number };
 
 function targetFromSession(session: EditorSessionDetail, projectName?: string): ProjectEditorTarget {
   const videoID = session.youtube_video_id;
@@ -132,9 +133,9 @@ export function useBatchYouTubeTargets({
     // Temporary compatibility fields for the export dialog. They are empty
     // by design and have no setters/API behind them; the UI slice removes
     // these group/account selectors entirely.
-    groups: [],
-    selectedGroup: null,
-    selectedGroupId: null,
+    groups: [] as CompatibilityGroup[],
+    selectedGroup: null as CompatibilityGroup | null,
+    selectedGroupId: null as number | null,
     setSelectedGroupId: (_id: number | null) => undefined,
     accounts,
     selectedAccountId,

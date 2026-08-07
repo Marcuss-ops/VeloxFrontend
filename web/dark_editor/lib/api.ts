@@ -1,137 +1,849 @@
 // API client for Dark Editor V2
-// All endpoints route through the InstaEdit BFF at /api/v1/editor
-// which proxies to the Velox master. The browser stays on the same
-// origin so the InstaEdit session cookie + CSRF double-submit are
-// preserved.
+// All endpoints point to Go backend at /dark_editor_v2
+// Single source of truth: Go backend owns all APIs
 
-// After commit 8 every HTTP verb is consumed exclusively by the
-// per-domain client modules under lib/api/<domain>Client.ts. The
-// raw-fetcher import that used to live here emptied out with
-// driveClient.ts and was deliberately removed — new HTTP calls go
-// directly through `'./api/httpClient'`.
+// Use relative path - Go backend is the single owner of APIs
+// Browser will call directly to Go backend (port 8000) or through gateway
+const API_BASE = '/dark_editor_v2';
 
-// Types live in lib/api/types.ts. We import all 17 here because the
-// `export type { ... }` block immediately below needs them in local
-// scope (the `export type { X } from './m'` form does NOT bind the
-// names locally — same TS2304 footgun we fixed in commit 1).
-//
-// Even though most of these types are no longer referenced by the
-// surviving client wrappers in api.ts itself, the back-compat barrel
-// must keep re-exporting all 17 names because 19 call sites
-// (e.g. app/DarkEditorHome.tsx's `import { type Project }`) import
-// them through '@/lib/api'. Following the refactor plan, new code
-// should import these directly from '@/lib/api/types'.
-import type {
-  UploadResponse,
-  FilterRequest,
-  FilterResponse,
-  TransformRequest,
-  ExportRequest,
-  GenerateRequest,
-  GenerateResponse,
-  UpscaleRequest,
-  UpscaleResponse,
-  RemoveBgRequest,
-  RemoveBgResponse,
-  RemoveBgStatusResponse,
-  Project,
-  Preset,
-  ProjectFolder,
-  DriveGroup,
-  DriveFile,
-  DriveLink,
-} from './api/types';
+/** Headers required for cookie-authenticated mutating API requests. */
+export function getCSRFHeaders(): Record<string, string> {
+  if (typeof document === 'undefined') return {};
+  const token = document.cookie
+    .split('; ')
+    .find((cookie) => cookie.startsWith('csrf_token='))
+    ?.slice('csrf_token='.length);
+  return token ? { 'X-CSRF-Token': decodeURIComponent(token) } : {};
+}
 
-export type {
-  UploadResponse,
-  FilterRequest,
-  FilterResponse,
-  TransformRequest,
-  ExportRequest,
-  GenerateRequest,
-  GenerateResponse,
-  UpscaleRequest,
-  UpscaleResponse,
-  RemoveBgRequest,
-  RemoveBgResponse,
-  RemoveBgStatusResponse,
-  Project,
-  Preset,
-  ProjectFolder,
-  DriveGroup,
-  DriveFile,
-  DriveLink,
-};
+/** Resolve URLs returned by the editor API to browser-loadable asset URLs. */
+export function resolveEditorAssetUrl(value: string | undefined): string {
+  if (!value) return '';
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  if (value.startsWith(`${API_BASE}/`)) return value;
+  if (value.startsWith('/')) return value;
+  // The Go/Next upload APIs return temp/<filename>; the file route is /api/temp/.
+  if (value.startsWith('temp/')) return `${API_BASE}/api/${value}`;
+  return `${API_BASE}/${value.replace(/^\/+/, '')}`;
+}
 
-// URL helpers live in lib/api/utils.ts — re-exported here for
-// back-compat so existing call sites (`@/lib/api`) keep working.
-export {
-  extractFilenameFromPath,
-  getTempFileUrl,
-  getProjectFileUrl,
-} from './api/utils';
+// Request Manager to handle AbortControllers for concurrent requests
+class RequestManager {
+  private controllers = new Map<string, AbortController>();
 
-// Media client lives in lib/api/mediaClient.ts — re-exported here
-// for back-compat so existing call sites (`@/lib/api`) keep working.
-export {
-  uploadImage,
-  applyFilter,
-  transformImage,
-  exportImage,
-  generateImage,
-  upscaleImage,
-  removeBackground,
-  getBackgroundRemovalStatus,
-} from './api/mediaClient';
+  getSignal(key: string): AbortSignal {
+    // Abort previous request of the same type if it exists
+    if (this.controllers.has(key)) {
+      this.controllers.get(key)!.abort();
+    }
+    const controller = new AbortController();
+    this.controllers.set(key, controller);
+    return controller.signal;
+  }
 
-// Project client lives in lib/api/projectClient.ts — re-exported
-// here for back-compat so existing call sites (`@/lib/api`) keep
-// working.
-export {
-  listProjects,
-  getProject,
-  saveProject,
-  deleteProject,
-} from './api/projectClient';
+  clear(key: string) {
+    this.controllers.delete(key);
+  }
+}
 
+const requestManager = new RequestManager();
 
+export interface UploadResponse {
+  filename: string;
+  url: string;
+}
 
+export interface FilterRequest {
+  filename: string;
+  filter_type: string;
+  value: number;
+}
 
+export interface FilterResponse {
+  filename: string;
+  url: string;
+}
 
-// Preset client lives in lib/api/presetClient.ts — re-exported
-// here for back-compat so existing call sites (`@/lib/api`) keep
-// working.
-export {
-  listPresets,
-  getPreset,
-  savePreset,
-  updatePreset,
-  deletePreset,
-} from './api/presetClient';
+export function extractFilenameFromPath(pathOrUrl: string): string {
+  const withoutHash = pathOrUrl.split('#')[0] ?? '';
+  const withoutQuery = withoutHash.split('?')[0] ?? '';
+  const parts = withoutQuery.split('/').filter(Boolean);
+  return parts[parts.length - 1] ?? '';
+}
 
+export interface TransformRequest {
+  filename: string;
+  crop_box?: [number, number, number, number];
+  resize_dims?: [number, number];
+}
 
+export interface ExportRequest {
+  filename: string;
+  format: string;
+  quality: number;
+}
 
-// Folder client lives in lib/api/folderClient.ts — re-exported
-// here for back-compat so existing call sites (`@/lib/api`) keep
-// working.
-export {
-  listFolders,
-  createFolder,
-  updateFolder,
-  deleteFolder,
-  assignProjectToFolder,
-} from './api/folderClient';// Drive client lives in lib/api/driveClient.ts — re-exported
-// here for back-compat so existing call sites (`@/lib/api`) keep
-// working. The 2 module-private lookup-table constants that drive
-// the Copertine/category helpers stay private inside driveClient.ts
-// (they were never part of the original api.ts barrel surface).
-export {
-  getDriveGroups,
-  getDriveFiles,
-  uploadToDrive,
-  createDriveFolder,
-  listDriveFolders,
-  getDriveLinks,
-  getDriveLinksByCategory,
-  getCopertineFolders,
-} from './api/driveClient';
+export interface GenerateRequest {
+  prompt: string;
+  width?: number;
+  height?: number;
+  seed?: number;
+  steps?: number;
+}
+
+export interface GenerateResponse {
+  filename: string;
+  url: string;
+  prompt: string;
+}
+
+export interface UpscaleRequest {
+  filename: string;
+  scale?: number;
+  save_in_place?: boolean;
+}
+
+export interface UpscaleResponse {
+  filename: string;
+  url: string;
+  saved_at?: string;
+}
+
+export interface YouTubeGrabRequest {
+  url: string;
+}
+
+export interface YouTubeGrabResponse {
+  filename: string;
+  video_id: string;
+  url: string;
+}
+
+export interface RemoveBgRequest {
+  filename: string;
+  model?: string;
+  output_format?: string;
+  async?: boolean;
+}
+
+export interface RemoveBgResponse {
+  filename?: string;
+  url?: string;
+  processing?: boolean;
+  task_id?: string;
+  error?: string;
+}
+
+export interface RemoveBgStatusResponse {
+  task_id: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  filename?: string;
+  url?: string;
+  error?: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  type: string;
+  canvas_json: Record<string, unknown>;
+  preview_url: string;
+  created_at: string;
+  updated_at: string;
+  folder_id?: string | null;
+}
+
+function safeAssetUrl(value: string | undefined, videoId?: string): string {
+  if (value && (/^https?:\/\//i.test(value) || value.startsWith('data:') || value.startsWith('/'))) {
+    return value;
+  }
+  return videoId ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg` : '';
+}
+
+// Upload an image
+export async function uploadImage(file: File): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE}/api/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Upload failed');
+  }
+
+  return response.json();
+}
+
+// Apply a filter to an image
+export async function applyFilter(request: FilterRequest): Promise<FilterResponse> {
+  const response = await fetch(`${API_BASE}/process/filter`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Filter failed');
+  }
+
+  return response.json();
+}
+
+// Transform an image (crop/resize)
+export async function transformImage(request: TransformRequest): Promise<FilterResponse> {
+  const response = await fetch(`${API_BASE}/process/transform`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Transform failed');
+  }
+
+  return response.json();
+}
+
+// Export an image
+export async function exportImage(request: ExportRequest): Promise<{ url: string; filename: string }> {
+  const response = await fetch(`${API_BASE}/export`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Export failed');
+  }
+
+  return response.json();
+}
+
+// Generate an image using AI
+export async function generateImage(request: GenerateRequest): Promise<GenerateResponse> {
+  const response = await fetch(`${API_BASE}/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Generation failed');
+  }
+
+  return response.json();
+}
+
+export async function upscaleImage(request: UpscaleRequest): Promise<UpscaleResponse> {
+  const response = await fetch(`${API_BASE}/api/upscale`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Upscale failed');
+  }
+
+  return response.json();
+}
+
+// Grab YouTube thumbnail
+export async function grabYouTubeThumbnail(request: YouTubeGrabRequest): Promise<YouTubeGrabResponse> {
+  const response = await fetch(`${API_BASE}/api/tools/youtube_grab`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'YouTube grab failed');
+  }
+
+  return response.json();
+}
+
+// Remove background
+export async function removeBackground(request: RemoveBgRequest): Promise<RemoveBgResponse> {
+  const signal = requestManager.getSignal(`remove-bg-${request.filename}`);
+
+  const response = await fetch(`${API_BASE}/api/remove-bg`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    signal,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Background removal failed');
+  }
+
+  const result = await response.json();
+  requestManager.clear(`remove-bg-${request.filename}`);
+  return result;
+}
+
+// Get background removal status
+export async function getBackgroundRemovalStatus(taskId: string): Promise<RemoveBgStatusResponse> {
+  const response = await fetch(`${API_BASE}/api/remove-bg/status/${taskId}`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get background removal status');
+  }
+
+  return response.json();
+}
+
+// List projects
+export async function listProjects(type?: string): Promise<Project[]> {
+  const url = type
+    ? `${API_BASE}/api/projects?type=${encodeURIComponent(type)}`
+    : `${API_BASE}/api/projects`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to list projects');
+  }
+
+  return response.json();
+}
+
+// Get a project
+export async function getProject(id: string): Promise<Project> {
+  if (id.startsWith('ve_')) {
+    // YouTube editor sessions provide the initial thumbnail metadata, while
+    // the Dark Editor project endpoint stores the actual canvas snapshot.
+    // Prefer the persisted canvas on reload; otherwise every refresh would
+    // rebuild the editor from the original thumbnail and discard edits.
+    const persistedResponse = await fetch(`${API_BASE}/api/projects/${encodeURIComponent(id)}`, {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (persistedResponse.ok) {
+      return persistedResponse.json();
+    }
+
+    const response = await fetch(`${API_BASE}/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(id)}`, {
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to get editor session');
+    }
+    const session = await response.json() as {
+      velox_project_id: string;
+      youtube_video_id: string;
+      source_thumbnail_url?: string;
+      draft_title?: string;
+      created_at: string;
+      updated_at: string;
+    };
+    const thumbnail = safeAssetUrl(session.source_thumbnail_url, session.youtube_video_id);
+    return {
+      id: session.velox_project_id || id,
+      name: session.draft_title || `YouTube thumbnail ${session.youtube_video_id}`,
+      type: 'youtube_thumbnail',
+      canvas_json: {
+        width: 1280,
+        height: 720,
+        objects: thumbnail ? [{
+          id: `youtube-source-${session.youtube_video_id}`,
+          type: 'image',
+          x: 0,
+          y: 0,
+          width: 1280,
+          height: 720,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          visible: true,
+          locked: false,
+          name: 'YouTube source thumbnail',
+          src: thumbnail,
+        }] : [],
+      },
+      preview_url: thumbnail,
+      created_at: session.created_at,
+      updated_at: session.updated_at,
+    };
+  }
+
+  const response = await fetch(`${API_BASE}/api/projects/${id}`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get project');
+  }
+
+  return response.json();
+}
+
+// Save an existing editor project. Global project creation is retired:
+// InstaEdit creates/authorizes the opaque ve_* handle first, and Velox
+// persists only the canvas document under that project-scoped route.
+export async function saveProject(project: {
+  id: string;
+  name: string;
+  type?: string;
+  canvas_json: Record<string, unknown>;
+  preview_filename?: string;
+}): Promise<{ id: string; message: string }> {
+  const response = await fetch(`${API_BASE}/api/projects/${encodeURIComponent(project.id)}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...getCSRFHeaders() },
+    body: JSON.stringify(project),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to save project');
+  }
+
+  const saved = await response.json() as Project;
+  return { id: saved.id || project.id, message: 'Project saved' };
+}
+
+// Delete a project
+export async function deleteProject(id: string): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/api/projects/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to delete project');
+  }
+
+  return response.json();
+}
+
+// Get temp file URL
+export function getTempFileUrl(filename: string): string {
+  return resolveEditorAssetUrl(`temp/${filename}`);
+}
+
+// Get project file URL
+export function getProjectFileUrl(projectId: string, filename: string): string {
+  return `${API_BASE}/api/projects/${projectId}/${filename}`;
+}
+
+// =====================
+// PRESET MANAGEMENT
+// =====================
+
+export interface Preset {
+  id: string;
+  name: string;
+  type: 'complete' | 'text';
+  description?: string;
+  objects?: Record<string, unknown>[];
+  textObjects?: Record<string, unknown>[];
+  previewUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// List presets
+export async function listPresets(): Promise<Preset[]> {
+  const response = await fetch(`${API_BASE}/api/presets`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to list presets');
+  }
+
+  return response.json();
+}
+
+// Get a preset
+export async function getPreset(id: string): Promise<Preset> {
+  const response = await fetch(`${API_BASE}/api/presets/${id}`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get preset');
+  }
+
+  return response.json();
+}
+
+// Save a preset
+export async function savePreset(preset: {
+  name: string;
+  type: 'complete' | 'text';
+  description?: string;
+  objects?: Record<string, unknown>[];
+  textObjects?: Record<string, unknown>[];
+}): Promise<{ id: string; message: string }> {
+  const response = await fetch(`${API_BASE}/api/presets`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(preset),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to save preset');
+  }
+
+  return response.json();
+}
+
+// Update a preset
+export async function updatePreset(id: string, preset: {
+  name?: string;
+  type?: 'complete' | 'text';
+  description?: string;
+  objects?: Record<string, unknown>[];
+  textObjects?: Record<string, unknown>[];
+}): Promise<Preset> {
+  const response = await fetch(`${API_BASE}/api/presets/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(preset),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update preset');
+  }
+
+  return response.json();
+}
+
+// Delete a preset
+export async function deletePreset(id: string): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/api/presets/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to delete preset');
+  }
+
+  return response.json();
+}
+
+// =====================
+// FOLDER MANAGEMENT
+// =====================
+
+export interface ProjectFolder {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  created_at?: string;
+}
+
+// Folder CRUD is exposed by the dark editor app under its Next.js basePath.
+// These calls must include the basePath, otherwise the browser resolves them
+// against `/api/*` and receives an HTML page instead of JSON.
+const FOLDERS_API_BASE = `${API_BASE}/api/folders`;
+
+// List folders
+export async function listFolders(): Promise<ProjectFolder[]> {
+  const response = await fetch(FOLDERS_API_BASE, { cache: 'no-store' });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to list folders');
+  }
+
+  return response.json();
+}
+
+// Create folder
+export async function createFolder(folder: {
+  name: string;
+  parent_id?: string | null;
+}): Promise<ProjectFolder> {
+  const response = await fetch(FOLDERS_API_BASE, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(folder),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create folder');
+  }
+
+  return response.json();
+}
+
+// Update folder
+export async function updateFolder(id: string, folder: {
+  name?: string;
+  parent_id?: string | null;
+}): Promise<ProjectFolder> {
+  const response = await fetch(`${FOLDERS_API_BASE}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(folder),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update folder');
+  }
+
+  return response.json();
+}
+
+// Delete folder
+export async function deleteFolder(id: string): Promise<{ success: boolean }> {
+  const response = await fetch(`${FOLDERS_API_BASE}/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to delete folder');
+  }
+
+  return response.json();
+}
+
+// Assign project to folder
+export async function assignProjectToFolder(projectId: string, folderId: string | null): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/api/projects/${projectId}/folder`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ folder_id: folderId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to assign project to folder');
+  }
+
+  return response.json();
+}
+
+// =====================
+// DRIVE INTEGRATION
+// =====================
+
+export interface DriveGroup {
+  name: string;
+  folder_id?: string;
+  channels?: Array<{
+    id?: string;
+    channel?: string;
+    url?: string;
+    title?: string;
+    thumbnail?: string;
+  }>;
+}
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  thumbnailLink?: string;
+  webViewLink?: string;
+  size?: number;
+}
+
+// Get Drive groups (channel groups)
+export async function getDriveGroups(): Promise<DriveGroup[]> {
+  let response: Response;
+  try { response = await fetch(`${API_BASE}/api/drive/groups`); } catch { return []; }
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return data.groups || [];
+}
+
+// Get Drive files in a folder
+export async function getDriveFiles(folderId?: string): Promise<DriveFile[]> {
+  const url = folderId
+    ? `${API_BASE}/api/drive/files?folder_id=${encodeURIComponent(folderId)}`
+    : `${API_BASE}/api/drive/files`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get Drive files');
+  }
+
+  const data = await response.json();
+  return data.files || [];
+}
+
+// Upload to Drive
+export async function uploadToDrive(file: File, folderId?: string): Promise<{ success: boolean; file_id?: string; web_view_link?: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (folderId) formData.append('folder_id', folderId);
+
+  const response = await fetch(`${API_BASE}/api/drive/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to upload to Drive');
+  }
+
+  return response.json();
+}
+
+// Create folder on Drive
+export async function createDriveFolder(name: string, parentId?: string): Promise<{ id: string; name: string; webViewLink?: string }> {
+  const response = await fetch(`${API_BASE}/api/drive/folders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, parent_id: parentId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create Drive folder');
+  }
+
+  return response.json();
+}
+
+// List Drive folders (subfolders of a parent folder)
+export async function listDriveFolders(parentId?: string): Promise<Array<{ id: string; name: string }>> {
+  const url = parentId
+    ? `${API_BASE}/api/drive/folders?parent_id=${encodeURIComponent(parentId)}`
+    : `${API_BASE}/api/drive/folders`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to list Drive folders');
+  }
+
+  const data = await response.json();
+  return data.folders || [];
+}
+
+// =====================
+// DRIVE LINKS (Copertine)
+// =====================
+
+export interface DriveLink {
+  id: string;
+  name: string;
+  link: string;
+  parentId?: string;
+  language?: string;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+// Get Drive links from drive_links.json
+export async function getDriveLinks(): Promise<DriveLink[]> {
+  let response: Response;
+  try { response = await fetch(`${API_BASE}/api/drive/links`); } catch { return []; }
+
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return data.links || [];
+}
+
+// Get Drive links organized by category (Copertine, Clips, etc.)
+export async function getDriveLinksByCategory(): Promise<Record<string, DriveLink[]>> {
+  const links = await getDriveLinks();
+
+  // Group by parent folder name
+  const categories: Record<string, DriveLink[]> = {};
+
+  // Known parent folders
+  const parentNames: Record<string, string> = {
+    '1wt4hqmHD5qEsNhpUUBszlRkSHhyFgtGh': 'Stock Master',
+    '1ID_oFJF15Q5nmiZF0d2NaJeKhsOJpQNS': 'Clips',
+    '1wFhLmyyIH5rKSbtQuCuua9a2LKQymA8A': 'Voiceover',
+    '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ': 'Copertine',
+    'folder-1772027317539': 'VideoYoutube',
+  };
+
+  for (const link of links) {
+    if (link.parentId) {
+      const categoryName = parentNames[link.parentId] || link.parentId;
+      if (!categories[categoryName]) {
+        categories[categoryName] = [];
+      }
+      categories[categoryName].push(link);
+    } else {
+      // Root level folder
+      if (!categories['Root']) {
+        categories['Root'] = [];
+      }
+      categories['Root'].push(link);
+    }
+  }
+
+  return categories;
+}
+
+// Get Copertine folders (for thumbnail exports)
+export async function getCopertineFolders(): Promise<DriveLink[]> {
+  const links = await getDriveLinks();
+
+  // Find folders under "Copertine" parent
+  const copertineParentId = '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ';
+
+  return links.filter(link =>
+    link.parentId === copertineParentId ||
+    link.name.toLowerCase().includes('copertin') ||
+    link.id === copertineParentId
+  );
+}
+
+export interface TranslateRequest {
+  text: string;
+  target_language: string;
+  tone?: string;
+  preserve_hashtags?: boolean;
+  kind?: 'title' | 'description' | 'text';
+}
+
+export interface TranslateResponse {
+  ok: boolean;
+  source_text: string;
+  sanitized_text: string;
+  translated_text: string;
+  target_language: string;
+}
+
+export async function translateText(request: TranslateRequest): Promise<TranslateResponse> {
+  const response = await fetch(`${API_BASE}/api/v1/youtube/ai/translate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Translation failed');
+  }
+
+  return response.json();
+}

@@ -1,729 +1,1293 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/Dialog';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
+import { Button } from '@/components/ui/Button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { Slider } from '@/components/ui/Slider';
 import { useUIStore } from '@/stores/uiStore';
+import { useEditorStore } from '@/stores/editorStore';
+import { useImageProcessor } from '@/hooks/useImageProcessor';
+import { Download, Loader2, FolderOpen, Youtube, CheckCircle2, ExternalLink, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { getCSRFHeaders, getDriveGroups, uploadToDrive, DriveGroup, createDriveFolder, getDriveLinks, DriveLink, getCopertineFolders, uploadImage, translateText } from '@/lib/api';
 import { useProjectStore } from '@/stores/projectStore';
-import { Download, Save, Send } from 'lucide-react';
-import { useDriveIntegration } from '@/hooks/useDriveIntegration';
-import { useExportOperation } from '@/hooks/useExportOperation';
-import { useAutoSaveDraft } from '@/hooks/useAutoSaveDraft';
-import { useToast } from '@/components/ui/Toast';
-import FormatQualitySection from './export/FormatQualitySection';
-import CanvasInfoSection from './export/CanvasInfoSection';
-import ExportFooter from './export/ExportFooter';
-import MetadataFields from './export/MetadataFields';
-import TranslationsList from './export/TranslationsList';
-import PrivacySelector from './export/PrivacySelector';
-import ScheduleSelector, {
-  isScheduleInPast,
-  localToUTC,
-} from './export/ScheduleSelector';
-import { useExportFormatQuality } from './export/useExportFormatQuality';
-import {
-  EMPTY_FORM,
-  SUGGESTED_LANGS,
-  type FormState,
-  type TranslationRow,
-} from './export/constants';
-import {
-  uploadMediaAsset,
-  updateEditorSessionThumbnail,
-  publishEditorSession,
-  publishBroadcast,
-  type PublishYouTubeEditorSessionRequest,
-  type YouTubeTranslation,
-} from '@/lib/api/bff';
+import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
+import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
+import { YouTubeTargetBar } from '@/components/editor/export/YouTubeTargetBar';
+import { BatchVideoGrid } from '@/components/editor/export/BatchVideoGrid';
+import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
+import { requestEditorFlush } from '@/lib/editorEvents';
+import { createYouTubeThumbnailBatch, getYouTubeThumbnailBatch } from '@/lib/api/bff';
 
-const DRAFT_STORAGE_PREFIX = 'instaedit:publish-draft:';
+type BatchVideo = GroupVideo;
 
-// ─── Client-side validation helpers (mirror backend YouTubePublishOptions.Validate) ───
+type LocalizedMetadata = { title: string; description: string };
 
-const YT_TAGS_MAX = 30;
-const YT_TAGS_CHARS_MAX = 500;
-const BCP47_MAX_LEN = 35;
+type CanvasSnapshot = {
+  id: string;
+  version: number;
+  signature: string;
+  width: number;
+  height: number;
+  blob: Blob;
+  previewUrl: string;
+  sha256: string;
+  editorSignature: string;
+};
 
-/** Light BCP-47 sanity check: at least one ASCII letter, no forbidden chars. */
-function isBCP47Plausible(code: string): boolean {
-  if (!code) return true; // empty = skip validation
-  if (code.length > BCP47_MAX_LEN) return false;
-  let hasLetter = false;
-  for (const ch of code) {
-    if (ch === '/' || ch === '\\' || ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
-      return false;
-    }
-    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) hasLetter = true;
-  }
-  return hasLetter;
+type RenderedVariant = {
+  variantId: string;
+  language: string;
+  snapshotId: string;
+  previewUrl: string;
+  blob: Blob;
+  sha256: string;
+  title: string;
+  description: string;
+  translatedText: string;
+};
+
+const EXPORT_WIDTH = 1920;
+const EXPORT_HEIGHT = 1080;
+
+function normalizedPlatformAccountId(video: BatchVideo): number | null {
+  const value = Number(video.platform_account_id);
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
+
+async function uploadThumbnailMedia(blob: Blob, filename: string): Promise<string> {
+  const bytes = await blob.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const contentType = blob.type || 'image/png';
+  const csrfHeaders = getCSRFHeaders();
+  const presign = await fetch('/api/v1/media/presign', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+    body: JSON.stringify({ filename, content_type: contentType, size_bytes: blob.size, sha256 }),
+  });
+  if (!presign.ok) throw new Error(`Media presign failed (${presign.status})`);
+  const grant = await presign.json() as { asset_id: string; upload_url: string; upload_headers?: Record<string, string> };
+  const uploaded = await fetch(grant.upload_url, { method: 'PUT', headers: grant.upload_headers || { 'Content-Type': contentType }, body: bytes });
+  if (!uploaded.ok) throw new Error(`Media upload failed (${uploaded.status})`);
+  const complete = await fetch(`/api/v1/media/${encodeURIComponent(grant.asset_id)}/complete`, {
+    method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', ...csrfHeaders },
+    body: JSON.stringify({ sha256 }),
+  });
+  if (!complete.ok) throw new Error(`Media complete failed (${complete.status})`);
+  return grant.asset_id;
+}
+
+async function createBatchIdempotencyKey(value: unknown): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify(value));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return `thumbnail-batch-${Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+}
+
+const FORMATS = [
+  { value: 'png', label: 'PNG - Lossless', description: 'Best for graphics with transparency' },
+  { value: 'jpeg', label: 'JPEG - Compressed', description: 'Best for photos, smaller file size' },
+  { value: 'webp', label: 'WebP - Modern', description: 'Best for web, good compression' },
+];
 
 interface ExportDialogProps {
   isOpen?: boolean;
   onClose?: () => void;
+  canvasRef?: React.RefObject<any>;
 }
 
-/**
- * PublishDialog \u2014 the dark editor's final-publish panel.
- *
- * Replaces the pre-refactor "Save Thumbnail" Export Dialog:
- *  - Title + Description (\u2264100 / \u22645000 chars per YouTube bounds).
- *  - Tags (free-text comma-separated; orchestrator parses + enforces
- *    the YouTube-published 30-items / 500-chars-total bound).
- *  - Default Language + Default Audio Language (BCP-47 codes;
- *    orchestrator enforces sanity).
- *  - Translations: per-language {title, description} rows. Add/remove
- *    freely \u2014 empty rows are auto-pruned at submit.
- *  - Visibility: public / unlisted / private with privacy-of-private
- *    + publish_at invariants enforced on the backend.
- *
- * Two action buttons (in the footer):
- *   - "Salva bozza": persists the entire FormState to localStorage
- *     keyed by velox_project_id. NO YouTube calls. Hydrated back on
- *     next open if a draft exists for this project.
- *   - "Pubblica": runs the image export pipeline \u2192 uploads the blob
- *     to media storage \u2192 attaches the asset to the editor session \u2192
- *     POSTs /by-project/{id}/publish with the form values. On 200:
- *     success toast + dialog closes + STAY ON /editor/{id} (no
- *     redirect). On 400/502: error toast with the backend's `error`
- *     message; user can fix + retry.
- *
- * The component file is intentionally still named `ExportDialog.tsx`
- * (rather than `PublishDialog.tsx`) to keep imports in ToolbarDock,
- * page.tsx, and the keyboard shortcut hook unchanged.
- *
- * Domain logic lives in sibling files (per [REFACTOR 3/N] split):
- *   - ./export/constants       FormState + TranslationRow types,
- *                              EMPTY_FORM, SUGGESTED_LANGS,
- *                              PRIVACY_OPTIONS
- *   - ./export/MetadataFields  Title / Description / Tags / Language
- *                              pair inputs (pure presentational)
- *   - ./export/TranslationsList  Per-language {title, description} rows
- *   - ./export/PrivacySelector   Public / Unlisted / Private radio group
- *   - ./export/FormatQualitySection  Format + quality selects (pre-existing)
- *   - ./export/CanvasInfoSection  Read-only canvas dims (pre-existing)
- *   - ./export/ExportFooter    Cancel + export-thumbnail footer (pre-existing)
- *   - ./export/useExportFormatQuality  Hook for format/quality state
- */
-export default function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
-  const { showExportDialog, setExportDialog } = useUIStore();
+export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProps) {
+  const { showExportDialog, setExportDialog, isExporting, addToast } = useUIStore();
+  const { objects, selectedIds, canvasWidth, canvasHeight, updateObject } = useEditorStore();
+  const { export: exportImage } = useImageProcessor();
   const { currentProject } = useProjectStore();
-  const params = useParams();
-  const projectId = (params?.id as string | undefined) ?? '';
-  const drive = useDriveIntegration();
-  const toast = useToast();
 
-  const {
-    format,
-    setFormat,
-    quality,
-    setQuality,
-  } = useExportFormatQuality();
+  const [format, setFormat] = useState('png');
+  const [quality, setQuality] = useState(90);
+  const [selectedOnly, setSelectedOnly] = useState(false);
 
-  // -------- Form state + localStorage hydration --------
-  const [form, setForm] = useState<FormState>(() => EMPTY_FORM);
-  const [draftLoaded, setDraftLoaded] = useState(false);
+  // Drive integration state
+  const [driveGroups, setDriveGroups] = useState<DriveGroup[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<string>('');
+  const [uploadToDriveEnabled, setUploadToDriveEnabled] = useState(false);
+  const [createProjectFolder, setCreateProjectFolder] = useState(true);
+  const [isUploadingToDrive, setIsUploadingToDrive] = useState(false);
+  const [driveUploadComplete, setDriveUploadComplete] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState<string>('');
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
-  // P2 \u2014 Dark Editor auto-save: debounced (1.5s) fan-out + indicator.
-  // The localStorage Salva bozza path below stays; this hook fans the
-  // same form out to PUT /by-project/{id}/draft on the server so an
-  // operator who closes the tab mid-edit can resume the same form
-  // state in a different browser/device. The hook auto-pauses when
-  // the form is identical to the previous render (no-op for unchanged
-  // state) and swallows the 409 'publish already running' branch
-  // internally so the indicator doesn't flash red during a normal
-  // publish flow.
-  const autoSave = useAutoSaveDraft({
-    veloxProjectId: projectId,
-    form: {
-      title: form.title,
-      description: form.description,
-      tags: form.tagsInput.split(',').map((t) => t.trim()).filter(Boolean),
-      default_language: form.defaultLanguage,
-      default_audio_language: form.defaultAudioLanguage,
-      translations: Object.fromEntries(
-        form.translations
-          .filter((row) => row.lang.trim() !== '')
-          .map((row) => [
-            row.lang.trim(),
-            { title: row.title, description: row.description },
-          ])
-      ),
-      desired_privacy: form.privacyStatus,
-      publish_at:
-        form.publishAt && !isScheduleInPast(form.publishAt)
-          ? localToUTC(form.publishAt)
-          : null,
-    },
-  });
+  // Copertine folders state (for thumbnail exports linked to channels)
+  const [copertineFolders, setCopertineFolders] = useState<DriveLink[]>([]);
+  const [selectedCopertina, setSelectedCopertina] = useState<string>('');
+  const [loadingCopertine, setLoadingCopertine] = useState(false);
 
-  // On mount (and whenever projectId changes) hydrate from localStorage.
-  // We deliberately do NOT re-hydrate after a save-draft \u2014 the React
-  // state IS the source of truth between open/close; localStorage only
-  // bridges dialog-closed \u2192 dialog-opened so drafts survive reloads.
-  useEffect(() => {
-    if (!projectId) {
-      setForm(EMPTY_FORM);
-      setDraftLoaded(true);
-      return;
-    }
-    try {
-      const raw = window.localStorage.getItem(DRAFT_STORAGE_PREFIX + projectId);
-      if (raw) {
-        const parsed = JSON.parse(raw) as Partial<FormState>;
-        setForm({
-          ...EMPTY_FORM,
-          ...parsed,
-          // Defensive shape normalization: translations may have been
-          // saved before we added the `translations` shape.
-          translations: Array.isArray(parsed.translations)
-            ? parsed.translations.map((t) => ({
-                lang: typeof t?.lang === 'string' ? t.lang : '',
-                title: typeof t?.title === 'string' ? t.title : '',
-                description:
-                  typeof t?.description === 'string' ? t.description : '',
-              }))
-            : [],
-        });
-      }
-    } catch {
-      // localStorage may be unavailable (private mode, quota) \u2014 start
-      // from an empty form so the operator still sees the UI clean.
-    }
-    setDraftLoaded(true);
-  }, [projectId]);
+  // YouTube integration state
+  const [uploadToYouTube] = useState(true);
+  const [isUploadingToYouTube, setIsUploadingToYouTube] = useState(false);
+  const [youtubeUploadComplete, setYoutubeUploadComplete] = useState(false);
+  const [youtubeVideoId, setYoutubeVideoId] = useState<string>('');
 
-  const updateForm = useCallback(
-    (patch: Partial<FormState>) => {
-      setForm((prev) => ({ ...prev, ...patch }));
-    },
-    [],
-  );
+  // YouTube target selection is isolated from the export/publish pipeline.
+  // Safety first: thumbnail export must not make a real video public by default.
+  const [publishAfterUpload, setPublishAfterUpload] = useState(false);
+  const [youtubeTitle, setYoutubeTitle] = useState('');
+  const [youtubeDescription, setYoutubeDescription] = useState('');
+  const [youtubeTags, setYoutubeTags] = useState('');
+  const [translatedMetadata, setTranslatedMetadata] = useState<Record<string, LocalizedMetadata>>({});
+  const [isTranslatingMetadata, setIsTranslatingMetadata] = useState(false);
+  const [metadataTranslationError, setMetadataTranslationError] = useState('');
+  const metadataTranslationKeyRef = useRef('');
+  const metadataTranslationInFlightRef = useRef<string | null>(null);
+  const [youtubeUploadResults, setYoutubeUploadResults] = useState<Record<string, { status: 'pending' | 'success' | 'error'; message?: string }>>({});
+  const [youtubePublishResult, setYoutubePublishResult] = useState<{
+    videoId: string;
+    publicUrl: string;
+    privacyStatus: string;
+    status: string;
+  } | null>(null);
 
-  const addTranslationRow = useCallback(() => {
-    setForm((prev) => ({
-      ...prev,
-      translations: [
-        ...prev.translations,
-        // Pick the first unused suggestion as the default lang code
-        // so the operator lands on a sensible row instead of an empty
-        // textbox they have to type into. Falls back to "" if every
-        // suggestion is already used.
-        {
-          lang: SUGGESTED_LANGS.find(
-            (l) => !prev.translations.some((t) => t.lang === l),
-          ) ?? '',
-          title: '',
-          description: '',
-        },
-      ],
-    }));
-  }, []);
+  // Export state
+  const [exportComplete, setExportComplete] = useState(false);
+  const [exportedBlob, setExportedBlob] = useState<Blob | null>(null);
+  const [exportedFilename, setExportedFilename] = useState<string>('');
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState('');
+  const [showCoverPreview, setShowCoverPreview] = useState(true);
+  const [snapshot, setSnapshot] = useState<CanvasSnapshot | null>(null);
+  const snapshotRef = useRef<CanvasSnapshot | null>(null);
+  const [snapshotStale, setSnapshotStale] = useState(false);
+  const [variantPreviews, setVariantPreviews] = useState<Record<string, RenderedVariant>>({});
+  const [isGeneratingPreviews, setIsGeneratingPreviews] = useState(false);
+  const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
+  const [editingDraft, setEditingDraft] = useState<{ title: string; description: string; coverText: string } | null>(null);
+  const [isSavingVariantEdit, setIsSavingVariantEdit] = useState(false);
+  const snapshotVersionRef = useRef(0);
+  const sourceRepairPendingRef = useRef(false);
 
-  const removeTranslationRow = useCallback((idx: number) => {
-    setForm((prev) => ({
-      ...prev,
-      translations: prev.translations.filter((_, i) => i !== idx),
-    }));
-  }, []);
-
-  const updateTranslationRow = useCallback(
-    (idx: number, patch: Partial<TranslationRow>) => {
-      setForm((prev) => ({
-        ...prev,
-        translations: prev.translations.map((t, i) =>
-          i === idx ? { ...t, ...patch } : t,
-        ),
-      }));
-    },
-    [],
-  );
-
-  // -------- Tags (free-text \u2192 backend-parsed string[]) --------
-  const tagsArray = useMemo(
-    () =>
-      form.tagsInput
-        .split(',')
-        .map((t) => t.trim())
-        .filter((t) => t.length > 0),
-    [form.tagsInput],
-  );
-
-  // -------- Image export pipeline (re-used from pre-refactor) --------
-  const {
-    isProcessing,
-    exportComplete,
-    exportedBlob,
-    exportedFilename,
-    handleExport,
-    triggerDownload,
-    resetExportState,
-  } = useExportOperation({
-    format,
-    quality,
-    projectName: currentProject?.name ?? 'image',
-    uploadToDriveEnabled: false,
-    handleDriveUpload: drive.handleDriveUpload,
-  });
-
-  // Reset the export pipeline (blob/filename/completion) whenever the
-  // dialog opens so the operator never sees a stale "already rendered"
-  // thumbnail when they re-open to fix + retry.
   const open = isOpen ?? showExportDialog;
-  useEffect(() => {
-    if (open) {
-      resetExportState();
-    }
-  }, [open, resetExportState]);
-
   const defaultClose = useCallback(() => setExportDialog(false), [setExportDialog]);
   const handleClose = onClose ?? defaultClose;
 
-  // -------- Salva bozza (local-only persistence) --------
-  const handleSaveDraft = useCallback(() => {
-    if (!projectId) {
-      toast.addToast('error', 'Project id mancante: impossibile salvare la bozza.');
-      return;
-    }
-    try {
-      const payload: FormState = {
-        ...form,
-        // Auto-prune empty translation rows so re-hydration keeps the
-        // saved form compact (rows where both lang AND title AND
-        // description are empty are dropped; rows with at least one
-        // meaningful field are kept so the operator doesn't lose work).
-        translations: form.translations.filter(
-          (t) =>
-            (t.lang && t.lang.trim() !== '') ||
-            (t.title && t.title.trim() !== '') ||
-            (t.description && t.description.trim() !== ''),
-        ),
+  const selectedObject = objects.find((obj) => selectedIds[0] === obj.id);
+  const textLayers = React.useMemo(() => objects.filter((object) => object.type === 'text' && object.text), [objects]);
+  const [translationLayerId, setTranslationLayerId] = useState('');
+  const translationLayer = textLayers.find((layer) => layer.id === translationLayerId)
+    || (selectedObject?.type === 'text' ? selectedObject : undefined)
+    || textLayers[0];
+  const hasSelection = selectedIds.length > 0;
+  const isEditorSession = Boolean(currentProject?.id?.startsWith('ve_'));
+  const {
+    groups: canonicalGroups,
+    selectedGroup: selectedYouTubeGroupDetails,
+    selectedGroupId: selectedCanonicalGroupId,
+    setSelectedGroupId: setSelectedCanonicalGroupId,
+    accounts: youtubeTargetAccounts,
+    selectedAccountId: selectedYouTubeAccountId,
+    setSelectedAccountId: setSelectedYouTubeAccountId,
+    videos: privateVideos,
+    visibleVideos: visiblePrivateVideos,
+    latestPerChannel: latestPrivateVideos,
+    selectedVideoIds,
+    setSelectedVideoIds,
+    selectedCount: selectedVideoCount,
+    toggleVideo,
+    selectAllVisible,
+    deselectAll,
+    selectLatest,
+    resetSelection,
+    loading: loadingPrivateVideos,
+    error: youtubeTargetError,
+    warnings: youtubeTargetWarnings,
+  } = useBatchYouTubeTargets({
+    enabled: open,
+    currentProjectId: isEditorSession ? currentProject?.id : undefined,
+    currentProjectName: currentProject?.name,
+  });
+  // Compatibility aliases for the legacy, unreachable render kept below
+  // while the new workspace is rolled out.
+  const selectedYouTubeGroup = selectedYouTubeGroupDetails?.name ?? '';
+  const sortedVideos = visiblePrivateVideos;
+  const setSelectedYouTubeGroup = (name: string) => {
+    setSelectedCanonicalGroupId(canonicalGroups.find((group) => group.name === name)?.id ?? null);
+  };
+  const canvasSignature = React.useMemo(
+    () => canvasStateSignature(objects, EXPORT_WIDTH, EXPORT_HEIGHT),
+    [objects],
+  );
+
+  const targetVideos = React.useMemo(() => selectedVideoIds
+    .map((videoId) => privateVideos.find((video) => video.video_id === videoId))
+    .filter((video): video is BatchVideo => Boolean(video && normalizedPlatformAccountId(video) !== null)), [privateVideos, selectedVideoIds]);
+
+  const localizedMetadataByVideo = React.useMemo(() => {
+    const next: Record<string, { language: string; title: string; description: string }> = {};
+    for (const video of visiblePrivateVideos) {
+      const language = video.language?.trim().toLowerCase() || 'en';
+      const localized = translatedMetadata[language];
+      next[video.video_id] = {
+        language,
+        title: localized?.title || (language === 'en' ? youtubeTitle.trim() : video.title),
+        description: localized?.description || (language === 'en' ? youtubeDescription.trim() : ''),
       };
-      window.localStorage.setItem(
-        DRAFT_STORAGE_PREFIX + projectId,
-        JSON.stringify(payload),
-      );
-      toast.addToast('success', 'Bozza salvata localmente.');
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      toast.addToast('error', `Impossibile salvare la bozza: ${reason}`);
     }
-  }, [form, projectId, toast]);
+    return next;
+  }, [translatedMetadata, visiblePrivateVideos, youtubeDescription, youtubeTitle]);
 
-  // -------- Pubblica (image export \u2192 upload \u2192 attach \u2192 publish) --------
-  const [isPublishing, setIsPublishing] = useState(false);
+  const allSelectedVariantsReady = targetVideos.length > 0 && targetVideos.every((video) => {
+    const variant = variantPreviews[video.video_id];
+    return Boolean(variant && variant.snapshotId === snapshot?.id);
+  });
 
-  // Closure-race fix (B-1 from the code-review pass): useExportOperation
-  // updates hook state asynchronously so the closure-captured
-  // `exportedBlob` is stale until React re-renders. We mirror the blob
-  // into a ref via useEffect so the publish handler always reads the
-  // LATEST value, and after we await handleExport() we wait one frame
-  // (~16ms) so the effect ref update has flushed before we read.
-  const exportedBlobRef = React.useRef<Blob | null>(null);
-  const exportedFilenameRef = React.useRef<string>('');
   useEffect(() => {
-    exportedBlobRef.current = exportedBlob;
-    exportedFilenameRef.current = exportedFilename;
-  }, [exportedBlob, exportedFilename]);
+    if (selectedObject?.type === 'text' && selectedObject.text) {
+      setTranslationLayerId(selectedObject.id);
+      setVariantPreviews({});
+    }
+  }, [selectedObject?.id, selectedObject?.text]);
 
-  const handlePublish = useCallback(async () => {
-    if (!projectId) {
-      toast.addToast('error', 'Project id mancante.');
-      return;
-    }
-    if (!form.title.trim()) {
-      toast.addToast('error', 'Il titolo \u00e8 obbligatorio.');
-      return;
-    }
-    if (form.title.length > 100) {
-      toast.addToast('error', 'Il titolo supera i 100 caratteri consentiti da YouTube.');
-      return;
-    }
-    if (form.description.length > 5000) {
-      toast.addToast(
-        'error',
-        'La descrizione supera i 5000 caratteri consentiti da YouTube.',
-      );
-      return;
-    }
-
-    // Validate scheduling: past dates are rejected client-side.
-    if (form.publishAt && isScheduleInPast(form.publishAt)) {
-      toast.addToast(
-        'error',
-        'La data di pubblicazione deve essere nel futuro.',
-      );
-      return;
-    }
-
-    // Validate tags: max 30 items, max 500 chars total (incl. commas).
-    if (tagsArray.length > YT_TAGS_MAX) {
-      toast.addToast(
-        'error',
-        `Troppi tag: ${tagsArray.length} (massimo ${YT_TAGS_MAX}).`,
-      );
-      return;
-    }
-    const tagsTotalChars = tagsArray.join(',').length;
-    if (tagsTotalChars > YT_TAGS_CHARS_MAX) {
-      toast.addToast(
-        'error',
-        `I tag superano i ${YT_TAGS_CHARS_MAX} caratteri totali (${tagsTotalChars}). Riduci il numero o la lunghezza dei tag.`,
-      );
-      return;
-    }
-
-    // Validate BCP-47 language codes.
-    if (form.defaultLanguage && !isBCP47Plausible(form.defaultLanguage)) {
-      toast.addToast('error', `Lingua principale "${form.defaultLanguage}" non sembra un codice BCP-47 valido.`);
-      return;
-    }
-    if (form.defaultAudioLanguage && !isBCP47Plausible(form.defaultAudioLanguage)) {
-      toast.addToast('error', `Lingua audio "${form.defaultAudioLanguage}" non sembra un codice BCP-47 valido.`);
-      return;
-    }
-    for (const t of form.translations) {
-      const lang = t.lang.trim();
-      if (lang && !isBCP47Plausible(lang)) {
-        toast.addToast('error', `Codice lingua traduzione "${lang}" non sembra un BCP-47 valido.`);
-        return;
-      }
-    }
-
-    // B-3: mirror the backend's YouTubePublishOptions.Validate invariant
-    // client-side so we don't burn a 400 round-trip on a preventable
-    // mistake. Translations require default_language.
-    const meaningfulTranslations = form.translations.filter(
-      (t) =>
-        (t.lang.trim() !== '') ||
-        (t.title.trim() !== '') ||
-        (t.description.trim() !== '')
-    );
-    if (
-      meaningfulTranslations.length > 0 &&
-      !form.defaultLanguage.trim()
-    ) {
-      toast.addToast(
-        'error',
-        'Hai aggiunto traduzioni ma non hai impostato la lingua principale.',
-      );
-      return;
-    }
-
-    setIsPublishing(true);
+  const loadDriveGroups = useCallback(async () => {
+    setLoadingGroups(true);
     try {
-      // Step 1: render the canvas to a JPEG/PNG blob (re-uses the
-      // pre-refactor export pipeline). If the operator pressed
-      // Pubblica without rendering first, the pipeline is invoked
-      // automatically so the publish path is one-click. We read the
-      // LATEST blob from the ref (not the closed-over state value)
-      // because React state updates flush on the next render.
-      let blob = exportedBlobRef.current;
-      if (!blob) {
-        await handleExport();
-        // Wait one frame so the useEffect-driven ref update has flushed
-        // before we read again.
-        await new Promise<void>((r) => setTimeout(r, 16));
-        blob = exportedBlobRef.current;
+      const groups = await getDriveGroups();
+      setDriveGroups(groups);
+      if (groups.length > 0 && !selectedGroup) {
+        setSelectedGroup(groups[0].name);
       }
-      if (!blob) {
-        toast.addToast(
-          'error',
-          'Impossibile generare il thumbnail: nessun blob prodotto.',
-        );
-        return;
-      }
-
-      const filename =
-        exportedFilenameRef.current ||
-        `${(currentProject?.name ?? 'thumbnail').replace(/\s+/g, '-')}.${format === 'png' ? 'png' : 'jpg'}`;
-
-      // Step 2: upload the blob to media storage.
-      const assetId = await uploadMediaAsset(blob, filename);
-
-      // Step 3: attach the asset to the editor session (the server
-      // validates workspace ownership + media readiness in the same
-      // call).
-      await updateEditorSessionThumbnail(projectId, assetId);
-
-      // Step 4: POST /publish with the form values.
-      //
-      // B-2: symmetry with Salva bozza. Both paths now keep rows
-      // where ANY of (lang, title, description) is non-empty so the
-      // user doesn't silently lose work between saving a draft and
-      // publishing.
-      //
-      // CR-1: rows where lang is set but BOTH title and description
-      // are empty are pruned here (the backend's
-      // YouTubePublishOptions.Validate rejects them with `"translation
-      // %q has empty title AND description"`).
-      const translations: Record<string, YouTubeTranslation> = {};
-      const droppedRows: string[] = [];
-      for (const t of form.translations) {
-        const lang = t.lang.trim();
-        const title = t.title.trim();
-        const description = t.description.trim();
-        if (!lang) {
-          if (title || description) {
-            droppedRows.push(
-              `(${title || description.slice(0, 30) || 'riga vuota'})`,
-            );
-          }
-          continue;
-        }
-        if (!title && !description) {
-          droppedRows.push(`(${lang} \u2014 solo codice lingua, contenuto vuoto)`);
-          continue;
-        }
-        translations[lang] = { title, description };
-      }
-      if (droppedRows.length > 0) {
-        toast.addToast(
-          'warning',
-          `${droppedRows.length} traduzione${droppedRows.length === 1 ? '' : 'i'} rimosse prima della pubblicazione: contenuto insufficiente.`,
-        );
-      }
-
-      // Resolve privacy + scheduling: when publish_at is set, the
-      // backend requires privacy_status=private. We force it here so
-      // the operator doesn't get a confusing 400 from the server.
-      const utcPublishAt =
-        form.publishAt && !isScheduleInPast(form.publishAt)
-          ? localToUTC(form.publishAt)
-          : null;
-      const effectivePrivacy = utcPublishAt ? 'private' : form.privacyStatus;
-
-      const payload: PublishYouTubeEditorSessionRequest = {
-        title: form.title.trim(),
-        description: form.description.trim(),
-        privacy_status: effectivePrivacy,
-        publish_at: utcPublishAt,
-        tags: tagsArray,
-        default_language: form.defaultLanguage.trim() || undefined,
-        default_audio_language: form.defaultAudioLanguage.trim() || undefined,
-        translations:
-          Object.keys(translations).length > 0 ? translations : undefined,
-      };
-
-      const publishResult = await publishEditorSession(projectId, payload);
-
-      // Step 5a: cross-SPA optimistic update. Broadcast the new
-      // status + actual_privacy + youtube_sync_status + video_id to
-      // the main Vite app's Groups card via BroadcastChannel. The
-      // listener (useEditorSessionLiveUpdate) applies the patch to
-      // its react-query cache synchronously and kicks off a 5s/30s
-      // short-poll to track the eventual drift reconciler stamp.
-      publishBroadcast({
-        status: publishResult.status,
-        actual_privacy: publishResult.actual_privacy ?? '',
-        youtube_sync_status: publishResult.youtube_sync_status ?? '',
-        youtube_video_id: publishResult.video_id,
-        velox_project_id: projectId,
-      });
-
-      // Step 5b: success → clear local draft + toast + stay on
-      // /editor/{id}. We deliberately do NOT redirect the operator to
-      // a dashboard: the panel closes, the editor URL stays the same,
-      // and a confirmation toast appears.
-      try {
-        window.localStorage.removeItem(DRAFT_STORAGE_PREFIX + projectId);
-      } catch {
-        // ignore localStorage errors on cleanup
-      }
-      if (utcPublishAt) {
-        const scheduleDate = new Date(form.publishAt);
-        const scheduleLabel = isNaN(scheduleDate.getTime())
-          ? utcPublishAt
-          : scheduleDate.toLocaleString('it-IT', {
-              dateStyle: 'short',
-              timeStyle: 'short',
-            });
-        toast.addToast(
-          'success',
-          `Pubblicazione programmata per ${scheduleLabel}. Il video resterà privato fino all'orario indicato.`,
-        );
-      } else {
-        toast.addToast(
-          'success',
-          'Pubblicato su YouTube. Il video è ora visibile secondo la privacy scelta.',
-        );
-      }
-      handleClose();
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      // Backend returns either {error: "..."} (validation+orchestrator
-      // errors mapped via writeError) or a raw HTTP status text. Show
-      // the message verbatim so the operator can fix the form.
-      toast.addToast('error', `Pubblicazione fallita: ${reason}`);
+    } catch (error) {
+      console.error('Failed to load Drive groups:', error);
     } finally {
-      setIsPublishing(false);
+      setLoadingGroups(false);
     }
-  }, [
-    currentProject?.name,
-    format,
-    form,
-    handleClose,
-    handleExport,
-    projectId,
-    tagsArray,
-    toast,
-  ]);
+  }, [selectedGroup]);
 
-  const isScheduling =
-    form.publishAt.length > 0 && !isScheduleInPast(form.publishAt);
+  const loadCopertineFolders = useCallback(async () => {
+    setLoadingCopertine(true);
+    try {
+      const folders = await getCopertineFolders();
+      setCopertineFolders(folders);
+    } catch (error) {
+      console.error('Failed to load copertine folders:', error);
+    } finally {
+      setLoadingCopertine(false);
+    }
+  }, []);
 
-  const footerProcessing = isProcessing || isPublishing;
-  const footerLabel = footerProcessing
-    ? isPublishing
-      ? 'Pubblicazione\u2026'
-      : 'Elaborazione thumbnail\u2026'
-    : isScheduling
-      ? 'Programma'
-      : 'Pubblica';
+  const captureSnapshot = useCallback(async (): Promise<CanvasSnapshot | null> => {
+    // Read the store at capture time. Do not rely on the render that created
+    // the dialog: a text edit/transform can land between that render and the
+    // click on Export.
+    const liveState = useEditorStore.getState();
+    const liveSignature = canvasStateSignature(liveState.objects, EXPORT_WIDTH, EXPORT_HEIGHT);
+    const blob = await captureEditorCanvasBlob(canvasRef?.current?.getStage?.(), EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png');
+    if (!blob) return null;
+    const sha256 = await sha256Hex(blob);
+    const version = snapshotVersionRef.current + 1;
+    snapshotVersionRef.current = version;
+    const next: CanvasSnapshot = {
+      id: `snapshot_${version}_${sha256.slice(0, 12)}`,
+      version,
+      signature: liveSignature,
+      width: EXPORT_WIDTH,
+      height: EXPORT_HEIGHT,
+      blob,
+      previewUrl: URL.createObjectURL(blob),
+      sha256,
+      editorSignature: liveSignature,
+    };
+    snapshotRef.current = next;
+    setSnapshot(next);
+    setSnapshotStale(false);
+    setVariantPreviews({});
+    setCoverPreviewUrl(next.previewUrl);
+    return next;
+  }, [canvasRef]);
 
-  const draftDirty = draftLoaded && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
+  const captureSnapshotRef = useRef(captureSnapshot);
+  useEffect(() => {
+    captureSnapshotRef.current = captureSnapshot;
+  }, [captureSnapshot]);
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Send className="h-5 w-5 text-primary" />
-            Publish to YouTube
-          </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            Compila i metadati del video. La bozza viene salvata solo sul
-            browser; la pubblicazione aggiorna YouTube secondo la privacy
-            scelta.
-          </p>
-        </DialogHeader>
+  // Repair old sessions whose persisted source image is dead or missing.
+  // The group endpoint is the same source used by the orange cards, so the
+  // canvas and the list cannot silently diverge anymore.
+  useEffect(() => {
+    if (!isEditorSession || !currentProject?.id || privateVideos.length === 0) return;
+    const source = objects.find((object) => object.type === 'image' && object.name?.toLowerCase().includes('source thumbnail'));
+    const currentVideoId = privateVideos.find((video) => video.video_id === currentProject.name.replace(/^YouTube thumbnail\s+/i, '').trim())?.video_id;
+    const matched = currentVideoId ? privateVideos.find((video) => video.video_id === currentVideoId) : privateVideos[0];
+    if (source && matched?.thumbnail && source.src !== matched.thumbnail) {
+      sourceRepairPendingRef.current = true;
+      updateObject(source.id, { src: matched.thumbnail });
+    } else if (sourceRepairPendingRef.current && source && matched?.thumbnail && source.src === matched.thumbnail) {
+      sourceRepairPendingRef.current = false;
+      window.setTimeout(() => void captureSnapshot(), 150);
+    }
+  }, [captureSnapshot, currentProject?.id, currentProject?.name, isEditorSession, objects, privateVideos, updateObject]);
 
-        <div className="space-y-6 py-4">
-          {/* Canvas preview (read-only context) */}
-          <CanvasInfoSection />
+  useEffect(() => {
+    const video = privateVideos[0];
+    if (!video) return;
+    setYoutubeTitle((current) => current || video.title || '');
+    setYoutubeDescription((current) => current || video.description || '');
+  }, [privateVideos]);
 
-          {/* Metadata form: composes Title / Description / Tags /
-              Language pair inputs (MetadataFields) + Translations
-              array editor (TranslationsList) + Privacy radio group
-              (PrivacySelector). Each child is pure presentational;
-              state + handlers live in this dialog. */}
-          <section className="space-y-4 rounded-lg border border-border bg-card p-5">
-            <MetadataFields
-              form={form}
-              tagsCount={tagsArray.length}
-              onChange={updateForm}
-            />
+  // Translate only after the operator leaves the title/description fields.
+  // This deliberately does not watch the input values, so typing never
+  // spends AI attempts. The key also makes the same completed text idempotent.
+  const translateCompletedMetadata = useCallback(async () => {
+    const title = youtubeTitle.trim();
+    const description = youtubeDescription.trim();
+    if (!title || !description) return;
 
-            <TranslationsList
-              translations={form.translations}
-              onAdd={addTranslationRow}
-              onRemove={removeTranslationRow}
-              onUpdate={updateTranslationRow}
-            />
+    const targetVideos = selectedVideoIds.length > 0
+      ? privateVideos.filter((video) => selectedVideoIds.includes(video.video_id))
+      : privateVideos.slice(0, 1);
+    const languages = [...new Set(targetVideos.map((video) => video.language?.trim().toLowerCase()).filter(Boolean) as string[])].sort();
+    if (languages.length === 0) return;
 
-            <PrivacySelector
-              value={isScheduling ? 'private' : form.privacyStatus}
-              onChange={(v) => updateForm({ privacyStatus: v })}
-            />
+    const key = JSON.stringify({ title, description, languages });
+    if (metadataTranslationKeyRef.current === key || metadataTranslationInFlightRef.current === key) return;
+    metadataTranslationInFlightRef.current = key;
+    setIsTranslatingMetadata(true);
+    setMetadataTranslationError('');
+    try {
+      const next: Record<string, LocalizedMetadata> = {};
+      for (const language of languages) {
+        if (language === 'en') {
+          next[language] = { title, description };
+          continue;
+        }
+        const [translatedTitle, translatedDescription] = await Promise.all([
+          translateText({ text: title, target_language: language, kind: 'title' }),
+          translateText({ text: description, target_language: language, kind: 'description' }),
+        ]);
+        next[language] = {
+          title: translatedTitle.translated_text || title,
+          description: translatedDescription.translated_text || description,
+        };
+      }
+      metadataTranslationKeyRef.current = key;
+      setTranslatedMetadata(next);
+      setVariantPreviews((current) => {
+        const updated = { ...current };
+        for (const video of targetVideos) {
+          const language = video.language?.trim().toLowerCase() || 'en';
+          const localized = next[language];
+          if (localized && updated[video.video_id]) {
+            updated[video.video_id] = { ...updated[video.video_id], title: localized.title, description: localized.description };
+          }
+        }
+        return updated;
+      });
+    } catch (error) {
+      setMetadataTranslationError(error instanceof Error ? error.message : 'Traduzione non riuscita');
+    } finally {
+      metadataTranslationInFlightRef.current = null;
+      setIsTranslatingMetadata(false);
+    }
+  }, [privateVideos, selectedVideoIds, targetVideos, youtubeDescription, youtubeTitle]);
 
-            {isScheduling && (
-              <div className="flex items-center gap-2 rounded-md bg-amber-500/[0.08] border border-amber-500/20 px-3 py-2">
-                <span className="text-xs font-medium text-amber-300">
-                  ⚠️ La programmazione richiede Privacy = Privato.
-                  L&apos;impostazione è stata forzata automaticamente.
-                </span>
+  useEffect(() => {
+    if (!open || !youtubeTitle.trim() || !youtubeDescription.trim() || targetVideos.length === 0) return;
+    const timer = window.setTimeout(() => void translateCompletedMetadata(), 700);
+    return () => window.clearTimeout(timer);
+  }, [open, targetVideos.length, translateCompletedMetadata, youtubeDescription, youtubeTitle]);
+
+  const generateVariants = useCallback(async () => {
+    if (targetVideos.length === 0) {
+      addToast({ type: 'error', message: 'Seleziona almeno un video con account YouTube configurato.' });
+      return;
+    }
+    setIsGeneratingPreviews(true);
+    try {
+      const liveState = useEditorStore.getState();
+      const liveSignature = canvasStateSignature(liveState.objects, EXPORT_WIDTH, EXPORT_HEIGHT);
+      const currentSnapshot = !snapshotStale
+        && snapshotRef.current?.signature === liveSignature
+        ? snapshotRef.current
+        : await captureSnapshot();
+      if (!currentSnapshot) throw new Error('Impossibile creare lo snapshot del canvas.');
+      const languages = [...new Set(targetVideos.map((video) => video.language?.trim().toLowerCase() || 'en'))].sort();
+      const textObjects = translationLayer ? [translationLayer] : [];
+      const variantsByLanguage = new Map<string, RenderedVariant>();
+      const metadataNext: Record<string, LocalizedMetadata> = {};
+      const baseTitle = youtubeTitle.trim();
+      const baseDescription = youtubeDescription.trim();
+
+      for (const language of languages) {
+        const textOverrides: Record<string, string> = {};
+        let title = baseTitle;
+        let description = baseDescription;
+        if (language !== 'en') {
+          for (const object of textObjects) {
+            const translated = await translateText({ text: object.text || '', target_language: language, kind: 'text' });
+            if (!translated.translated_text) throw new Error(`Traduzione vuota per ${language}`);
+            textOverrides[object.id] = translated.translated_text;
+          }
+          if (title) {
+            const translated = await translateText({ text: title, target_language: language, kind: 'title' });
+            title = translated.translated_text || title;
+          }
+          if (description) {
+            const translated = await translateText({ text: description, target_language: language, kind: 'description' });
+            description = translated.translated_text || description;
+          }
+        }
+        metadataNext[language] = { title, description };
+        const variantBlob = language === 'en'
+          ? currentSnapshot.blob
+          : await captureEditorCanvasBlob(canvasRef?.current?.getStage?.(), EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png', undefined, { textOverrides });
+        if (!variantBlob) throw new Error(`Impossibile generare la variante ${language}`);
+        const sha256 = await sha256Hex(variantBlob);
+        variantsByLanguage.set(language, {
+          variantId: `${currentSnapshot.id}-${language}`,
+          language,
+          snapshotId: currentSnapshot.id,
+          previewUrl: language === 'en' ? currentSnapshot.previewUrl : URL.createObjectURL(variantBlob),
+          blob: variantBlob,
+          sha256,
+          title,
+          description,
+          translatedText: language === 'en' ? (translationLayer?.text || '') : (textOverrides[translationLayer?.id || ''] || translationLayer?.text || ''),
+        });
+      }
+
+      const assignments: Record<string, RenderedVariant> = {};
+      for (const video of targetVideos) {
+        const language = video.language?.trim().toLowerCase() || 'en';
+        const variant = variantsByLanguage.get(language);
+        if (variant) assignments[video.video_id] = variant;
+      }
+      setTranslatedMetadata((current) => ({ ...current, ...metadataNext }));
+      setVariantPreviews(assignments);
+      addToast({ type: 'success', message: `Generate ${Object.keys(assignments).length} anteprime assegnate ai video selezionati.` });
+    } catch (error) {
+      addToast({ type: 'error', message: error instanceof Error ? error.message : 'Generazione anteprime non riuscita' });
+    } finally {
+      setIsGeneratingPreviews(false);
+    }
+  }, [addToast, canvasHeight, canvasRef, canvasWidth, captureSnapshot, snapshotStale, targetVideos, translationLayer, youtubeDescription, youtubeTitle]);
+
+  const saveVariantEdit = useCallback(async () => {
+    if (!editingVideoId || !editingDraft || !translationLayer || !snapshotRef.current) return;
+    const currentVariant = variantPreviews[editingVideoId];
+    if (!currentVariant) return;
+    setIsSavingVariantEdit(true);
+    try {
+      const blob = await captureEditorCanvasBlob(
+        canvasRef?.current?.getStage?.(),
+        EXPORT_WIDTH,
+        EXPORT_HEIGHT,
+        'image/png',
+        undefined,
+        { textOverrides: { [translationLayer.id]: editingDraft.coverText } },
+      );
+      if (!blob) throw new Error('Impossibile aggiornare la copertina.');
+      const sha256 = await sha256Hex(blob);
+      setVariantPreviews((current) => ({
+        ...current,
+        [editingVideoId]: {
+          ...currentVariant,
+          blob,
+          previewUrl: URL.createObjectURL(blob),
+          sha256,
+          title: editingDraft.title,
+          description: editingDraft.description,
+          translatedText: editingDraft.coverText,
+        },
+      }));
+      setEditingVideoId(null);
+      setEditingDraft(null);
+      addToast({ type: 'success', message: 'Variante aggiornata per questo canale.' });
+    } catch (error) {
+      addToast({ type: 'error', message: error instanceof Error ? error.message : 'Modifica variante non riuscita' });
+    } finally {
+      setIsSavingVariantEdit(false);
+    }
+  }, [addToast, canvasRef, editingDraft, editingVideoId, translationLayer, variantPreviews]);
+
+  useEffect(() => {
+    if (!open || !snapshotRef.current) return;
+    const liveState = useEditorStore.getState();
+    const liveSignature = canvasStateSignature(liveState.objects, EXPORT_WIDTH, EXPORT_HEIGHT);
+    if (snapshotRef.current.signature !== liveSignature) {
+      setSnapshotStale(true);
+      setVariantPreviews({});
+    }
+  }, [canvasSignature, open]);
+
+  // As soon as the private-video list and the automatic selection are ready,
+  // create the final per-language covers. The operator can still regenerate
+  // them manually after changing the selected text layer.
+  useEffect(() => {
+    if (!open || loadingPrivateVideos || targetVideos.length === 0 || allSelectedVariantsReady || isGeneratingPreviews) return;
+    const timer = window.setTimeout(() => void generateVariants(), 250);
+    return () => window.clearTimeout(timer);
+  }, [allSelectedVariantsReady, generateVariants, isGeneratingPreviews, loadingPrivateVideos, open, targetVideos]);
+
+  // Load only the YouTube target data when the export dialog opens.
+  useEffect(() => {
+    if (open) {
+      resetSelection();
+      setYoutubeUploadResults({});
+      setDriveUploadComplete(false);
+      setUploadedFileUrl('');
+      setYoutubeUploadComplete(false);
+      setYoutubeVideoId('');
+      setYoutubePublishResult(null);
+      setExportComplete(false);
+      setExportedBlob(null);
+      setCoverPreviewUrl('');
+      setShowCoverPreview(true);
+      setSnapshot(null);
+      snapshotRef.current = null;
+      setSnapshotStale(false);
+      setVariantPreviews({});
+      setTranslatedMetadata({});
+      metadataTranslationKeyRef.current = '';
+      let cancelled = false;
+      void (async () => {
+        await requestEditorFlush();
+        // The flush covers keyboard, toolbar and programmatic openings; this
+        // second frame wait covers the final React/Konva commit of the live canvas.
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+        if (!cancelled) await captureSnapshotRef.current();
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [open, resetSelection]);
+
+  // Get copertina folder for selected group (matches by language/name)
+  const getCopertinaForGroup = (groupName: string): DriveLink | undefined => {
+    const normalizedName = groupName.toLowerCase();
+    return copertineFolders.find(folder => {
+      const folderName = folder.name?.toLowerCase() || '';
+      const folderLanguage = folder.language?.toLowerCase() || '';
+      return folderName === normalizedName ||
+             folderLanguage === normalizedName ||
+             folderName.includes(normalizedName) ||
+             normalizedName.includes(folderName);
+    });
+  };
+
+  // Get all copertine folders as options for the dropdown
+  const getCopertineOptions = (): DriveLink[] => {
+    // Return folders under the Copertine parent (parentId === '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ')
+    const copertineParentId = '1iifOcR4ZrZAep8y1lT3qc1Ku0Z9XwbaZ';
+    return copertineFolders.filter(folder =>
+      folder.parentId === copertineParentId || folder.id === copertineParentId
+    );
+  };
+
+  // Get or create project folder in Drive
+  const getOrCreateProjectFolder = async (groupName: string, projectName: string): Promise<string | undefined> => {
+    const group = driveGroups.find(g => g.name === groupName);
+    if (!group?.folder_id) {
+      // Try to create folder with project name at root
+      try {
+        const folder = await createDriveFolder(projectName);
+        return folder.id;
+      } catch (error) {
+        console.error('Failed to create project folder:', error);
+        return undefined;
+      }
+    }
+
+    // Create subfolder with project name under group folder
+    try {
+      const folder = await createDriveFolder(projectName, group.folder_id);
+      return folder.id;
+    } catch (error) {
+      // Folder might already exist, return group folder
+      console.error('Failed to create project subfolder:', error);
+      return group.folder_id;
+    }
+  };
+
+  // Upload to Drive with project folder
+  const handleDriveUpload = async (blob: Blob, filename: string): Promise<{ success: boolean; fileId?: string; fileUrl?: string }> => {
+    if (!uploadToDriveEnabled || !selectedGroup) {
+      return { success: false };
+    }
+
+    setIsUploadingToDrive(true);
+    try {
+      // Determine target folder - prefer copertina folder if selected or auto-matched
+      let targetFolderId: string | undefined;
+
+      // Check if a copertina folder is selected or auto-matched
+      const copertinaFolder = selectedCopertina
+        ? copertineFolders.find(f => f.id === selectedCopertina)
+        : getCopertinaForGroup(selectedGroup);
+
+      if (copertinaFolder) {
+        // Use copertina folder for thumbnail exports
+        targetFolderId = copertinaFolder.id;
+
+        // Optionally create a subfolder with project name inside copertina
+        if (createProjectFolder && currentProject?.name) {
+          try {
+            const subfolder = await createDriveFolder(currentProject.name, copertinaFolder.id);
+            targetFolderId = subfolder.id;
+          } catch (error) {
+            console.error('Failed to create subfolder in copertina:', error);
+            // Continue with copertina folder directly
+          }
+        }
+      } else if (createProjectFolder && currentProject?.name) {
+        // Fall back to group folder structure
+        targetFolderId = await getOrCreateProjectFolder(selectedGroup, currentProject.name);
+      } else {
+        const group = driveGroups.find(g => g.name === selectedGroup);
+        targetFolderId = group?.folder_id;
+      }
+
+      // Create file from blob
+      const file = new File([blob], filename, { type: blob.type || 'image/png' });
+
+      // Upload to Drive
+      const result = await uploadToDrive(file, targetFolderId);
+
+      if (result.success) {
+        setDriveUploadComplete(true);
+        setUploadedFileUrl(result.web_view_link || '');
+        addToast({ type: 'success', message: `Uploaded to Drive: ${filename}` });
+        return { success: true, fileId: result.file_id, fileUrl: result.web_view_link };
+      } else {
+        throw new Error('Upload failed');
+      }
+    } catch (error: any) {
+      console.error('Drive upload failed:', error);
+      addToast({ type: 'error', message: `Drive upload failed: ${error?.message || 'Unknown error'}` });
+      return { success: false };
+    } finally {
+      setIsUploadingToDrive(false);
+    }
+  };
+
+  const handleExport = useCallback(async () => {
+    const liveState = useEditorStore.getState();
+    const liveSignature = canvasStateSignature(liveState.objects, EXPORT_WIDTH, EXPORT_HEIGHT);
+    let currentSnapshot = snapshotRef.current;
+    if (!currentSnapshot || currentSnapshot.signature !== liveSignature) {
+      currentSnapshot = await captureSnapshot();
+    }
+    if (uploadToYouTube && (snapshotStale || !currentSnapshot || currentSnapshot.signature !== liveSignature)) {
+      addToast({ type: 'error', message: 'Il progetto è cambiato. Attendi la rigenerazione delle anteprime prima dell’upload.' });
+      return;
+    }
+    if (uploadToYouTube && targetVideos.length > 0 && !allSelectedVariantsReady) {
+      addToast({ type: 'info', message: 'Attendi la generazione automatica delle copertine localizzate.' });
+      return;
+    }
+
+    const stage = canvasRef?.current?.getStage?.();
+    const mime = format === 'jpeg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
+    const q = Math.max(0.01, Math.min(1, quality / 100));
+    const blob = format === 'png' && currentSnapshot
+      ? currentSnapshot.blob
+      : await captureEditorCanvasBlob(stage, EXPORT_WIDTH, EXPORT_HEIGHT, mime, q);
+    if (!blob) {
+      addToast({ type: 'error', message: 'Canvas not found' });
+      return;
+    }
+
+    const extension = format === 'jpeg' ? 'jpg' : format;
+    const projectName = currentProject?.name || 'thumbnail';
+    const downloadName = `${projectName}.${extension}`;
+    setExportedBlob(blob);
+    setExportedFilename(downloadName);
+    if (format !== 'png') setCoverPreviewUrl(URL.createObjectURL(blob));
+    setExportComplete(true);
+
+    let driveSuccess = false;
+    let youtubeSuccess = false;
+    if (uploadToDriveEnabled && selectedGroup) {
+      driveSuccess = (await handleDriveUpload(blob, downloadName)).success;
+    }
+
+    if (uploadToYouTube && targetVideos.length > 0) {
+      setIsUploadingToYouTube(true);
+      try {
+        const group = selectedYouTubeGroupDetails;
+        const workspaceId = group?.workspace_id;
+        if (!group || !workspaceId) throw new Error('Seleziona un gruppo InstaEdit valido.');
+        const mediaByVariant = new Map<string, string>();
+        const results: typeof youtubeUploadResults = {};
+        const batchItems: Array<{
+          platform_account_id: number;
+          youtube_video_id: string;
+          variant_id: string;
+          thumbnail_media_id: string;
+          title?: string;
+          description?: string;
+          tags?: string[];
+        }> = [];
+        for (const video of targetVideos) {
+          const videoId = video.video_id;
+          const variant = variantPreviews[videoId];
+          if (!variant || variant.snapshotId !== currentSnapshot?.id) throw new Error(`Variante mancante per ${videoId}`);
+          const actualHash = await sha256Hex(variant.blob);
+          if (actualHash !== variant.sha256) throw new Error(`Hash non valido per la variante ${variant.variantId}`);
+          results[videoId] = { status: 'pending' };
+          setYoutubeUploadResults({ ...results });
+          let mediaId = mediaByVariant.get(variant.variantId);
+          if (!mediaId) {
+            mediaId = await uploadThumbnailMedia(variant.blob, `${projectName}-${variant.language}.png`);
+            mediaByVariant.set(variant.variantId, mediaId);
+          }
+          const platformAccountId = normalizedPlatformAccountId(video);
+          if (!platformAccountId) throw new Error(`Canale non valido per ${videoId}`);
+          batchItems.push({
+            platform_account_id: platformAccountId,
+            youtube_video_id: videoId,
+            variant_id: variant.variantId,
+            thumbnail_media_id: mediaId,
+            title: variant.title || video.title,
+            description: variant.description || '',
+            tags: youtubeTags.split(',').map((tag) => tag.trim()).filter(Boolean),
+          });
+        }
+
+        const idempotencyKey = await createBatchIdempotencyKey({
+          groupId: group.id,
+          snapshotId: currentSnapshot?.id,
+          items: batchItems.map((item) => ({
+            platform_account_id: item.platform_account_id,
+            youtube_video_id: item.youtube_video_id,
+            variant_id: item.variant_id,
+            thumbnail_media_id: item.thumbnail_media_id,
+            title: item.title,
+            description: item.description,
+            tags: item.tags,
+          })),
+        });
+        const createdBatch = await createYouTubeThumbnailBatch(Number(group.id), batchItems, idempotencyKey);
+        let batchStatus = await getYouTubeThumbnailBatch(createdBatch.batch_id);
+        for (let attempt = 0; attempt < 180 && !['completed', 'partial', 'failed'].includes(batchStatus.status); attempt += 1) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1000));
+          batchStatus = await getYouTubeThumbnailBatch(createdBatch.batch_id);
+        }
+        for (const item of batchStatus.items) {
+          results[item.youtube_video_id] = item.status === 'completed'
+            ? { status: 'success' }
+            : item.status === 'failed'
+              ? { status: 'error', message: item.last_error || 'Operazione non riuscita' }
+              : { status: 'pending' };
+        }
+        setYoutubeUploadResults({ ...results });
+        const completedItem = batchStatus.items.find((item) => item.status === 'completed');
+        if (completedItem) {
+          setYoutubePublishResult({ videoId: completedItem.youtube_video_id, publicUrl: completedItem.public_url || `https://www.youtube.com/watch?v=${completedItem.youtube_video_id}`, privacyStatus: 'private', status: batchStatus.status });
+        }
+        youtubeSuccess = batchStatus.completed > 0;
+        setYoutubeUploadComplete(youtubeSuccess);
+      } catch (error) {
+        addToast({ type: 'error', message: error instanceof Error ? error.message : 'YouTube batch failed' });
+      } finally {
+        setIsUploadingToYouTube(false);
+      }
+    }
+    if (driveSuccess || youtubeSuccess) addToast({ type: 'success', message: 'Export e upload completati' });
+  }, [addToast, allSelectedVariantsReady, captureSnapshot, canvasRef, currentProject, format, handleDriveUpload, quality, selectedGroup, selectedYouTubeGroupDetails, snapshotStale, targetVideos, uploadToDriveEnabled, uploadToYouTube, variantPreviews, youtubeTags]);
+
+  if (open) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="h-[min(980px,96vh)] w-[min(1500px,94vw)] max-w-none gap-0 overflow-hidden rounded-[22px] border-white/[0.08] bg-[#111318] p-0 shadow-[0_32px_100px_rgba(0,0,0,0.62)]">
+          <DialogHeader className="flex h-[50px] shrink-0 flex-row items-center border-b border-white/[0.07] px-5">
+            <DialogTitle className="flex items-center gap-2 text-[15px] font-semibold text-white">
+              <Download className="h-4 w-4 text-violet-300" />
+              Pubblica copertine
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex min-h-0 flex-1">
+            <section className="publish-scroll w-[42%] min-w-[480px] overflow-y-auto border-r border-white/[0.07]">
+              <div className="space-y-6 p-5">
+                {hasSelection && (
+                  <label className="flex items-center gap-2 text-xs text-white/55">
+                    <input type="checkbox" checked={selectedOnly} onChange={(event) => setSelectedOnly(event.target.checked)} className="rounded border-white/20 bg-white/10" />
+                    Esporta solo il layer selezionato
+                  </label>
+                )}
+
+                <div className="publish-card relative overflow-hidden">
+                  <button type="button" onClick={() => setShowCoverPreview((visible) => !visible)} className="absolute right-2.5 top-2.5 z-10 rounded-lg bg-black/45 p-1.5 text-white/45 hover:bg-black/65 hover:text-white" title={showCoverPreview ? 'Nascondi anteprima' : 'Mostra anteprima'}>
+                    {showCoverPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                  {showCoverPreview && (
+                    <div className="flex aspect-video items-center justify-center overflow-hidden bg-black">
+                      {coverPreviewUrl ? <img src={coverPreviewUrl} alt="Anteprima copertina" className="block h-full w-full object-contain" /> : <span className="text-xs text-white/35">Anteprima non disponibile</span>}
+                    </div>
+                  )}
+                  {snapshotStale && <div className="border-t border-amber-400/20 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-200">Il progetto è cambiato. Rigenerazione automatica in corso…</div>}
+                </div>
+
+                <div className="h-px bg-white/[0.07]" />
+
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-[15px] font-semibold text-white/90">Titolo, descrizione e tag</h2>
+                    <p className="mt-1 text-[11px] text-white/40">Puoi modificare i metadati; la privacy resterà privata.</p>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-medium text-white/50">Titolo</label>
+                    <input value={youtubeTitle} onChange={(event) => setYoutubeTitle(event.target.value)} onBlur={() => void translateCompletedMetadata()} maxLength={100} className="publish-control h-10 w-full px-3 text-sm text-white/90 outline-none focus:border-white/[0.18]" placeholder="Titolo del video" />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-medium text-white/50">Descrizione</label>
+                    <textarea value={youtubeDescription} onChange={(event) => setYoutubeDescription(event.target.value)} onBlur={() => void translateCompletedMetadata()} maxLength={5000} rows={5} className="publish-control w-full resize-y px-3 py-2.5 text-sm text-white/90 outline-none focus:border-white/[0.18]" placeholder="Descrizione del video" />
+                    <p className="mt-1.5 text-[10px] text-white/35">{isTranslatingMetadata ? 'Traduzioni in corso…' : metadataTranslationError || (Object.keys(translatedMetadata).length > 0 ? 'Traduzioni aggiornate.' : 'Le traduzioni partono quando esci dal campo.')}</p>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-medium text-white/50">Tag</label>
+                    <input value={youtubeTags} onChange={(event) => setYoutubeTags(event.target.value)} className="publish-control h-10 w-full px-3 text-sm text-white/90 outline-none focus:border-white/[0.18]" placeholder="tag1, tag2, tag3" />
+                  </div>
+                </div>
               </div>
-            )}
+            </section>
 
-            <ScheduleSelector
-              value={form.publishAt}
-              onChange={(v) => updateForm({ publishAt: v })}
-            />
-          </section>
+            <section className="min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex min-h-0 flex-1 flex-col">
+                <YouTubeTargetBar groups={canonicalGroups} accounts={youtubeTargetAccounts} groupId={selectedCanonicalGroupId} accountId={selectedYouTubeAccountId} onGroupChange={setSelectedCanonicalGroupId} onAccountChange={setSelectedYouTubeAccountId} />
+                <div className="flex h-14 shrink-0 items-center justify-between px-5">
+                  <h2 className="text-[15px] font-semibold text-white">{selectedVideoCount} video selezionati</h2>
+                  <div className="flex items-center gap-4 text-xs">
+                    <button type="button" onClick={selectLatest} disabled={latestPrivateVideos.length === 0} className="font-medium text-emerald-400 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-40">Ultimo per canale ({latestPrivateVideos.length})</button>
+                    <button type="button" onClick={selectedVideoCount > 0 ? deselectAll : selectAllVisible} disabled={visiblePrivateVideos.length === 0} className="text-white/45 hover:text-white/75 disabled:opacity-40">{selectedVideoCount > 0 ? 'Deseleziona tutti' : 'Seleziona tutti'}</button>
+                  </div>
+                </div>
 
-          {/* Format/quality keeps the export step predictable; not
-              going through the drive-upload because Pubblica is the
-              singular upload channel on this flow. */}
-          <FormatQualitySection
-            format={format}
-            setFormat={setFormat}
-            quality={quality}
-            setQuality={setQuality}
-          />
-
-          {/* Thumbnail preview / download (optional, mirrors the
-              pre-refactor UX so operators can verify the image before
-              publishing). */}
-          {exportComplete && exportedBlob && (
-            <div className="flex items-center justify-between rounded-md border border-border bg-card px-4 py-3">
-              <div className="text-xs text-muted-foreground">
-                <Download className="mr-2 inline h-4 w-4" />
-                Thumbnail renderizzato: {exportedFilename}
+                <div className="publish-scroll min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+                  {isGeneratingPreviews && <div className="mb-4 rounded-[10px] border border-white/[0.07] bg-white/[0.018] px-3 py-2.5 text-[11px] text-white/50">Generazione automatica delle copertine localizzate…</div>}
+                  {youtubeTargetError && <div className="mb-4 flex items-center gap-2 rounded-[10px] border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"><AlertCircle className="h-4 w-4" />{youtubeTargetError}</div>}
+                  {youtubeTargetWarnings.map((warning) => <p key={warning} className="mb-2 text-[10px] text-amber-300/80">{warning}</p>)}
+                  {loadingPrivateVideos ? (
+                    <div className="flex items-center gap-2 py-8 text-sm text-white/45"><Loader2 className="h-4 w-4 animate-spin" />Caricamento video privati…</div>
+                  ) : visiblePrivateVideos.length === 0 ? (
+                    <div className="rounded-[10px] border border-white/[0.07] bg-white/[0.018] p-5 text-sm text-white/50">Non ci sono video privati nel gruppo selezionato.</div>
+                  ) : (
+                    <BatchVideoGrid videos={visiblePrivateVideos} selectedVideoIds={selectedVideoIds} variantPreviews={variantPreviews} localizedMetadata={localizedMetadataByVideo} uploadResults={youtubeUploadResults} onToggle={toggleVideo} onEdit={(video) => { const variant = variantPreviews[video.video_id]; if (!variant) return; setEditingVideoId(video.video_id); setEditingDraft({ title: variant.title || video.title, description: variant.description || '', coverText: variant.translatedText || '' }); }} />
+                  )}
+                  {youtubePublishResult && <div className="mt-4 rounded-[10px] border border-emerald-400/20 bg-emerald-500/10 p-3 text-xs text-emerald-100"><div className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4" />YouTube aggiornato correttamente</div><div className="mt-2 text-emerald-200/70">Stato: {youtubePublishResult.status} · Privacy: {youtubePublishResult.privacyStatus} · ID: {youtubePublishResult.videoId}</div><a href={youtubePublishResult.publicUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-emerald-200 hover:underline">Apri il video <ExternalLink className="h-3 w-3" /></a></div>}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => triggerDownload(exportedBlob, exportedFilename)}
-                className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-              >
-                Scarica copia locale
-              </button>
+            </section>
+          </div>
+
+          {editingVideoId && editingDraft && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={() => { if (!isSavingVariantEdit) { setEditingVideoId(null); setEditingDraft(null); } }}>
+              <div className="max-h-[94vh] w-[min(1280px,96vw)] max-w-6xl overflow-y-auto rounded-2xl border border-white/[0.1] bg-[#111318] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+                <div className="mb-4 flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-white">Modifica variante canale</h3><p className="mt-1 text-xs text-white/45">{privateVideos.find((video) => video.video_id === editingVideoId)?.channel_name || editingVideoId} · lingua {variantPreviews[editingVideoId]?.language || '—'} · render 1920 × 1080</p></div><button type="button" className="text-white/45 hover:text-white" onClick={() => { setEditingVideoId(null); setEditingDraft(null); }} disabled={isSavingVariantEdit}>✕</button></div>
+                <div className="grid gap-5 md:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between"><span className="text-xs font-semibold text-white/60">Anteprima cover tradotta</span><span className="rounded-md bg-white/[0.05] px-2 py-1 text-[10px] text-white/45">1920 × 1080 · {variantPreviews[editingVideoId]?.language || '—'}</span></div>
+                    <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black">
+                      {variantPreviews[editingVideoId]?.previewUrl ? <img src={variantPreviews[editingVideoId].previewUrl} alt="Anteprima cover tradotta" className="block aspect-video h-auto w-full object-contain" /> : <div className="flex aspect-video items-center justify-center text-xs text-white/35">Anteprima non disponibile</div>}
+                    </div>
+                    <p className="text-[11px] text-white/40">Testo renderizzato: <span className="text-violet-200/80">{variantPreviews[editingVideoId]?.translatedText || '—'}</span></p>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="rounded-xl border border-white/[0.07] bg-white/[0.018] p-3 text-xs text-white/55"><p className="font-semibold text-white/80">Metadati variante</p><p className="mt-1">Canale: {privateVideos.find((video) => video.video_id === editingVideoId)?.channel_name || '—'}</p><p>Lingua: {variantPreviews[editingVideoId]?.language || '—'}</p><p>Privacy: privata</p></div>
+                    <label className="block text-xs font-semibold text-white/60">Titolo video</label><input value={editingDraft.title} onChange={(event) => setEditingDraft((draft) => draft ? { ...draft, title: event.target.value } : draft)} maxLength={100} className="publish-control w-full px-3 py-2 text-sm text-white" />
+                    <label className="block text-xs font-semibold text-white/60">Descrizione video</label><textarea value={editingDraft.description} onChange={(event) => setEditingDraft((draft) => draft ? { ...draft, description: event.target.value } : draft)} rows={6} maxLength={5000} className="publish-control w-full resize-y px-3 py-2 text-sm text-white" />
+                    <label className="block text-xs font-semibold text-white/60">Testo della copertina</label><textarea value={editingDraft.coverText} onChange={(event) => setEditingDraft((draft) => draft ? { ...draft, coverText: event.target.value } : draft)} rows={4} className="publish-control w-full resize-y px-3 py-2 text-sm text-white" />
+                  </div>
+                </div>
+                <div className="mt-5 flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => { setEditingVideoId(null); setEditingDraft(null); }} disabled={isSavingVariantEdit}>Annulla</Button><Button type="button" onClick={() => void saveVariantEdit()} disabled={isSavingVariantEdit || !editingDraft.coverText.trim()}>{isSavingVariantEdit ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Rigenerazione…</> : 'Salva modifica'}</Button></div>
+              </div>
             </div>
           )}
 
-          {!draftDirty && (
-            <p className="text-xs text-muted-foreground">
-              I campi sono vuoti: niente verr\u00e0 salvato finch\u00e9 non modifichi
-              qualcosa. Premendo Pubblica, la bozza corrente verr\u00e0
-              cancellata al completamento della pubblicazione.
-            </p>
-          )}
+          <DialogFooter className="h-[70px] shrink-0 items-center justify-end gap-3 border-t border-white/[0.07] bg-[#111318]/95 px-5 backdrop-blur-xl">
+            <Button variant="outline" onClick={handleClose} className="h-10 rounded-[10px] border-white/[0.09] px-4 text-sm text-white/75">Annulla</Button>
+            <Button onClick={() => { if (uploadToYouTube && targetVideos.length > 0) { if (snapshotStale || !snapshotRef.current) void captureSnapshot(); else if (!allSelectedVariantsReady) return; else void handleExport(); } else void handleExport(); }} disabled={isExporting || isUploadingToDrive || isUploadingToYouTube || isGeneratingPreviews} className="h-10 rounded-[10px] bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-500">
+              {(isExporting || isUploadingToDrive || isUploadingToYouTube || isGeneratingPreviews) ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isGeneratingPreviews ? 'Generazione…' : 'Applicazione…'}</> : <><Youtube className="mr-2 h-4 w-4" />{uploadToYouTube && targetVideos.length > 0 ? (snapshotStale || !allSelectedVariantsReady ? 'Generazione automatica…' : `Applica ${targetVideos.length} copertine`) : 'Esporta'}</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="w-[calc(100%-1rem)] max-w-[1500px] max-h-[94vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Download className="w-5 h-5" />
+            Export Image
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-5 py-4 lg:grid-cols-[minmax(360px,0.9fr)_minmax(0,1.25fr)]">
+
+
+          <div className="min-w-0 space-y-4">
+            {/* Export Selection Option */}
+            {hasSelection && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="selectedOnly"
+                  checked={selectedOnly}
+                  onChange={(e) => setSelectedOnly(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor="selectedOnly" className="text-sm">
+                  Export selected layer only
+                </label>
+              </div>
+            )}
+
+            {/* Thumbnail preview */}
+            <div className="rounded-2xl border border-slate-700 bg-[#0b0d12] p-4 shadow-sm">
+            <div className="mb-2 flex items-center justify-between">
+              <div>
+                <span className="block text-sm font-semibold text-white">Copertina</span>
+                <span className="text-xs text-slate-400">Anteprima completa del canvas</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-slate-800 px-2.5 py-1 text-[10px] font-medium text-slate-300">{EXPORT_WIDTH} × {EXPORT_HEIGHT}</span>
+                <button type="button" onClick={() => setShowCoverPreview((visible) => !visible)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white" title={showCoverPreview ? 'Nascondi anteprima' : 'Mostra anteprima'}>
+                  {showCoverPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            {showCoverPreview && <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+              {coverPreviewUrl ? <img src={coverPreviewUrl} alt="Anteprima copertina" className="block h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-xs text-slate-500">Anteprima non disponibile</div>}
+            </div>}
+            {snapshot && <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400">
+              <span>Snapshot v{snapshot.version}</span><span>Render {snapshot.width} × {snapshot.height}</span><span>File SHA {snapshot.sha256.slice(0, 12)}</span>
+              <span className={snapshot.editorSignature === canvasSignature ? 'text-emerald-300' : 'text-amber-300'}>
+                Live canvas {snapshot.editorSignature === canvasSignature ? 'sincronizzato' : 'cambiato'}
+              </span>
+            </div>}
+            {snapshotStale && <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+              <span>Il progetto è cambiato. Rigenera le anteprime.</span>
+              <span className="text-[10px] font-semibold text-amber-200">Rigenerazione automatica in corso…</span>
+            </div>}
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-slate-700 bg-[#0b0d12] p-4">
+            <div>
+              <h3 className="text-sm font-bold text-white">Titolo e descrizione</h3>
+              <p className="mt-1 text-[11px] text-slate-400">Le traduzioni partono automaticamente quando completi i campi e clicchi fuori.</p>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-300">Titolo YouTube</label>
+              <input value={youtubeTitle} onChange={(event) => setYoutubeTitle(event.target.value)} onBlur={() => void translateCompletedMetadata()} maxLength={100} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-slate-400" placeholder="Titolo del video" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-300">Descrizione</label>
+              <textarea value={youtubeDescription} onChange={(event) => setYoutubeDescription(event.target.value)} onBlur={() => void translateCompletedMetadata()} maxLength={5000} rows={5} className="w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-slate-400" placeholder="Descrizione del video" />
+              <p className="mt-1 text-[11px] text-slate-400">
+                {isTranslatingMetadata ? 'Traduzioni in corso dopo la modifica…' : metadataTranslationError ? metadataTranslationError : Object.keys(translatedMetadata).length > 0 ? 'Traduzioni aggiornate.' : 'Completa titolo e descrizione per tradurre.'}
+              </p>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-300">Tag</label>
+              <input value={youtubeTags} onChange={(event) => setYoutubeTags(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-slate-400" placeholder="tag1, tag2, tag3" />
+              <p className="mt-1 text-[11px] text-slate-500">Separa i tag con una virgola.</p>
+            </div>
+            </div>
+          </div>
+
+          {/* YouTube Integration Section */}
+          <div className="min-w-0 space-y-3 lg:border-l lg:border-slate-800 lg:pl-5">
+            <div className="flex items-center gap-2">
+              <Youtube className="h-5 w-5 text-red-500" />
+              <span className="text-sm font-bold text-slate-100">Aggiorna direttamente su YouTube</span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-4">
+                {isEditorSession && (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 text-sm text-emerald-200">
+                    Video corrente del flusso InstaEdit. Puoi aggiungere altri video scegliendo un gruppo qui sotto.
+                    {privateVideos[0]?.title && <div className="mt-1 font-semibold">{privateVideos[0].title}</div>}
+                  </div>
+                )}
+                <div className="relative z-50 flex items-center justify-end gap-2 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 shadow-sm">
+                  <label className="text-xs font-semibold text-slate-400">Gruppo YouTube</label>
+                  <Select value={selectedYouTubeGroup} onValueChange={(value) => {
+                    setSelectedYouTubeGroup(value);
+                    setSelectedCanonicalGroupId(canonicalGroups.find((group) => group.name === value)?.id ?? null);
+                    setSelectedVideoIds([]);
+                  }}>
+                    <SelectTrigger className="h-8 w-48 border-slate-700 bg-slate-950 text-xs text-white">
+                      <SelectValue placeholder={canonicalGroups.length ? 'Seleziona un gruppo' : 'Nessun gruppo disponibile'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {canonicalGroups.map((g) => (
+                        <SelectItem key={g.name} value={g.name}>
+                          {g.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Video Selection List */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold flex justify-between items-center text-slate-300">
+                    <span>{selectedVideoIds.length} video selezionati</span>
+                    {privateVideos.length > 0 && (
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedVideoIds(latestPrivateVideos.map((video) => video.video_id))}
+                          className="text-xs font-semibold text-emerald-600 hover:underline"
+                        >
+                          Ultimo per canale ({latestPrivateVideos.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const eligibleIds = privateVideos
+                              .filter((video) => normalizedPlatformAccountId(video) !== null)
+                              .map((video) => video.video_id);
+                            setSelectedVideoIds(selectedVideoIds.length === eligibleIds.length ? [] : eligibleIds);
+                          }}
+                          className="text-xs text-primary hover:underline font-normal"
+                        >
+                          {selectedVideoIds.length > 0 && selectedVideoIds.length === privateVideos.filter((video) => normalizedPlatformAccountId(video) !== null).length ? 'Deseleziona tutti' : 'Seleziona tutti'}
+                        </button>
+                      </div>
+                    )}
+                  </label>
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-[11px] text-slate-300">
+                    {isGeneratingPreviews ? 'Generazione automatica delle copertine localizzate…' : translationLayer ? `Layer tradotto automaticamente: ${translationLayer.name || translationLayer.text?.slice(0, 42)}` : 'Seleziona un layer testuale nel canvas per generare le varianti.'}
+                  </div>
+
+                  {loadingPrivateVideos ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2 animate-pulse">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      Loading private videos...
+                    </div>
+                  ) : privateVideos.length === 0 ? (
+                    <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-500/10">
+                      Non ci sono video privati in questo gruppo.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-5 overflow-y-auto rounded-2xl border border-border/80 bg-slate-950/40 p-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[500px]">
+                      {sortedVideos.map((video) => {
+                        const isSelected = selectedVideoIds.includes(video.video_id);
+                        const result = youtubeUploadResults[video.video_id];
+                        const variant = variantPreviews[video.video_id];
+                        const hasChannel = normalizedPlatformAccountId(video) !== null;
+                        const hasLanguage = Boolean(video.language?.trim());
+                        return (
+                          <div
+                            key={video.video_id}
+                            onClick={() => {
+                              if (!hasChannel) return;
+                              setSelectedVideoIds(prev =>
+                                prev.includes(video.video_id)
+                                  ? prev.filter(id => id !== video.video_id)
+                                  : [...prev, video.video_id]
+                              );
+                            }}
+                            className={`relative flex flex-col rounded-xl overflow-hidden transition-all border group bg-slate-900/50 ${!hasChannel ? 'cursor-not-allowed opacity-55' : 'cursor-pointer hover:bg-slate-900'} ${
+                              isSelected
+                                ? 'border-primary shadow-lg ring-1 ring-primary shadow-primary/5'
+                                : 'border-slate-800 hover:border-slate-700'
+                            }`}
+                          >
+                            {/* Selection Check Overlay */}
+                            <div className="absolute top-2 left-2 z-20">
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-all ${
+                                isSelected ? 'bg-primary border-primary text-white' : 'bg-black/40 border-white/60 text-transparent'
+                              }`}>
+                                <span className="text-[10px] font-bold">✓</span>
+                              </div>
+                            </div>
+
+                            {/* Only the final localized cover is shown. It is the
+                                same Blob later sent to YouTube. */}
+                            <div
+                              className="relative aspect-video w-full bg-slate-950 overflow-hidden flex-shrink-0 cursor-pointer"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                if (!variant) return;
+                                setEditingVideoId(video.video_id);
+                                setEditingDraft({ title: variant.title || video.title, description: variant.description || '', coverText: variant.translatedText || '' });
+                              }}
+                              title="Clicca per modificare titolo, descrizione e testo della copertina"
+                            >
+                              {variant ? <img src={variant.previewUrl} alt={`Copertina ${variant.language}`} className="w-full h-full object-cover" /> : <div className="flex h-full flex-col items-center justify-center gap-1 px-2 text-center text-[10px] text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Generazione anteprima…</div>}
+
+                              {/* Result overlay */}
+                              {result && (
+                                <div className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center p-2 text-center z-10">
+                                  {result.status === 'pending' && (
+                                    <div className="flex flex-col items-center gap-1">
+                                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                      <span className="text-[9px] text-slate-300">Applying...</span>
+                                    </div>
+                                  )}
+                                  {result.status === 'success' && (
+                                    <div className="flex flex-col items-center gap-1">
+                                      <span className="text-green-400 font-bold text-lg">✓</span>
+                                      <span className="text-[9px] text-green-400 font-bold bg-green-950/80 px-1.5 py-0.5 rounded border border-green-500/20">{publishAfterUpload ? 'Applied & Published' : 'Applied · Private'}</span>
+                                    </div>
+                                  )}
+                                  {result.status === 'error' && (
+                                    <div className="flex flex-col items-center gap-1">
+                                      <span className="text-destructive font-bold text-lg">✗</span>
+                                      <span className="text-[9px] text-destructive font-bold bg-destructive/10 px-1.5 py-0.5 rounded border border-destructive/20" title={result.message}>Failed</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Video Title and Channel info */}
+                            <div className="p-3 flex-1 flex flex-col justify-between bg-slate-900/30">
+                              <h4 className={`text-xs font-bold line-clamp-2 leading-tight ${isSelected ? 'text-primary' : 'text-slate-200'}`}>
+                                {video.title}
+                              </h4>
+                              <p className="text-[10px] text-muted-foreground mt-2 truncate" title={video.channel_name || video.channel_title || video.channel_id}>
+                                {video.channel_id || video.channel_title ? `Canale: ${video.channel_name || video.channel_title || video.channel_id}` : ''}
+                              </p>
+                              <p className={`mt-1 text-[10px] font-semibold ${hasLanguage ? 'text-slate-400' : 'text-amber-400'}`}>
+                                {hasLanguage ? `Lingua: ${video.language}` : 'Lingua: en (fallback)'}
+                              </p>
+                              {variant && <>
+                                <p className="mt-1 truncate text-[10px] text-slate-500" title={variant.sha256}>Variante: {variant.language} · SHA {variant.sha256.slice(0, 10)}</p>
+                                <p className="mt-1 line-clamp-2 text-[10px] text-slate-300" title={variant.translatedText}>Testo: {variant.translatedText || '—'}</p>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setEditingVideoId(video.video_id);
+                                    setEditingDraft({ title: variant.title || video.title, description: variant.description || '', coverText: variant.translatedText || '' });
+                                  }}
+                                  className="mt-2 rounded-lg border border-sky-400/40 bg-sky-500/10 px-2 py-1 text-[10px] font-bold text-sky-300"
+                                >
+                                  Modifica variante
+                                </button>
+                              </>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {youtubePublishResult && (
+                  <div className="rounded-xl border border-emerald-400/30 bg-emerald-950/25 p-3 text-sm text-emerald-100">
+                    <div className="flex items-center gap-2 font-bold">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-300" />
+                      YouTube aggiornato correttamente
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-emerald-200/80">
+                      <span>Stato: <b className="text-emerald-100">{youtubePublishResult.status}</b></span>
+                      <span>Privacy: <b className="text-emerald-100">{youtubePublishResult.privacyStatus}</b></span>
+                      <span className="col-span-2 truncate">Video ID: {youtubePublishResult.videoId}</span>
+                    </div>
+                    <a
+                      href={youtubePublishResult.publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-sky-300 hover:text-sky-200 hover:underline"
+                    >
+                      Apri il video su YouTube <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-          {/* Left side: cancel + download-only legacy path */}
-          <div className="flex items-center gap-2">
-            <ExportFooter
-              onClose={handleClose}
-              onExport={handleExport}
-              onDownloadCopy={() =>
-                exportedBlob &&
-                triggerDownload(exportedBlob, exportedFilename)
-              }
-              isProcessing={isProcessing}
-              exportComplete={exportComplete}
-              hasExportedBlob={!!exportedBlob}
-              processingLabel="Elaborazione thumbnail\u2026"
-              exportLabel="Render thumbnail"
-            />
+        {editingVideoId && editingDraft && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={() => { if (!isSavingVariantEdit) { setEditingVideoId(null); setEditingDraft(null); } }}>
+            <div className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-950 p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-base font-bold text-white">Modifica variante canale</h3>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {privateVideos.find((video) => video.video_id === editingVideoId)?.channel_name || editingVideoId} · lingua {variantPreviews[editingVideoId]?.language || '—'} · render 1920 × 1080
+                  </p>
+                </div>
+                <button type="button" className="text-slate-400 hover:text-white" onClick={() => { setEditingVideoId(null); setEditingDraft(null); }} disabled={isSavingVariantEdit}>✕</button>
+              </div>
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-slate-300">Titolo video</label>
+                <input value={editingDraft.title} onChange={(event) => setEditingDraft((draft) => draft ? { ...draft, title: event.target.value } : draft)} maxLength={100} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white" />
+                <label className="block text-xs font-semibold text-slate-300">Descrizione video</label>
+                <textarea value={editingDraft.description} onChange={(event) => setEditingDraft((draft) => draft ? { ...draft, description: event.target.value } : draft)} rows={5} maxLength={5000} className="w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white" />
+                <label className="block text-xs font-semibold text-slate-300">Testo della copertina</label>
+                <textarea value={editingDraft.coverText} onChange={(event) => setEditingDraft((draft) => draft ? { ...draft, coverText: event.target.value } : draft)} rows={3} className="w-full resize-y rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white" />
+                <p className="text-[11px] text-slate-500">Salvando viene rigenerato il file 1920 × 1080 di questo solo canale; quel file sarà quello caricato.</p>
+              </div>
+              <div className="mt-5 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => { setEditingVideoId(null); setEditingDraft(null); }} disabled={isSavingVariantEdit}>Annulla</Button>
+                <Button type="button" onClick={() => void saveVariantEdit()} disabled={isSavingVariantEdit || !editingDraft.coverText.trim()}>
+                  {isSavingVariantEdit ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Rigenerazione…</> : 'Salva modifica'}
+                </Button>
+              </div>
+            </div>
           </div>
+        )}
 
-          {/* Right side: draft + publish (the new primary actions) */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={footerProcessing}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
-            >
-              <Save className="h-4 w-4" />
-              Salva bozza
-            </button>
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={footerProcessing}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50"
-            >
-              <Send className="h-4 w-4" />
-              {footerLabel}
-            </button>
-          </div>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          {(driveUploadComplete || youtubeUploadComplete) ? (
+            <>
+              <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
+                Done
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (uploadToYouTube && targetVideos.length > 0) {
+                    if (snapshotStale || !snapshotRef.current) void captureSnapshot();
+                    else if (!allSelectedVariantsReady) return;
+                    else void handleExport();
+                  } else void handleExport();
+                }}
+                disabled={isExporting || isUploadingToDrive || isUploadingToYouTube || isGeneratingPreviews}
+                className="w-full sm:w-auto"
+              >
+                {(isExporting || isUploadingToDrive || isUploadingToYouTube || isGeneratingPreviews) ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isUploadingToDrive ? 'Uploading to Drive...' : isUploadingToYouTube ? 'Uploading to YouTube...' : isGeneratingPreviews ? 'Generazione anteprime…' : 'Exporting...'}
+                  </>
+                ) : (
+                  <>
+                    {uploadToYouTube ? <Youtube className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                    {uploadToYouTube && targetVideos.length > 0 ? (snapshotStale || !allSelectedVariantsReady ? 'Generazione automatica…' : `Applica ${targetVideos.length} copertine`) : uploadToDriveEnabled ? 'Export & Upload' : 'Export'}
+                  </>
+                )}
+              </Button>
+              {!isEditorSession && latestPrivateVideos.length > 0 && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    const ids = latestPrivateVideos.map((video) => video.video_id);
+                    setSelectedVideoIds(ids);
+                  }}
+                  disabled={isExporting || isUploadingToDrive || isUploadingToYouTube || loadingPrivateVideos}
+                  className="w-full sm:w-auto"
+                  title="Seleziona l'ultimo video privato di ogni canale e genera le anteprime"
+                >
+                  <Youtube className="w-4 h-4 mr-2" />
+                  Seleziona ultimi privati ({latestPrivateVideos.length})
+                </Button>
+              )}
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

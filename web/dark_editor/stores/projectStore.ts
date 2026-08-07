@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { CanvasObject } from './editorStore';
-import { 
-  listProjects, 
-  saveProject as apiSaveProject, 
-  getProject as apiGetProject, 
+import {
+  listProjects,
+  saveProject as apiSaveProject,
+  getProject as apiGetProject,
   deleteProject as apiDeleteProject,
-  Project as APIProject 
+  Project as APIProject
 } from '@/lib/api';
 
 export interface Project {
@@ -25,69 +25,56 @@ export interface ProjectState {
   isSaving: boolean;
   isLoading: boolean;
   lastSaved: Date | null;
-  
+
   // Actions
   setCurrentProject: (project: Project | null) => void;
   setDirty: (dirty: boolean) => void;
   setSaving: (saving: boolean) => void;
   setLoading: (loading: boolean) => void;
-  
+
   // Project operations
   createProject: (name?: string) => Promise<Project | null>;
   loadProject: (id: string) => Promise<Project | null>;
   saveProject: (canvasData: Record<string, unknown>, previewFilename?: string) => Promise<boolean>;
   deleteProject: (id: string) => Promise<boolean>;
   updateProjectName: (name: string) => void;
-  
+
   // Export operations
   exportProject: (format: string, quality: number) => Promise<Blob | null>;
 }
 
-export const useProjectStore = create<ProjectState>((set, get) => ({
+export const useProjectStore = create<ProjectState>((set, get) => {
+  // Autosave can be triggered again while a previous request is still in
+  // flight. Serialize writes so an older request can never finish after a
+  // newer one and restore stale canvas data on the next reload.
+  let saveChain: Promise<boolean> = Promise.resolve(true);
+  let saveRevision = 0;
+
+  return ({
   currentProject: null,
   isDirty: false,
   isSaving: false,
   isLoading: false,
   lastSaved: null,
-  
+
   setCurrentProject: (project) => set({ currentProject: project }),
   setDirty: (dirty) => set({ isDirty: dirty }),
   setSaving: (saving) => set({ isSaving: saving }),
   setLoading: (loading) => set({ isLoading: loading }),
-  
-  createProject: async (name = 'Untitled Project') => {
-    set({ isLoading: true });
-    try {
-      const result = await apiSaveProject({
-        name,
-        type: 'project',
-        canvas_json: {},
-      });
-      
-      const project: Project = {
-        id: result.id,
-        name: name,
-        type: 'project',
-        canvas_json: {},
-        preview_url: '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      set({ currentProject: project, isDirty: false, isLoading: false });
-      return project;
-    } catch (error) {
-      console.error('Failed to create project:', error);
-      set({ isLoading: false });
-      return null;
-    }
+
+  createProject: async (_name = 'Untitled Project') => {
+    // Project handles are created by InstaEdit. Velox never creates a
+    // standalone/global project, so this client operation is intentionally
+    // unavailable and remains only for compatibility with old callers.
+    set({ isLoading: false });
+    return null;
   },
-  
+
   loadProject: async (id) => {
     set({ isLoading: true });
     try {
       const data = await apiGetProject(id);
-      
+
       const project: Project = {
         id: data.id,
         name: data.name,
@@ -97,7 +84,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         created_at: data.created_at,
         updated_at: data.updated_at,
       };
-      
+
       set({ currentProject: project, isDirty: false, isLoading: false });
       return project;
     } catch (error) {
@@ -106,60 +93,72 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return null;
     }
   },
-  
-  saveProject: async (canvasData, previewFilename) => {
-    const { currentProject } = get();
-    if (!currentProject) return false;
-    
-    set({ isSaving: true });
-    try {
-      await apiSaveProject({
-        id: currentProject.id,
-        name: currentProject.name,
-        type: currentProject.type,
-        canvas_json: canvasData,
-        preview_filename: previewFilename,
-      });
-      
-      set({ isDirty: false, isSaving: false, lastSaved: new Date() });
-      return true;
-    } catch (error) {
-      console.error('Failed to save project:', error);
-      set({ isSaving: false });
-      return false;
-    }
+
+  saveProject: (canvasData, previewFilename) => {
+    const project = get().currentProject;
+    if (!project) return Promise.resolve(false);
+
+    const revision = ++saveRevision;
+    const payload = {
+      id: project.id,
+      name: project.name,
+      type: project.type,
+      // Keep a detached snapshot. The editor store may mutate its objects
+      // before this queued write reaches the API.
+      canvas_json: structuredClone(canvasData),
+      preview_filename: previewFilename,
+    };
+
+    const write = async (): Promise<boolean> => {
+      set({ isSaving: true });
+      try {
+        await apiSaveProject(payload);
+        if (revision === saveRevision) {
+          set({ isDirty: false, isSaving: false, lastSaved: new Date() });
+        }
+        return true;
+      } catch (error) {
+        console.error('Failed to save project:', error);
+        if (revision === saveRevision) set({ isSaving: false });
+        return false;
+      }
+    };
+
+    saveChain = saveChain.catch(() => false).then(write);
+    return saveChain;
   },
-  
+
   deleteProject: async (id) => {
     try {
       await apiDeleteProject(id);
-      
+
       const { currentProject } = get();
       if (currentProject?.id === id) {
         set({ currentProject: null });
       }
-      
+
       return true;
     } catch (error) {
       console.error('Failed to delete project:', error);
       return false;
     }
   },
-  
+
   updateProjectName: (name) => {
     const { currentProject } = get();
     if (!currentProject) return;
-    
-    set({ 
+
+    set({
       currentProject: { ...currentProject, name },
-      isDirty: true 
+      isDirty: true
     });
   },
-  
+
   exportProject: async (format, quality) => {
     // This will be implemented with actual export logic
     // For now, return null
     console.log('Export project:', format, quality);
     return null;
   },
-}));
+  });
+});
