@@ -102,6 +102,22 @@ web/
 └── docs/                         # Documentation
 ```
 
+## 🔐 InstaEdit/Velox ownership boundary
+
+InstaEdit is the source of truth for users, workspaces, groups, channels,
+videos, projects and permissions. Velox is a separate editor/rendering
+system. The only cross-service project reference is the opaque
+`velox_project_id` carried by the project bridge contract
+`instaedit.velox.project-bridge.v1`.
+
+The editor receives one authorized project context from InstaEdit and owns
+only canvas state, scenes, layers, timelines, revisions and render jobs.
+Velox must not list or mutate global groups/channels, persist membership
+snapshots, share InstaEdit's database, or run bidirectional synchronization.
+Global catalog routes return `410 Gone` with `owner: instaedit`. The editor
+opens as a separate SPA via redirect/new tab; no iframe or shared frontend is
+part of the ownership boundary.
+
 ## 🏗️ Architecture
 
 ### Frontend Stack
@@ -200,6 +216,7 @@ Create `.env.local` in `dark_editor/`:
 
 ```env
 DARK_EDITOR_API_BASE=<backend-url>
+VELOX_PROJECT_BRIDGE_CONTRACT_VERSION=instaedit.velox.project-bridge.v1
 ```
 
 For the main app, set the dark editor URL with `VITE_DARK_EDITOR_URL` when it is not running on `/dark_editor`.

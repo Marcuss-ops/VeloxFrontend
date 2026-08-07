@@ -5,6 +5,7 @@
 # InstaeditLogin/api/openapi.yaml. The vendored copy is read by
 # the contract test at:
 #   web/dark_editor/__tests__/publishResponseContract.test.ts
+#   web/dark_editor/__tests__/projectBridgeOwnership.test.ts
 # and asserted to match the canonical by the CI check in
 # .github/workflows/integration-fast.yml.
 #
@@ -55,7 +56,9 @@ VENDORED_HEADER=$(cat <<'EOF'
 # =========================================================
 # Source of truth: InstaeditLogin/api/openapi.yaml
 # Sync cadence:     manual (run `make sync-openapi` before any
-#                   push that touches the publish response contract)
+#                   push that touches the API or project-bridge contract)
+# Project bridge:   InstaEdit is the source of truth; Velox receives only
+#                   an opaque project context. No bidirectional catalog sync.
 # Two contract test locations (must stay in sync):
 #   InstaeditLogin/pkg/api/youtube_editor_sessions_contract_test.go
 #   VeloxFrontend/web/dark_editor/__tests__/publishResponseContract.test.ts

@@ -3,16 +3,18 @@
 # =========================================================
 # Source of truth: InstaeditLogin/api/openapi.yaml
 # Sync cadence:     manual (run `make sync-openapi` before any
-#                   push that touches the publish response contract)
+#                   push that touches the API or project-bridge contract)
+# Project bridge:   InstaEdit is the source of truth; Velox receives only
+#                   an opaque project context. No bidirectional catalog sync.
 # Two contract test locations (must stay in sync):
 #   InstaeditLogin/pkg/api/youtube_editor_sessions_contract_test.go
 #   VeloxFrontend/web/dark_editor/__tests__/publishResponseContract.test.ts
 # =========================================================
 # >>> END_VENDORED_HEADER - do not remove this marker <<<
 # =========================================================
-# API AUDIT SUMMARY (1 dropped, 22 kept endpoints)
+# API AUDIT SUMMARY (1 dropped; public and inter-service paths)
 # =========================================================
-# KEPT: 22 PUBLIC_INTER_SERVICE paths across:
+# KEPT PUBLIC/INTER_SERVICE paths across:
 #   * Auth          — /auth/exchange, /auth/logout, /auth/me,
 #                     /auth/{provider}/callback, /auth/{provider}/login
 #   * Auth/API key  — /api-keys, /api-keys/{id}, /api-keys/{id}/rotate
@@ -23,7 +25,14 @@
 #   * Velox Internal— /internal/v1/deliveries,
 #                     /internal/v1/deliveries/{id},
 #                     /internal/v1/destinations/{id}/validate
-#   * YouTube       — /api/v1/youtube/editor-sessions/{id}/thumbnail
+#   * YouTube       — the complete editor-session lifecycle under
+#                     /api/v1/youtube/editor-sessions (create/list,
+#                     project and session lookup, draft autosave,
+#                     metadata generation, thumbnail handoff, publish)
+#   * Livestreams   — /api/v1/livestreams (GET/POST),
+#                     /api/v1/livestreams/channels (GET — wizard
+#                     preflight), /api/v1/livestreams/{id}
+#                     (GET/PATCH/DELETE)
 #
 # DROPPED: 1 path
 #   * /auth/{provider}/start  (INTERNAL_EXPERIMENTAL)
@@ -78,6 +87,8 @@ tags:
     description: OAuth hosted flow + API-key management.
   - name: Posts
     description: Universal-publishing API (`targets[]` discriminated union).
+  - name: Jobs
+    description: Canonical asynchronous Velox render-job submission.
   - name: PostTargets
     description: Async state of a single post target.
   - name: Velox Internal
@@ -92,13 +103,89 @@ tags:
       per RFC 7235 + the Velox retry contract.
   - name: YouTube
     description: |
-      YouTube thumbnail-editor session endpoints (the dark-editor
+      YouTube thumbnail-editor session endpoints (the InstaEditor
       SPA integrates against these). Pair with the Velox BFF module
       for the actual rendering work; this tag covers the
       InstaEdit-side session lifecycle (create / link thumbnail /
       publish).
+  - name: Thumbnail Projects
+    description: Autonomous workspace-scoped graphic projects. Creation and editing do not require YouTube, channels, videos, OAuth, or platform accounts.
+  - name: Livestreams
+    description: |
+      YouTube live-streaming configuration CRUD (self-hosted encoder
+      module). A row is a workspace-scoped live configuration bound
+      to exactly one YouTube channel. `desired_state` /
+      `actual_state` are worker-owned; the control endpoints
+      (prepare/start/stop/restart) land with the encoder worker.
 
 paths:
+
+  /jobs:
+    post:
+      tags: [Jobs]
+      operationId: jobsCreate
+      servers:
+        - url: https://api.instaeditlogin.example/api/v1
+          description: Production canonical API base
+        - url: https://api-staging.instaeditlogin.example/api/v1
+          description: Staging canonical API base
+        - url: http://localhost:8080/api/v1
+          description: Local canonical API base
+      summary: Submit one canonical Velox render job.
+      description: |
+        Creates one asynchronous render job using the stable
+        `velox.job.v1` envelope. `job_type` selects the technical
+        validator/compiler, while `template_id` and `template_version`
+        select the editorial recipe. New video genres and editorial
+        templates do not create new endpoints. Workspace and user identity
+        are taken from the authenticated request context and are never
+        accepted in the body.
+
+        The public typed variants documented here are
+        `scene.composite.v1`, `clip.stock.v1`, `scene.image.v1`, and
+        `slideshow.v1`. Their `spec` objects are closed recursively:
+        unknown fields are rejected with `422 Unprocessable Entity`.
+        `template_id` is data in this envelope, not a URL path segment.
+
+        The migration-only `/api/v1/velox/jobs` route remains the legacy
+        `project_id` + `render_spec` adapter. New callers MUST use this
+        canonical endpoint.
+      security:
+        - JwtCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VeloxJobSubmissionRequest'
+            examples:
+              sceneComposite:
+                $ref: '#/components/examples/VeloxSceneCompositeJob'
+              clipStock:
+                $ref: '#/components/examples/VeloxClipStockJob'
+              sceneImage:
+                $ref: '#/components/examples/VeloxSceneImageJob'
+              slideshow:
+                $ref: '#/components/examples/VeloxSlideshowJob'
+      responses:
+        '202':
+          description: Job accepted for asynchronous rendering.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VeloxJob'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityError'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
   # ───────────── Auth ───────────────────────────────────────────────────────
 
@@ -236,6 +323,241 @@ paths:
           description: Cookie cleared.
         '405':
           $ref: '#/components/responses/MethodNotAllowed'
+
+  /api/v1/groups/{group_id}/accounts/{account_id}:
+    delete:
+      tags: [Auth]
+      operationId: groupAccountRemove
+      summary: Remove one channel from a folder without disconnecting it.
+      description: |
+        Deletes only the `group_accounts` membership and resynchronizes the
+        workspace channel binding. The platform account, its OAuth connection,
+        encrypted tokens, history and availability in other folders remain
+        unchanged. The operation is idempotent for an already-removed
+        membership and returns `204 No Content` on success.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+        - name: account_id
+          in: path
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '204':
+          description: Channel removed from this folder only.
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/accounts:
+    get:
+      tags: [Auth]
+      operationId: accountsList
+      summary: List the caller's platform accounts.
+      description: |
+        Returns the platform accounts owned by the authenticated user.
+        Accounts in the deleted state (`account_state=deleted` — i.e.
+        `disconnected`, `revoked`, or tombstoned via
+        `DELETE /api/v1/accounts/{id}/data`) are HIDDEN by default; pass
+        `?include_deleted=true` to include them (`true`, `1`, `yes` are
+        accepted, case-insensitive).
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: include_deleted
+          in: query
+          required: false
+          description: Include deleted-state accounts (disconnected / revoked / tombstoned).
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: List of owned accounts (deleted-state hidden unless `include_deleted`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountListResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/v1/accounts/{id}:
+    get:
+      tags: [Auth]
+      operationId: accountsGet
+      summary: Get a single owned platform account.
+      description: |
+        Returns the account owned by the authenticated user (404 for
+        cross-tenant ids — no existence leak). A cached `resource` payload
+        is included when a provider snapshot exists.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '200':
+          description: The account (plus a cached `resource` payload when a snapshot exists).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags: [Auth]
+      operationId: accountsDeleteDeprecated
+      summary: DEPRECATED — the old DELETE soft-disconnect is removed (410).
+      description: |
+        Removed by the account-lifecycle audit: the method used to perform a
+        misleading soft-delete (the row stayed, and shared-grant tokens were
+        kept). The endpoint now answers `410 Gone` with guidance. Use
+        `POST /api/v1/accounts/{id}/disconnect` (soft disconnect, history
+        kept) or `DELETE /api/v1/accounts/{id}/data` (permanent delete /
+        tombstone).
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '410':
+          description: Removed. The body guides towards the explicit commands.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/v1/accounts/{id}/disconnect:
+    post:
+      tags: [Auth]
+      operationId: accountDisconnect
+      summary: Soft-disconnect one channel (row kept for audit).
+      description: |
+        Explicit channel disconnect: `status=disconnected` (the row stays for
+        audit), removal from every group and from the publishable
+        destinations, future jobs cancelled (parent aggregates recomputed) —
+        all in one transaction. When the channel is the LAST active one on
+        its shared Google grant, the grant is revoked and its tokens are
+        deleted; while a sibling channel still uses the grant, BOTH the grant
+        and the tokens are preserved so the sibling keeps working.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '204':
+          description: Channel disconnected.
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/accounts/{id}/data:
+    delete:
+      tags: [Auth]
+      operationId: accountDeleteData
+      summary: Permanently delete a channel (tombstone).
+      description: |
+        Permanent account deletion / tombstone — deliberately stronger than
+        disconnect. The row is tombstoned (`status=deleted`,
+        `username=[deleted]`, `metadata={}`) so it disappears from every
+        normal query while historical foreign keys (publications, livestreams,
+        thumbnail assignments) stay intact. Channel-scoped data is removed in
+        the same transaction: group memberships, workspace channels,
+        snapshots and future jobs. The shared Google grant is revoked — and
+        its tokens plus the `oauth_connections` row removed — ONLY when this
+        is the last active channel of the grant; otherwise the grant and the
+        tokens are preserved for the siblings. Audit and outbox records are
+        written inside the transaction.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmation]
+              properties:
+                confirmation:
+                  type: string
+                  minLength: 1
+                  description: Exact current channel name, required as strong confirmation.
+      responses:
+        '204':
+          description: Account permanently deleted (tombstoned).
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '502':
+          description: Remote OAuth grant revocation failed (permanent provider error).
+        '503':
+          description: Remote OAuth revocation temporarily unavailable; retry later.
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/accounts/{id}/oauth-grant:
+    delete:
+      tags: [Auth]
+      operationId: oauthGrantDisconnect
+      summary: Disconnect an entire OAuth grant and all linked channels.
+      description: |
+        Disconnects the OAuth grant identified through an account owned by
+        the caller. The server atomically marks the grant and every linked
+        platform account as disconnected, deletes grant-scoped tokens, and
+        writes the audit and outbox records in the same database transaction.
+        This is distinct from `POST /api/v1/accounts/{id}/disconnect`, which
+        only disconnects one channel and preserves a shared grant for its
+        siblings. (The legacy `DELETE /api/v1/accounts/{id}` is removed and
+        answers 410.)
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - $ref: '#/components/parameters/PathId'
+      responses:
+        '204':
+          description: OAuth grant, linked channels, and local credentials disconnected.
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          description: The selected account has no OAuth grant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '501':
+          description: Transactional grant disconnect is not configured.
 
   # ───────────── API keys (Taglio 4.6) ─────────────────────────────────────
 
@@ -755,8 +1077,8 @@ paths:
       operationId: postTargetsRetry
       summary: Manually re-queue a `failed` or `partially_published` target.
       description: |
-        Transitions the target back to `queued` (next worker tick will
-        re-claim via `ClaimQueuedTarget`). Pass `force: true` to allow
+        Transitions the target back to `queued` (the next worker tick will
+        re-claim it through the lease-aware claim path). Pass `force: true` to allow
         retrying from `partially_published` or `waiting_provider`
         (default behavior allows `failed` only).
       security:
@@ -917,7 +1239,7 @@ paths:
   # ──────────── YouTube editor sessions ──────────────────────────────────────
   #
   # Direct handoff endpoint (Blocco #5 P0 #4): callers (typically the
-  # dark editor SPA after uploading the rendered thumbnail to InstaEdit
+  # InstaEditor SPA after uploading the rendered thumbnail to InstaEdit
   # storage) supply a verified media_assets.id and the handler
   # atomically links it to the session in a single UPDATE statement
   # with a CAS predicate `status IN ('editing','failed')`. Coexists
@@ -1027,6 +1349,332 @@ paths:
         '503':
           description: YouTube video edit store not configured.
 
+  /api/v1/youtube/editor-sessions:
+    post:
+      tags: [YouTube]
+      operationId: createYouTubeEditorSession
+      summary: Create or reuse an editable YouTube thumbnail session.
+      description: |
+        Creates an idempotent session for the workspace, channel and
+        YouTube video tuple. An existing non-terminal session is reused;
+        the response keeps the persisted `session_id` and
+        `velox_project_id`. `editor_url` is a compatibility wire field
+        consumed by the InstaEditor handoff and must not be renamed.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/YouTubeEditorSessionCreateRequest'
+      responses:
+        '201':
+          description: Editor session created or resolved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YouTubeEditorSessionCreateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+    get:
+      tags: [YouTube]
+      operationId: listYouTubeEditorSessions
+      summary: List YouTube editor sessions in a workspace.
+      description: |
+        Returns `{sessions: []}` when there are no matching rows. The
+        workspace query is required to make the tenant boundary explicit;
+        status filtering accepts a comma-separated list. The response
+        uses the persisted `editor_url` compatibility field.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+        - name: account_id
+          in: query
+          required: false
+          schema: { type: integer, format: int64, minimum: 1 }
+        - name: status
+          in: query
+          required: false
+          description: Comma-separated editor session statuses.
+          schema: { type: string }
+        - name: include_terminal
+          in: query
+          required: false
+          schema: { type: boolean, default: false }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500 }
+      responses:
+        '200':
+          description: Matching editor sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YouTubeEditorSessionListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /api/v1/youtube/editor-sessions/by-project/{velox_project_id}:
+    parameters:
+      - name: velox_project_id
+        in: path
+        required: true
+        schema: { type: string }
+        description: Stable Velox project handle held by InstaEditor.
+    get:
+      tags: [YouTube]
+      operationId: getYouTubeEditorSessionByProject
+      summary: Fetch an editor session by Velox project id.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      responses:
+        '200':
+          description: Full editor-session detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YouTubeEditorSessionDetail'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+    patch:
+      tags: [YouTube]
+      operationId: updateYouTubeEditorSessionByProject
+      summary: Update editable YouTube session fields by project id.
+      description: |
+        Legacy-compatible thumbnail handoff keyed by `velox_project_id`.
+        The handler accepts only a verified `thumbnail_media_id`; session
+        and workspace fields remain server-owned. Terminal/publishing
+        sessions are rejected by the handler's CAS rules. New callers may
+        use the session-id variant at `/api/v1/youtube/editor-sessions/{id}/thumbnail`.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/YouTubeEditorSessionUpdateRequest'
+      responses:
+        '200':
+          description: Updated editor-session detail.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, thumbnail_media_id]
+                properties:
+                  session_id: { type: string }
+                  thumbnail_media_id: { type: string, nullable: true }
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '501':
+          description: Media store not configured on this server.
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /api/v1/youtube/editor-sessions/by-project/{velox_project_id}/draft:
+    put:
+      tags: [YouTube]
+      operationId: saveYouTubeEditorSessionDraft
+      summary: Autosave an incomplete editor-session draft.
+      description: |
+        Persists incomplete form values without publish-boundary validation.
+        The CAS guard prevents a draft from overwriting a concurrent publish;
+        a publish or terminal transition returns 409.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: velox_project_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/YouTubeEditorSessionDraftRequest'
+      responses:
+        '200':
+          description: Draft saved and echoed by the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YouTubeEditorSessionDraftResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /api/v1/youtube/editor-sessions/by-project/{velox_project_id}/generate-metadata:
+    post:
+      tags: [YouTube]
+      operationId: generateYouTubeEditorMetadata
+      summary: Kick off async YouTube metadata generation with NVIDIA AI.
+      description: |
+        ASYNC KICK-OFF (migration 113): validates the editor session and
+        workspace access, enqueues a metadata_generation_jobs row, and
+        returns 202 + `{job_id}` immediately — the POST never blocks on
+        the 60-180s NVIDIA call. Poll
+        `GET /api/v1/youtube/editor-sessions/generate-metadata/jobs/{job_id}`
+        until `status: "completed"` — the `result` then carries title,
+        description, tags, language and translations for operator review.
+        This endpoint never publishes and returns 503 when NVIDIA AI is
+        not configured; manual metadata entry remains available.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: velox_project_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/YouTubeEditorMetadataGenerateRequest'
+      responses:
+        '202':
+          description: Job accepted for background generation; poll for the result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YouTubeEditorMetadataGenerateJobResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /api/v1/youtube/editor-sessions/generate-metadata/jobs/{job_id}:
+    get:
+      tags: [YouTube]
+      operationId: pollYouTubeEditorMetadataGeneration
+      summary: Poll an async metadata generation job.
+      description: |
+        Returns the job status. When `status` is `completed`, `result`
+        carries the full generated metadata (the same shape the old
+        synchronous POST returned); when `failed`, `error_message`
+        explains why. Ownership is verified via the job's workspace —
+        non-owners get 404 (no existence leak).
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Job state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YouTubeEditorMetadataGenerateJobPollResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /api/v1/youtube/editor-sessions/{id}:
+    get:
+      tags: [YouTube]
+      operationId: getYouTubeEditorSessionById
+      summary: Fetch an editor session by session id.
+      description: The opaque session id is accepted in both legacy UUID and `ytedit_<uuid>` formats.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Full editor-session detail.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/YouTubeEditorSessionDetail'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
   /api/v1/youtube/editor-sessions/{id}/publish:
     post:
       tags: [YouTube]
@@ -1091,7 +1739,7 @@ paths:
       description: |
         Same as `POST /api/v1/youtube/editor-sessions/{id}/publish`
         but keyed by `velox_project_id`, which is the only handle the
-        Dark Editor holds.
+        InstaEditor holds.
       operationId: publishYouTubeEditorSessionByProject
       security:
         - ApiKeyAuth: []
@@ -1102,7 +1750,7 @@ paths:
           required: true
           schema:
             type: string
-          description: Velox project id (the dark editor's project handle).
+          description: Velox project id (the InstaEditor's project handle).
       requestBody:
         required: true
         content:
@@ -1139,6 +1787,606 @@ paths:
         '503':
           $ref: '#/components/responses/InternalError'
 
+
+  # ───────────── Livestreams (configuration CRUD) ─────────────────────────
+  /api/v1/livestreams:
+    get:
+      tags: [Livestreams]
+      operationId: livestreamsList
+      summary: List livestream configurations in a workspace.
+      description: |
+        Returns the workspace's livestream rows newest-first as
+        `{items: [...]}`. The caller MUST own the workspace
+        (404 otherwise — the id is not echoed to avoid leaking
+        workspace existence). `actual_state` drives the sidebar
+        live-count badge; only `live` rows are counted.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Livestream rows for the workspace.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestreamListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+    post:
+      tags: [Livestreams]
+      operationId: livestreamsCreate
+      summary: Create a live configuration (state draft).
+      description: |
+        Validates workspace ownership, the YouTube channel (platform
+        + workspace linkage + active status), title, privacy,
+        playback and schedule enums. The row is created in `draft` —
+        creating a configuration does NOT start a broadcast.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LivestreamCreateRequest'
+      responses:
+        '201':
+          description: Configuration created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livestream'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /api/v1/livestreams/channels:
+    get:
+      tags: [Livestreams]
+      operationId: livestreamsChannels
+      summary: Creation-wizard preflight for the workspace's YouTube channels.
+      description: |
+        Returns every YouTube channel linked to the workspace with
+        the data the wizard needs to gate channel selection:
+        `oauth_ready` (a valid grant exists), `live_enabled` (the
+        grant carries a YouTube live scope — youtube or
+        youtube.force-ssl), `last_verified_at` (the account's last
+        validation) and `active_lives` (rows currently in state
+        `live`). Channels without the live scope stay listed so the
+        UI can explain why they are blocked; the create endpoint
+        enforces the same guard server-side.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Preflight rows for the workspace's YouTube channels.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LivestreamChannelListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableError'
+
+  /api/v1/livestreams/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string }
+        description: Livestream id (`ls_...`).
+    get:
+      tags: [Livestreams]
+      operationId: livestreamsGet
+      summary: Fetch a single livestream configuration.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      responses:
+        '200':
+          description: The livestream row.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livestream'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    patch:
+      tags: [Livestreams]
+      operationId: livestreamsPatch
+      summary: Partially update the operator-owned configuration fields.
+      description: |
+        Read-modify-write on title, description, privacy_status,
+        playback_mode, schedule_type, scheduled_start_at, resolution,
+        frame_rate and auto_restart. `desired_state` /
+        `actual_state` are worker-owned and rejected with 400.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LivestreamPatchRequest'
+      responses:
+        '200':
+          description: Updated livestream row.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livestream'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags: [Livestreams]
+      operationId: livestreamsDelete
+      summary: Delete a livestream configuration.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      responses:
+        '204':
+          description: Configuration deleted.
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # ────── Autonomous Thumbnail Projects ──────────────────────────
+  /api/v1/thumbnail-projects:
+    get:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsList
+      summary: List autonomous thumbnail projects in a workspace.
+      description: Projects are workspace-scoped and do not require a channel, video, OAuth grant, or YouTube account.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Non-deleted projects, newest first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThumbnailProjectListResponse' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    post:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsCreate
+      summary: Create an autonomous thumbnail project.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ThumbnailProjectCreateRequest' }
+      responses:
+        '201':
+          description: Draft project created immediately; no YouTube dependency.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThumbnailProject' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '422': { $ref: '#/components/responses/UnprocessableEntityError' }
+  /api/v1/thumbnail-projects/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+      - name: workspace_id
+        in: query
+        required: true
+        schema: { type: integer, format: int64, minimum: 1 }
+    get:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsGet
+      summary: Open an autonomous thumbnail project.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      responses:
+        '200':
+          description: Project metadata and current revision pointers.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThumbnailProject' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    patch:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsUpdate
+      summary: Update project metadata with optimistic versioning.
+      description: The request version must match the server version; stale updates return 409 without last-write-wins.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ThumbnailProjectUpdateRequest' }
+      responses:
+        '200':
+          description: Updated project with incremented version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThumbnailProject' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409':
+          description: PROJECT_VERSION_CONFLICT; another tab already saved a newer version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/UnprocessableEntityError' }
+    put:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsSaveSnapshot
+      summary: Save the current canvas as an immutable revision.
+      description: |
+        Saves a canonical JSON canvas snapshot and advances the project
+        version atomically. `If-Match` may be `"version-N"` (or the
+        body `base_version` may be used). Repeating the same snapshot
+        hash is deduplicated and does not create another revision.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: If-Match
+          in: header
+          required: false
+          schema: { type: string }
+          description: Optimistic version, for example `"version-7"`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ThumbnailProjectSnapshotRequest' }
+      responses:
+        '200':
+          description: Saved or deduplicated immutable revision.
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThumbnailProjectSnapshotResult' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409':
+          description: PROJECT_VERSION_CONFLICT; another tab saved a newer version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422': { $ref: '#/components/responses/UnprocessableEntityError' }
+    delete:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsDelete
+      summary: Soft-delete a project while preserving its history and exports.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '204': { description: Project marked deleted. }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+  /api/v1/thumbnail-projects/{id}/revisions:
+    get:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsRevisionsList
+      summary: List immutable canvas revisions.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Revisions newest first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThumbnailProjectRevisionListResponse' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /api/v1/thumbnail-projects/{id}/revisions/{revision_id}:
+    get:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsRevisionGet
+      summary: Fetch one immutable canvas revision.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: revision_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '200':
+          description: Immutable revision.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThumbnailProjectRevisionDetailResponse' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+  /api/v1/thumbnail-projects/{id}/restore/{revision_id}:
+    post:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsRevisionRestore
+      summary: Restore a revision as a new immutable revision.
+      description: Restoring is an explicit history event and therefore always creates a new revision, even when the snapshot hash already exists.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: revision_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+        - name: If-Match
+          in: header
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ThumbnailProjectRestoreRequest' }
+      responses:
+        '200':
+          description: New revision created from the selected source revision.
+          headers:
+            ETag:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ThumbnailProjectSnapshotResult' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/UnprocessableEntityError' }
+  /api/v1/thumbnail-projects/{id}/archive:
+    post:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectsArchive
+      summary: Archive a project without deleting revisions or exports.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      responses:
+        '204': { description: Project archived. }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+
+  # ────── InstaEdit → Velox project bridge ──────────────────────
+  # InstaEdit owns the application project, workspace, groups, channels
+  # and permissions. Velox receives only this opaque project reference
+  # and owns editor state/rendering. There is no reverse sync or Velox
+  # catalog endpoint in this contract.
+  /api/v1/thumbnail-projects/{id}/velox-bridge:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectVeloxBridgeCreate
+      summary: Persist or resolve the one-way project link to Velox.
+      description: |
+        Persists or reuses the single InstaEdit-owned relation between an
+        application project and an already-created opaque Velox editor
+        project. This endpoint does not create, enumerate, import, delete,
+        or synchronize Velox editor projects; the trusted editor handoff
+        supplies `velox_project_id`. The operation is idempotent for an
+        equivalent context and returns 409 if an existing relation would be
+        rebound. `group_id`, channel lists, membership snapshots, workspace
+        copies and synchronization directives are not part of this request.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VeloxProjectBridgeCreateRequest' }
+      responses:
+        '201':
+          description: New InstaEdit-owned bridge created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VeloxProjectBridgeResponse' }
+        '200':
+          description: Existing equivalent bridge returned.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VeloxProjectBridgeResponse' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+        '409': { $ref: '#/components/responses/ConflictError' }
+        '422': { $ref: '#/components/responses/UnprocessableEntityError' }
+    get:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectVeloxBridgeGet
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      summary: Resolve the project link to Velox.
+      description: |
+        Returns the authorized project-scoped bridge. Cross-workspace,
+        missing, archived or inaccessible projects return 404. This is
+        not a Velox project catalog and does not enumerate groups/channels.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      responses:
+        '200':
+          description: Authorized project bridge.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VeloxProjectBridgeResponse' }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+    delete:
+      tags: [Thumbnail Projects]
+      operationId: thumbnailProjectVeloxBridgeDelete
+      parameters:
+        - name: workspace_id
+          in: query
+          required: true
+          schema: { type: integer, format: int64, minimum: 1 }
+      summary: Revoke the InstaEdit-side project link.
+      description: Deletes only the InstaEdit relationship. It does not
+        import, delete or synchronize Velox editor content.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      responses:
+        '204': { description: InstaEdit bridge relation deleted. }
+        '400': { $ref: '#/components/responses/BadRequestError' }
+        '401': { $ref: '#/components/responses/UnauthorizedError' }
+        '404': { $ref: '#/components/responses/NotFoundError' }
+
+  # ────── Media Library (live wizard step 3) ──────────────────────
+  /api/v1/media:
+    get:
+      tags: [Media]
+      operationId: mediaLibraryList
+      summary: List the caller's ready media assets with ffprobe metadata.
+      description: |
+        Returns the caller's ready, non-expired media assets
+        newest-first as `{items: [...]}`. Each row carries the
+        ffprobe-derived metadata (migration 092 — duration,
+        resolution, FPS, audio, codecs) plus a server-derived
+        `live_compatibility` flag (`ready` / `needs_normalization` /
+        `unknown`) that drives the live wizard's compatibility
+        badge. `preview_url` is a short-lived presigned GET URL the
+        wizard uses to render `<video preload="metadata">`.
+      security:
+        - ApiKeyAuth: []
+        - JwtCookie: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+          description: Max rows to return (default 100).
+      responses:
+        '200':
+          description: Ready assets.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/MediaLibraryItem' }
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '501':
+          description: Media storage not configured on this server.
 
   # ON 2026-07-27 (commit 8097e30-equivalent local) the path
   # /api/v1/groups/{group_id}/youtube/videos + the
@@ -1177,7 +2425,7 @@ components:
       description: |
         Service-to-service Bearer auth for `/internal/v1/*`.
         Token loaded from `VELOX_API_TOKEN` env var at boot
-        (roll via `set-fly-secrets.sh`). Compared constant-time
+        (roll via VPS .env edit + `docker compose restart`). Compared constant-time
         via `crypto/subtle.ConstantTimeCompare`. Distinct from
         `JwtCookie` (user) and `ApiKeyAuth` (machine user):
         this scheme is for trusted peer systems, NOT for SPA
@@ -1239,6 +2487,12 @@ components:
             $ref: '#/components/schemas/Error'
     InternalError:
       description: Server-side error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailableError:
+      description: Backing store/service not configured on this server.
       content:
         application/json:
           schema:
@@ -1375,7 +2629,697 @@ components:
             $ref: '#/components/schemas/Error'
   schemas:
 
+    VeloxJob:
+      type: object
+      required: [id, workspace_id, render_status, created_at, updated_at]
+      properties:
+        id: { type: string }
+        workspace_id: { type: integer, format: int64 }
+        project_id: { type: string }
+        render_status: { type: string }
+        publication_status: { type: string }
+        overall_status: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    # The central technical registry currently exposes four public typed
+    # modes. Editorial template ids are values in the envelope, not paths.
+    VeloxAssetRef:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        asset_id: { type: string }
+        uri: { type: string, description: 'Portable asset URI, for example velox-asset://audio-01.' }
+        url: { type: string, format: uri }
+        local_path:
+          type: string
+          description: 'Accepted only when it is a portable velox-asset:// URI; filesystem paths are rejected by the adapter.'
+        type: { type: string }
+        duration_ms: { type: integer, minimum: 0 }
+        start_ms: { type: integer, minimum: 0 }
+        end_ms: { type: integer, minimum: 0 }
+        fallback: { type: boolean }
+
+    VeloxTransition:
+      type: object
+      additionalProperties: false
+      properties:
+        type: { type: string }
+        duration_ms: { type: integer, minimum: 0 }
+
+    VeloxSceneSpec:
+      type: object
+      additionalProperties: false
+      required: [scenes]
+      description: |
+        Closed scene collection used by `scene.composite.v1`,
+        `clip.stock.v1`, and `scene.image.v1`. The same endpoint and
+        envelope are used for all three modes; `job_type` selects the
+        technical validator/compiler.
+      properties:
+        scenes:
+          type: array
+          items:
+            $ref: '#/components/schemas/VeloxScene'
+
+    VeloxScene:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        text: { type: string }
+        title: { type: string }
+        duration_ms: { type: integer, minimum: 0 }
+        start_ms: { type: integer, minimum: 0 }
+        end_ms: { type: integer, minimum: 0 }
+        assets:
+          $ref: '#/components/schemas/VeloxSceneAssets'
+        audio:
+          $ref: '#/components/schemas/VeloxSceneAudio'
+        timeline:
+          $ref: '#/components/schemas/VeloxTimeline'
+        visual_slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/VeloxVisualSlot'
+        visual_assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/VeloxVisualAssignment'
+        layers:
+          type: array
+          items:
+            $ref: '#/components/schemas/VeloxLayer'
+        subtitles:
+          type: array
+          items:
+            $ref: '#/components/schemas/VeloxSubtitle'
+        transition:
+          $ref: '#/components/schemas/VeloxTransition'
+        bindings:
+          $ref: '#/components/schemas/VeloxBindings'
+        primary_clip:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        stock:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        image:
+          $ref: '#/components/schemas/VeloxAssetRef'
+
+    VeloxSceneAssets:
+      type: object
+      additionalProperties: false
+      properties:
+        primary_clip:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        stock:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        image:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        additional:
+          type: array
+          items:
+            $ref: '#/components/schemas/VeloxAssetRef'
+
+    VeloxSceneAudio:
+      type: object
+      additionalProperties: false
+      properties:
+        voiceover:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        music:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        ducking: { type: number, format: double }
+
+    VeloxTimeline:
+      type: object
+      additionalProperties: false
+      properties:
+        start_ms: { type: integer, minimum: 0 }
+        end_ms: { type: integer, minimum: 0 }
+        duration_ms: { type: integer, minimum: 0 }
+
+    VeloxVisualSlot:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        asset:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        layer: { type: string }
+        x: { type: number, format: double }
+        y: { type: number, format: double }
+        width: { type: number, format: double }
+        height: { type: number, format: double }
+
+    VeloxVisualAssignment:
+      type: object
+      additionalProperties: false
+      properties:
+        slot: { type: string }
+        binding: { type: string }
+        asset:
+          $ref: '#/components/schemas/VeloxAssetRef'
+
+    VeloxLayer:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        type: { type: string }
+        text: { type: string }
+        asset:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        opacity: { type: number, format: double }
+        start_ms: { type: integer, minimum: 0 }
+        end_ms: { type: integer, minimum: 0 }
+
+    VeloxSubtitle:
+      type: object
+      additionalProperties: false
+      properties:
+        text: { type: string }
+        start_ms: { type: integer, minimum: 0 }
+        end_ms: { type: integer, minimum: 0 }
+        style: { type: string }
+        language: { type: string }
+
+    VeloxBindings:
+      type: object
+      additionalProperties: false
+      properties:
+        clip:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        stock:
+          $ref: '#/components/schemas/VeloxAssetRef'
+        voiceover:
+          $ref: '#/components/schemas/VeloxAssetRef'
+
+    VeloxSlideshowSpec:
+      type: object
+      additionalProperties: false
+      required: [images]
+      description: Closed image sequence used by `slideshow.v1`.
+      properties:
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/VeloxSlideshowImage'
+
+    VeloxSlideshowImage:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        asset_id: { type: string }
+        uri: { type: string, description: 'Portable asset URI, for example velox-asset://image-01.' }
+        url: { type: string, format: uri }
+        local_path:
+          type: string
+          description: 'Accepted only when it is a portable velox-asset:// URI.'
+        text: { type: string }
+        duration_ms: { type: integer, minimum: 0 }
+        start_ms: { type: integer, minimum: 0 }
+        end_ms: { type: integer, minimum: 0 }
+        zoom: { type: number, format: double }
+        pan_x: { type: number, format: double }
+        pan_y: { type: number, format: double }
+        transition:
+          $ref: '#/components/schemas/VeloxTransition'
+
+    VeloxJobSubmissionRequest:
+      type: object
+      additionalProperties: false
+      required: [contract_version, idempotency_key, job_type, template_id,
+                 template_version, video_name, spec, output, delivery_plan]
+      description: |
+        Canonical `velox.job.v1` envelope. Keep this object stable as
+        editorial templates grow; add a template value rather than a
+        template-specific endpoint.
+      example:
+        contract_version: velox.job.v1
+        idempotency_key: five-boxers-it-001
+        job_type: scene.composite.v1
+        template_id: documentary.clip-stock
+        template_version: 1
+        video_name: Five legendary boxers
+        spec:
+          scenes:
+            - id: intro
+              text: Cinque pugili leggendari
+              duration_ms: 4000
+              assets:
+                primary_clip:
+                  asset_id: asset-clip-intro
+              audio:
+                voiceover:
+                  uri: velox-asset://voiceover-intro
+              timeline:
+                duration_ms: 4000
+              visual_slots:
+                - id: intro
+                  asset:
+                    asset_id: asset-clip-intro
+        output:
+          width: 1920
+          height: 1080
+          fps: 30
+          format: mp4
+        delivery_plan:
+          destinations:
+            - external_destination_id: extdst_01J
+      x-job-type-specs:
+        scene.composite.v1: '#/components/schemas/VeloxSceneSpec'
+        clip.stock.v1: '#/components/schemas/VeloxSceneSpec'
+        scene.image.v1: '#/components/schemas/VeloxSceneSpec'
+        slideshow.v1: '#/components/schemas/VeloxSlideshowSpec'
+      # OpenAPI 3.1 conditional schemas make the registry selection
+      # explicit to tooling as well as to the runtime validator.
+      allOf:
+        - if:
+            properties:
+              job_type: { const: scene.composite.v1 }
+          then:
+            properties:
+              spec:
+                $ref: '#/components/schemas/VeloxSceneSpec'
+        - if:
+            properties:
+              job_type: { const: clip.stock.v1 }
+          then:
+            properties:
+              spec:
+                $ref: '#/components/schemas/VeloxSceneSpec'
+        - if:
+            properties:
+              job_type: { const: scene.image.v1 }
+          then:
+            properties:
+              spec:
+                $ref: '#/components/schemas/VeloxSceneSpec'
+        - if:
+            properties:
+              job_type: { const: slideshow.v1 }
+          then:
+            properties:
+              spec:
+                $ref: '#/components/schemas/VeloxSlideshowSpec'
+      properties:
+        contract_version:
+          type: string
+          const: velox.job.v1
+        idempotency_key:
+          type: string
+          minLength: 1
+          maxLength: 255
+        job_type:
+          type: string
+          enum:
+            - scene.composite.v1
+            - clip.stock.v1
+            - scene.image.v1
+            - slideshow.v1
+          description: |
+            Technical renderer mode resolved by the central registry.
+            Editorial formats belong in `template_id`, never in a new
+            endpoint. The four public typed modes above share this
+            canonical endpoint.
+        template_id:
+          type: string
+          minLength: 1
+        template_version:
+          type: integer
+          minimum: 1
+        video_name:
+          type: string
+          minLength: 1
+        spec:
+          description: |
+            Job-type-specific closed specification. The selected
+            `job_type` determines which branch applies; the server
+            rejects unknown fields recursively with HTTP 422.
+          oneOf:
+            - $ref: '#/components/schemas/VeloxSceneSpec'
+            - $ref: '#/components/schemas/VeloxSlideshowSpec'
+        output:
+          type: object
+          additionalProperties: false
+          required: [width, height, fps, format]
+          properties:
+            width: { type: integer, minimum: 1 }
+            height: { type: integer, minimum: 1 }
+            fps: { type: integer, minimum: 1 }
+            format: { type: string, minLength: 1 }
+        delivery_plan:
+          type: object
+          additionalProperties: false
+          required: [destinations]
+          properties:
+            destinations:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                additionalProperties: false
+                required: [external_destination_id]
+                properties:
+                  external_destination_id: { type: string, minLength: 1 }
+                  publication_id: { type: string }
+                  metadata:
+                    type: object
+                    additionalProperties: true
+
+    # ────── Autonomous Thumbnail Projects ──────────────────────────
+    ThumbnailProject:
+      type: object
+      required: [id, workspace_id, created_by, name, description, canvas_width, canvas_height, status, version, created_at, updated_at]
+      properties:
+        id: { type: string }
+        workspace_id: { type: integer, format: int64 }
+        created_by: { type: integer, format: int64 }
+        name: { type: string }
+        description: { type: string }
+        canvas_width: { type: integer, minimum: 1, maximum: 16384 }
+        canvas_height: { type: integer, minimum: 1, maximum: 16384 }
+        status: { type: string, enum: [draft, ready, archived, deleted] }
+        current_revision_id: { type: string, nullable: true }
+        preview_media_id: { type: string, format: uuid, nullable: true }
+        latest_export_id: { type: string, nullable: true }
+        version: { type: integer, format: int64, minimum: 1 }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ThumbnailProjectListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ThumbnailProject' }
+    ThumbnailProjectCreateRequest:
+      type: object
+      required: [workspace_id, name, canvas_width, canvas_height]
+      properties:
+        workspace_id: { type: integer, format: int64, minimum: 1 }
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        canvas_width: { type: integer, minimum: 1, maximum: 16384 }
+        canvas_height: { type: integer, minimum: 1, maximum: 16384 }
+    ThumbnailProjectUpdateRequest:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, format: int64, minimum: 1 }
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        canvas_width: { type: integer, minimum: 1, maximum: 16384 }
+        canvas_height: { type: integer, minimum: 1, maximum: 16384 }
+        status: { type: string, enum: [draft, ready, archived] }
+    ThumbnailProjectSnapshotRequest:
+      type: object
+      required: [schema_version, snapshot, renderer_version, base_version]
+      properties:
+        schema_version: { type: integer, minimum: 1 }
+        snapshot: { type: object }
+        renderer_version: { type: string, minLength: 1 }
+        base_version: { type: integer, format: int64, minimum: 1 }
+    ThumbnailProjectRestoreRequest:
+      type: object
+      required: [base_version]
+      properties:
+        base_version: { type: integer, format: int64, minimum: 1 }
+        renderer_version: { type: string }
+    ThumbnailProjectSnapshotResult:
+      type: object
+      required: [project_id, revision_id, revision_number, version, saved_at, snapshot_sha256]
+      properties:
+        project_id: { type: string }
+        revision_id: { type: string }
+        revision_number: { type: integer, format: int64 }
+        version: { type: integer, format: int64 }
+        saved_at: { type: string, format: date-time }
+        snapshot_sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        deduplicated: { type: boolean }
+        revision: { $ref: '#/components/schemas/ThumbnailProjectRevision' }
+    ThumbnailProjectRevision:
+      type: object
+      required: [id, project_id, revision_number, schema_version, snapshot_json, snapshot_sha256, renderer_version, created_by, created_at]
+      properties:
+        id: { type: string }
+        project_id: { type: string }
+        revision_number: { type: integer, format: int64 }
+        schema_version: { type: integer, minimum: 1 }
+        snapshot_json: { type: object }
+        snapshot_sha256: { type: string, format: byte }
+        renderer_version: { type: string }
+        created_by: { type: integer, format: int64 }
+        created_at: { type: string, format: date-time }
+    ThumbnailProjectRevisionListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ThumbnailProjectRevision' }
+    ThumbnailProjectRevisionDetailResponse:
+      type: object
+      required: [revision]
+      properties:
+        revision: { $ref: '#/components/schemas/ThumbnailProjectRevision' }
+    VeloxProjectBridgeCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [contract_version, workspace_id, velox_project_id]
+      properties:
+        contract_version:
+          type: string
+          enum: [instaedit.velox.project-bridge.v1]
+        workspace_id: { type: integer, format: int64, minimum: 1 }
+        velox_project_id:
+          type: string
+          minLength: 1
+          maxLength: 126
+        platform: { type: string, minLength: 1 }
+        platform_account_id: { type: integer, format: int64, minimum: 1 }
+        channel_id: { type: string, minLength: 1 }
+        video_id: { type: string, minLength: 1 }
+        language: { type: string, minLength: 1 }
+      description: |
+        Minimal one-way context. Group identifiers, channel arrays,
+        membership snapshots, copied workspaces and sync directives are
+        forbidden and rejected by the server.
+    VeloxProjectBridge:
+      type: object
+      required: [project_id, velox_project_id, workspace_id]
+      additionalProperties: false
+      properties:
+        project_id: { type: string }
+        velox_project_id:
+          type: string
+          minLength: 1
+          maxLength: 126
+        workspace_id: { type: integer, format: int64, minimum: 1 }
+        platform: { type: string }
+        platform_account_id: { type: integer, format: int64, minimum: 1 }
+        channel_id: { type: string }
+        video_id: { type: string }
+        language: { type: string }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    VeloxProjectBridgeResponse:
+      type: object
+      required: [contract_version, bridge, editor_url]
+      additionalProperties: false
+      properties:
+        contract_version:
+          type: string
+          enum: [instaedit.velox.project-bridge.v1]
+        bridge: { $ref: '#/components/schemas/VeloxProjectBridge' }
+        editor_url: { type: string, format: uri-reference }
+
+    # ────── Media Library (live wizard step 3) ──────────────────────
+    MediaLibraryItem:
+      type: object
+      description: |
+        One row of GET /api/v1/media — the Media Library entry the
+        live wizard's step 3 renders. Probe fields stay null until
+        the upload worker probes the asset; `live_compatibility` is
+        derived server-side from the probe.
+      required: [id, filename, content_type, size_bytes, created_at,
+                 live_compatibility]
+      properties:
+        id: { type: string, format: uuid }
+        filename: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: integer, format: int64, minimum: 0 }
+        created_at: { type: string, format: date-time }
+        preview_url:
+          type: string
+          description: Short-lived presigned GET URL (15 min) for `<video>` preview.
+        duration_seconds: { type: number, format: double, nullable: true }
+        width: { type: integer, nullable: true }
+        height: { type: integer, nullable: true }
+        fps: { type: number, format: double, nullable: true }
+        has_audio: { type: boolean, nullable: true }
+        video_codec: { type: string }
+        audio_codec: { type: string }
+        probed_at: { type: string, format: date-time, nullable: true }
+        live_compatibility:
+          type: string
+          enum: [ready, needs_normalization, unknown]
+          description: |
+            `ready` = matches a canonical live profile (1080p30 /
+            720p30 with audio); `needs_normalization` = probed but
+            off-profile; `unknown` = never probed.
+
     # ────── YouTube editor session publish contract ──────────
+    YouTubeEditorSessionCreateRequest:
+      type: object
+      required: [workspace_id, platform_account_id, youtube_video_id]
+      properties:
+        workspace_id: { type: integer, format: int64, minimum: 1 }
+        platform_account_id: { type: integer, format: int64, minimum: 1 }
+        youtube_video_id: { type: string, minLength: 1 }
+        source_thumbnail_url: { type: string, format: uri }
+    YouTubeEditorSessionCreateResponse:
+      type: object
+      required: [session_id, velox_project_id, editor_url]
+      properties:
+        session_id: { type: string }
+        velox_project_id: { type: string }
+        editor_url:
+          type: string
+          format: uri-reference
+          description: Legacy-compatible InstaEditor handoff URL; wire name is stable.
+    YouTubeEditorSessionListResponse:
+      type: object
+      required: [sessions]
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/YouTubeEditorSessionListEntry'
+    YouTubeEditorSessionListEntry:
+      type: object
+      required: [id, youtube_video_id, velox_project_id, editor_url, status, desired_privacy]
+      properties:
+        id: { type: string }
+        youtube_video_id: { type: string }
+        velox_project_id: { type: string }
+        editor_url: { type: string, format: uri-reference }
+        status: { type: string }
+        thumbnail_media_id: { type: string }
+        desired_privacy: { type: string, enum: [public, unlisted, private] }
+        publish_at: { type: string, format: date-time, nullable: true }
+        actual_privacy: { type: string, enum: [public, unlisted, private], nullable: true }
+        youtube_sync_status: { type: string, nullable: true }
+    YouTubeEditorSessionDetail:
+      type: object
+      required: [id, workspace_id, platform_account_id, youtube_video_id, velox_project_id, desired_privacy, status, created_at, updated_at]
+      properties:
+        id: { type: string }
+        workspace_id: { type: integer, format: int64 }
+        platform_account_id: { type: integer, format: int64 }
+        channel_id: { type: string }
+        youtube_video_id: { type: string }
+        velox_project_id: { type: string }
+        source_thumbnail_url: { type: string, format: uri }
+        thumbnail_media_id: { type: string, nullable: true }
+        desired_privacy: { type: string, enum: [public, unlisted, private] }
+        publish_at: { type: string, format: date-time, nullable: true }
+        status: { type: string }
+        last_error: { type: string }
+        actual_privacy: { type: string, enum: [public, unlisted, private], nullable: true }
+        youtube_sync_status: { type: string, nullable: true }
+        draft_title: { type: string, nullable: true }
+        draft_description: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    YouTubeEditorSessionUpdateRequest:
+      type: object
+      required: [thumbnail_media_id]
+      properties:
+        thumbnail_media_id:
+          type: string
+          minLength: 1
+          description: Verified ready media asset id to attach to the session.
+    YouTubeEditorSessionDraftRequest:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        default_language: { type: string }
+        default_audio_language: { type: string }
+        translations:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/YouTubeTranslation'
+        desired_privacy: { type: string, enum: [public, unlisted, private] }
+        publish_at: { type: string, format: date-time, nullable: true }
+    YouTubeEditorSessionDraftResponse:
+      type: object
+      required: [velox_project_id, draft_title, draft_description, draft_tags, draft_default_language, draft_default_audio_language, draft_translations, draft_desired_privacy, draft_updated_at]
+      properties:
+        velox_project_id: { type: string }
+        draft_title: { type: string }
+        draft_description: { type: string }
+        draft_tags:
+          type: array
+          items: { type: string }
+        draft_default_language: { type: string }
+        draft_default_audio_language: { type: string }
+        draft_translations:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/YouTubeTranslation'
+        draft_desired_privacy: { type: string, enum: [public, unlisted, private] }
+        draft_publish_at: { type: string, format: date-time, nullable: true }
+        draft_updated_at: { type: string, format: date-time }
+    YouTubeEditorMetadataGenerateRequest:
+      type: object
+      properties:
+        prompt: { type: string }
+    YouTubeEditorMetadataGenerateResponse:
+      type: object
+      required: [title, description, tags, default_language, default_audio_language, translations]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        default_language: { type: string }
+        default_audio_language: { type: string }
+        translations:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/YouTubeTranslation'
+    YouTubeEditorMetadataGenerateJobResponse:
+      type: object
+      required: [job_id, status, velox_project_id]
+      properties:
+        job_id: { type: integer, format: int64 }
+        status: { type: string, enum: [queued] }
+        velox_project_id: { type: string }
+    YouTubeEditorMetadataGenerateJobPollResponse:
+      type: object
+      required: [job_id, status, velox_project_id]
+      properties:
+        job_id: { type: integer, format: int64 }
+        status: { type: string, enum: [queued, processing, completed, failed] }
+        velox_project_id: { type: string }
+        result:
+          $ref: '#/components/schemas/YouTubeEditorMetadataGenerateResponse'
+        error_message: { type: string }
+        created_at: { type: string, format: date-time }
+        completed_at: { type: string, format: date-time, nullable: true }
+    YouTubeTranslation:
+      type: object
+      required: [title, description]
+      properties:
+        title: { type: string }
+        description: { type: string }
     YouTubeEditorSessionPublishRequest:
       type: object
       properties:
@@ -1434,6 +3378,218 @@ components:
           type: string
           format: date-time
           nullable: true
+
+    # ────── Livestreams ────────────────────────────────────────────────
+    LivestreamState:
+      type: string
+      description: |
+        Worker-owned state-machine alphabet, used by both
+        `desired_state` (operator intent) and `actual_state`
+        (observed truth).
+      enum:
+        - draft
+        - preparing
+        - ready
+        - scheduled
+        - starting
+        - waiting_for_ingest
+        - testing
+        - live
+        - degraded
+        - reconnecting
+        - stopping
+        - completed
+        - failed
+        - cancelled
+    Livestream:
+      type: object
+      required: [id, workspace_id, platform_account_id, title, privacy_status,
+                 playback_mode, schedule_type, desired_state, actual_state,
+                 resolution, frame_rate, auto_restart, category, made_for_kids,
+                 language, dvr_enabled, auto_start, auto_stop,
+                 latency_preference, created_at, updated_at]
+      properties:
+        id: { type: string, example: ls_01HXY_DoNotUse }
+        workspace_id: { type: integer, format: int64 }
+        platform_account_id: { type: integer, format: int64 }
+        channel_name: { type: string, description: Display name of the bound YouTube channel (empty when the account cannot be loaded) }
+        title: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 5000 }
+        privacy_status:
+          type: string
+          enum: [private, unlisted, public]
+        playback_mode:
+          type: string
+          enum: [loop_continuous, play_once]
+        schedule_type:
+          type: string
+          enum: [manual, now, scheduled, recurring]
+        scheduled_start_at: { type: string, format: date-time, nullable: true }
+        desired_state: { $ref: '#/components/schemas/LivestreamState' }
+        actual_state: { $ref: '#/components/schemas/LivestreamState' }
+        resolution:
+          type: string
+          enum: [720p30, 1080p30]
+        frame_rate: { type: integer, enum: [30] }
+        auto_restart: { type: boolean }
+        category: { type: string, description: YouTube numeric category id (empty = none) }
+        made_for_kids: { type: boolean, description: liveBroadcast.status.madeForKids (COPPA) }
+        language: { type: string, description: ISO 639-1 / BCP-47 code (empty = none) }
+        thumbnail_media_id:
+          type: string
+          nullable: true
+          description: media_assets.id of the uploaded cover (wizard Carica immagine).
+        dvr_enabled: { type: boolean, description: liveBroadcast.contentDetails.enableDvr }
+        auto_start: { type: boolean, description: liveBroadcast.contentDetails.enableAutoStart }
+        auto_stop: { type: boolean, description: liveBroadcast.contentDetails.enableAutoStop }
+        latency_preference:
+          type: string
+          enum: [normal, low, ultraLow]
+          description: liveBroadcast.contentDetails.latencyPreference
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    LivestreamCreateRequest:
+      type: object
+      required: [workspace_id, platform_account_id, title, privacy_status,
+                 playback_mode, schedule_type]
+      properties:
+        workspace_id: { type: integer, format: int64, minimum: 1 }
+        platform_account_id: { type: integer, format: int64, minimum: 1 }
+        title: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 5000 }
+        privacy_status:
+          type: string
+          enum: [private, unlisted, public]
+        playback_mode:
+          type: string
+          enum: [loop_continuous, play_once]
+        schedule_type:
+          type: string
+          enum: [manual, now, scheduled, recurring]
+        scheduled_start_at: { type: string, format: date-time }
+        resolution:
+          type: string
+          enum: [720p30, 1080p30]
+          default: 1080p30
+        frame_rate:
+          type: integer
+          enum: [30]
+          default: 30
+        auto_restart:
+          type: boolean
+          default: true
+        category:
+          type: string
+          description: YouTube numeric category id (empty = none)
+        made_for_kids:
+          type: boolean
+          default: false
+        language:
+          type: string
+          description: ISO 639-1 / BCP-47 code (empty = none)
+        thumbnail_media_id:
+          type: string
+          description: |
+            media_assets.id of the cover. Omit to leave unchanged; send
+            an empty string to clear it.
+        dvr_enabled:
+          type: boolean
+          default: false
+        auto_start:
+          type: boolean
+          default: false
+        auto_stop:
+          type: boolean
+          default: false
+        latency_preference:
+          type: string
+          enum: [normal, low, ultraLow]
+          default: normal
+    LivestreamPatchRequest:
+      type: object
+      description: |
+        Partial update; only the provided fields change.
+        `desired_state` / `actual_state` are rejected (400).
+        `scheduled_start_at` semantics: omit to leave it unchanged,
+        send an empty string to clear it, or an RFC3339 timestamp to
+        set it (JSON null is treated as "not provided").
+      properties:
+        title: { type: string, maxLength: 100 }
+        description: { type: string, maxLength: 5000 }
+        privacy_status:
+          type: string
+          enum: [private, unlisted, public]
+        playback_mode:
+          type: string
+          enum: [loop_continuous, play_once]
+        schedule_type:
+          type: string
+          enum: [manual, now, scheduled, recurring]
+        scheduled_start_at: { type: string, format: date-time }
+        resolution:
+          type: string
+          enum: [720p30, 1080p30]
+        frame_rate:
+          type: integer
+          enum: [30]
+        auto_restart: { type: boolean }
+        category:
+          type: string
+          description: YouTube numeric category id (empty = none)
+        made_for_kids: { type: boolean }
+        language:
+          type: string
+          description: ISO 639-1 / BCP-47 code (empty = none)
+        thumbnail_media_id:
+          type: string
+          description: |
+            media_assets.id of the cover. Omit to leave unchanged; send
+            an empty string to clear it.
+        dvr_enabled: { type: boolean }
+        auto_start: { type: boolean }
+        auto_stop: { type: boolean }
+        latency_preference:
+          type: string
+          enum: [normal, low, ultraLow]
+    LivestreamChannelListResponse:
+      type: object
+      required: [channels]
+      properties:
+        channels:
+          type: array
+          items: { $ref: '#/components/schemas/LivestreamChannel' }
+    LivestreamChannel:
+      type: object
+      required: [platform_account_id, username, platform_user_id,
+                 account_state, oauth_ready, live_enabled, active_lives]
+      properties:
+        platform_account_id: { type: integer, format: int64 }
+        username: { type: string }
+        platform_user_id: { type: string }
+        account_state:
+          type: string
+          enum: [valid, reconnect_required, suspended, deleted]
+        oauth_ready:
+          type: boolean
+          description: A valid OAuth grant exists for the channel.
+        live_enabled:
+          type: boolean
+          description: |
+            The grant carries a YouTube live scope (youtube or
+            youtube.force-ssl). Scope presence is a necessary
+            condition; the authoritative liveStreamingNotEnabled
+            check still happens on broadcast creation.
+        last_verified_at: { type: string, format: date-time, nullable: true }
+        active_lives:
+          type: integer
+          description: Livestream rows currently in state `live` for this channel.
+    LivestreamListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Livestream' }
 
     # ────── Errors (canonical envelope, Taglio 5.x design) ──────────
     Error:
@@ -1584,6 +3740,16 @@ components:
         caption:
           type: string
           maxLength: 5000
+        language:
+          type: string
+          description: |
+            OPTIONAL source language of the post content (BCP-47 /
+            ISO 639-1, e.g. `it`, `en`). Persisted in post metadata
+            as `source_language`. When a target channel declares a
+            DIFFERENT language in its account metadata, the publish
+            worker translates title + caption into the channel's
+            language before publishing (per-channel-language
+            posting). Empty = unknown (the translator infers it).
         media:
           type: array
           minItems: 1
@@ -2072,12 +4238,17 @@ components:
     VeloxDeliverArtifactRequest:
       type: object
       required:
+        - contract_version
         - external_delivery_id
         - idempotency_key
         - external_destination_id
         - artifact
         - metadata
       properties:
+        contract_version:
+          type: string
+          const: velox.delivery.v1
+          description: Sole accepted delivery wire contract version.
         external_delivery_id:
           type: string
         idempotency_key:
@@ -2219,3 +4390,136 @@ components:
         `pkg/api/internal_velox.go`. Both `error` and `code`
         carry the same string so a peer can pattern-match on
         either key without coupling to the message prose.
+
+    # ────── Accounts (lifecycle) ─────────────────────────────────────
+
+    Account:
+      type: object
+      required: [id, platform, platform_user_id, username, status, created_at]
+      properties:
+        id:
+          type: integer
+          format: int64
+        platform:
+          type: string
+          description: Provider identifier (e.g. `youtube`, `instagram`, `facebook`).
+        platform_user_id:
+          type: string
+          description: Provider-scoped stable id of the channel.
+        username:
+          type: string
+          nullable: true
+        status:
+          type: string
+          description: Internal lifecycle value (`active`, `disconnected`, `deleted`, …).
+        account_state:
+          type: string
+          enum: [valid, reconnect_required, suspended, deleted]
+          description: Normalized state the UI renders against.
+        is_publishable:
+          type: boolean
+          description: Whether the account can be a publishing destination right now.
+        reauth_required_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_error_code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    AccountListResponse:
+      type: object
+      required: [accounts]
+      properties:
+        accounts:
+          type: array
+          items: { $ref: '#/components/schemas/Account' }
+
+  examples:
+    VeloxSceneCompositeJob:
+      summary: Composite documentary job
+      description: Editorial documentary content uses the shared job endpoint; the template is not a path.
+      value:
+        contract_version: velox.job.v1
+        idempotency_key: five-boxers-it-001
+        job_type: scene.composite.v1
+        template_id: documentary.clip-stock
+        template_version: 1
+        video_name: Five legendary boxers
+        spec:
+          scenes:
+            - id: intro
+              text: Cinque pugili leggendari
+              duration_ms: 4000
+              assets:
+                primary_clip:
+                  asset_id: asset-clip-intro
+              audio:
+                voiceover:
+                  uri: velox-asset://voiceover-intro
+              timeline:
+                duration_ms: 4000
+        output: { width: 1920, height: 1080, fps: 30, format: mp4 }
+        delivery_plan:
+          destinations: [{ external_destination_id: extdst_01J }]
+    VeloxClipStockJob:
+      summary: Clip plus stock fallback job
+      value:
+        contract_version: velox.job.v1
+        idempotency_key: clip-stock-001
+        job_type: clip.stock.v1
+        template_id: documentary.clip-stock
+        template_version: 1
+        video_name: Profile video
+        spec:
+          scenes:
+            - id: scene-1
+              primary_clip: { asset_id: asset-clip-1 }
+              stock: { asset_id: asset-stock-1, fallback: true }
+              bindings:
+                clip: { asset_id: asset-clip-1 }
+                stock: { asset_id: asset-stock-1 }
+        output: { width: 1920, height: 1080, fps: 30, format: mp4 }
+        delivery_plan:
+          destinations: [{ external_destination_id: extdst_01J }]
+    VeloxSceneImageJob:
+      summary: Image-led scene job
+      value:
+        contract_version: velox.job.v1
+        idempotency_key: scene-image-001
+        job_type: scene.image.v1
+        template_id: biography.images.v1
+        template_version: 1
+        video_name: Biography images
+        spec:
+          scenes:
+            - id: scene-1
+              image: { asset_id: asset-image-1 }
+              text: Biography
+        output: { width: 1920, height: 1080, fps: 30, format: mp4 }
+        delivery_plan:
+          destinations: [{ external_destination_id: extdst_01J }]
+    VeloxSlideshowJob:
+      summary: Image slideshow job
+      value:
+        contract_version: velox.job.v1
+        idempotency_key: slideshow-001
+        job_type: slideshow.v1
+        template_id: motivational.images.v1
+        template_version: 1
+        video_name: Motivational slideshow
+        spec:
+          images:
+            - id: image-1
+              asset_id: asset-image-1
+              duration_ms: 3000
+              zoom: 1.05
+            - id: image-2
+              uri: velox-asset://image-2
+              duration_ms: 3000
+              transition: { type: fade, duration_ms: 500 }
+        output: { width: 1920, height: 1080, fps: 30, format: mp4 }
+        delivery_plan:
+          destinations: [{ external_destination_id: extdst_01J }]
