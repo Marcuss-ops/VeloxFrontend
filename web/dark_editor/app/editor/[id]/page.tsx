@@ -55,6 +55,7 @@ import { useEditorStore } from '@/stores/editorStore'; // Added missing import
 import { useKeyboard } from '@/hooks/useKeyboard';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useYouTubeSessionGate } from '@/hooks/useYouTubeSessionGate';
+import { useSyncDraftTitle } from '@/hooks/useSyncDraftTitle';
 import { getProject } from '@/lib/api';
 import { resolveEditorAssetUrl, uploadImage } from '@/lib/api';
 import { editorProjectContextPath, editorReturnToUrl } from '@/lib/editor-runtime';
@@ -352,6 +353,14 @@ export default function EditorPage() {
       addToast({ type: 'info', message: `Empty name? Let's call it "${randomName}"! ✨` });
     }
   };
+
+  // Sync the rename pill to the InstaEdit draft (partial PUT, title
+  // only, debounced) so the Copertine hub card shows the operator's
+  // real project name instead of the auto-generated draft title. The
+  // pill rename alone only persists to the editor's local
+  // data/projects.json; the hub card renders draft_title from the
+  // InstaEdit DB.
+  useSyncDraftTitle(projectId, currentProject?.name ?? '');
 
   useEffect(() => {
     return onEditorSaveRequest(() => {
