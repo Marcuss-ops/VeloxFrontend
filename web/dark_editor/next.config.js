@@ -1,11 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  basePath: '/dark_editor_v2',
+  // Technical compatibility boundary for the separately deployed editor.
+  // Product navigation uses the server-issued editor_url instead.
+  basePath: '/instaeditor',
   // Note: API calls go directly to Go backend, not through Next.js rewrites
   // This avoids the Next.js <-> Go proxy loop that causes inconsistent behavior
   images: {
-    domains: ['lh3.googleusercontent.com'],
+    domains: ['img.youtube.com', 'i.ytimg.com', 'lh3.googleusercontent.com'],
     unoptimized: true,
   },
 }

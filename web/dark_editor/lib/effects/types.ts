@@ -1,4 +1,4 @@
-// Effect type definitions for the Dark Editor canvas renderer.
+// Effect type definitions for the InstaEditor canvas renderer.
 //
 // INVARIANT: this module is types-only. Do not add runtime `export const`
 // or `export function` here — `lib/advancedEffects.ts` re-exports this

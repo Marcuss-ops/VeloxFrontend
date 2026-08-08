@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const VERSION_LABEL = "Velox Dark Editor";
+const VERSION_LABEL = "InstaEditor";
 
 export default function VersionLogger() {
   useEffect(() => {

@@ -7,24 +7,44 @@ import { applyAllFilters } from '@/lib/imageFilters';
 import { censorText } from '@/lib/textCensorship';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
 import { type CanvasObject } from '@/stores/editorStore';
+import { resolveEditorAssetUrl } from '@/lib/api';
+import { thumbnailFallbackDataUrl } from '@/lib/thumbnailFallback';
 
 function resolveFontFamily(name?: string): string {
   if (!name) return fontFamilies.Arial;
   return fontFamilies[name as FontKey] ?? name;
 }
 
+function resolveFontStyle(weight?: string): 'normal' | 'bold' {
+  if (!weight) return 'normal';
+  if (weight === 'bold' || Number(weight) >= 700) return 'bold';
+  return 'normal';
+}
+
 function useImageLoader(src?: string) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const fallbackApplied = useRef(false);
 
   useEffect(() => {
     if (!src) {
       setImage(null);
       return;
     }
+    fallbackApplied.current = false;
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
-    img.src = src.startsWith('http') || src.startsWith('data:') ? src : `/dark_editor_v2/${src}`;
+    img.src = resolveEditorAssetUrl(src);
     img.onload = () => setImage(img);
+    img.onerror = () => {
+      if (fallbackApplied.current) {
+        setImage(null);
+        return;
+      }
+      fallbackApplied.current = true;
+      const fallback = new window.Image();
+      fallback.onload = () => setImage(fallback);
+      fallback.src = thumbnailFallbackDataUrl();
+    };
   }, [src]);
 
   return image;
@@ -401,7 +421,7 @@ export function CropSelectionOverlay({
   const bh = stageBounds.height;
 
   return (
-    <Group name="export-exclude">
+    <>
       {/* Dimming / Shield Areas (Photoshop style) */}
       <Rect x={bx} y={by} width={Math.max(0, cx - bx)} height={bh} fill="rgba(0, 0, 0, 0.55)" listening={false} />
       <Rect x={cx + cw} y={by} width={Math.max(0, bx + bw - (cx + cw))} height={bh} fill="rgba(0, 0, 0, 0.55)" listening={false} />
@@ -437,7 +457,6 @@ export function CropSelectionOverlay({
         rotateEnabled={false}
         keepRatio={keepRatio}
         centeredScaling={false}
-        name="export-exclude"
         boundBoxFunc={(oldBox, newBox) => {
           const minSize = 20;
           let x = Math.max(stageBounds.x, newBox.x);
@@ -464,7 +483,7 @@ export function CropSelectionOverlay({
           };
         }}
       />
-    </Group>
+    </>
   );
 }
 
@@ -494,7 +513,7 @@ function ImageRenderer({
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => setOriginalImage(img);
-    img.src = src.startsWith('http') || src.startsWith('data:') ? src : `/dark_editor_v2/${src}`;
+    img.src = resolveEditorAssetUrl(src);
   }, [src]);
 
   useEffect(() => {
@@ -681,7 +700,7 @@ export function GridOverlay({ width, height, gridSize }: any) {
     lines.push(<Rect key={`gy-${y}`} x={0} y={y} width={width} height={1} fill={color} listening={false} />);
   }
 
-  return <Group name="export-exclude">{lines}</Group>;
+  return <Group name="grid-overlay" listening={false}>{lines}</Group>;
 }
 
 export function ObjectRenderer({ obj, commonProps, shadowProps, editingId, handleTextDblClick }: { obj: CanvasObject, commonProps: any, shadowProps: any, editingId: string | null, handleTextDblClick: any }) {
@@ -746,8 +765,9 @@ export function ObjectRenderer({ obj, commonProps, shadowProps, editingId, handl
               height={obj.height}
               fontSize={obj.fontSize || 24}
               fontFamily={resolveFontFamily(obj.fontFamily)}
-              fontStyle={obj.fontWeight ? `${obj.fontWeight}` : 'normal'}
+              fontStyle={resolveFontStyle(obj.fontWeight)}
               letterSpacing={obj.letterSpacing ?? 0}
+              fill={obj.fill || '#ffffff'}
               data={(() => {
                 const r = obj.textCurve.radius || 200;
                 const isUp = obj.textCurve.direction === 'up';
@@ -768,12 +788,18 @@ export function ObjectRenderer({ obj, commonProps, shadowProps, editingId, handl
             <Text
               id={obj.id}
               text={displayText}
+              width={obj.width}
               padding={obj.padding ?? 0}
               fontSize={obj.fontSize || 24}
               fontFamily={resolveFontFamily(obj.fontFamily)}
-              fontStyle={obj.fontWeight ? `${obj.fontWeight}` : 'normal'}
+              fontStyle={resolveFontStyle(obj.fontWeight)}
               lineHeight={obj.lineHeight ?? 1}
               letterSpacing={obj.letterSpacing ?? 0}
+              align="left"
+              verticalAlign="top"
+              ellipsis={false}
+              fill={obj.fill || '#ffffff'}
+              wrap="word"
               stroke={obj.textStroke?.color}
               strokeWidth={obj.textStroke?.width ?? 0}
               visible={editingId !== obj.id}

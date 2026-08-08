@@ -40,7 +40,7 @@ function createMockRequest(file: File | null): Request {
     formData: async () => mockFormData as unknown as FormData,
     headers: new Headers(),
     method: 'POST',
-    url: 'http://localhost:3001/dark_editor_v2/upload',
+    url: 'http://localhost:3001/instaeditor/upload',
   } as unknown as Request;
 }
 

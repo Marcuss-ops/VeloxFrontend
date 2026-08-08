@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useVersioningStore, Version } from '@/stores/versioningStore';
-import { buildVersionsByIdMap } from '@/lib/versioningUtils';
 import { useEditorStore } from '@/stores/editorStore';
-import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { 
@@ -21,7 +19,7 @@ import {
 
 export default function VersioningPanel() {
   const { versions, isAutoSaving, autoSaveInterval, enableAutoSave, disableAutoSave, saveCurrentState, compareVersions } = useVersioningStore();
-  const objects = useObjectsArray();
+  const { objects } = useEditorStore();
   const { currentProject } = useProjectStore();
   const { addToast } = useUIStore();
   
@@ -34,9 +32,6 @@ export default function VersioningPanel() {
   
   const projectId = currentProject?.id || 'default';
   const projectVersions = useVersioningStore((state) => state.getVersionsForProject(projectId));
-
-  // O(1) lookup map to avoid repeated .find() when resolving versions
-  const versionsById = React.useMemo(() => buildVersionsByIdMap(projectVersions), [projectVersions]);
   
   // Auto-save effect
   useEffect(() => {
@@ -61,7 +56,7 @@ export default function VersioningPanel() {
   };
   
   const handleLoadVersion = (versionId: string) => {
-    const version = versionsById[versionId];
+    const version = projectVersions.find(v => v.id === versionId);
     if (version) {
       // This would trigger loading in the editor store
       // For now, we'll just show a toast

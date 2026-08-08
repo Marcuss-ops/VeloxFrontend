@@ -6,7 +6,7 @@
 //   - YouTube's thumbnails.set API requires image/jpeg or image/png.
 //     /api/v1/media/presign (InstaeditLogin) explicitly rejects image/webp
 //     with HTTP 400 "Unsupported thumbnail format".
-//   - The Publish panel in the dark editor is the SOURCE of the format the
+//   - The Publish panel in the InstaEditor is the SOURCE of the format the
 //     operator sends to the orchestrator. If this dropdown ever offers
 //     WebP, an operator-selected WebP would round-trip through canvas.export
 //     -> /media/presign -> 400, breaking the publish pipeline.

@@ -1,11 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import {
-  selectCommentsForObject,
-  selectOnlineUsers,
-  selectTasksByStatus,
-  selectTasksForUser,
-} from '@/lib/collaborationSelectors';
 
 export interface User {
   id: string;
@@ -244,22 +238,23 @@ export const useCollaborationStore = create<CollaborationState>()(
       
       getCommentsForObject: (objectId) => {
         const { comments } = get();
-        return selectCommentsForObject(comments, objectId);
+        return comments.filter(comment => comment.objectId === objectId);
       },
       
       getTasksForUser: (userId) => {
         const { tasks } = get();
-        return selectTasksForUser(tasks, userId);
+        return tasks.filter(task => task.assigneeId === userId);
       },
       
       getTasksByStatus: (status) => {
         const { tasks } = get();
-        return selectTasksByStatus(tasks, status);
+        return tasks.filter(task => task.status === status);
       },
       
       getOnlineUsers: () => {
         const { users } = get();
-        return selectOnlineUsers(users, Date.now());
+        const now = Date.now();
+        return users.filter(user => user.isOnline && (now - user.lastSeen) < 300000); // 5 minutes
       },
     }),
     {

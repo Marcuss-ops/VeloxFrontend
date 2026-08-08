@@ -5,7 +5,7 @@ import { censorText } from '@/lib/textCensorship';
 import { applyBlur, applySharpen, applyPixelation } from '@/lib/imageFilters';
 
 export default function FeatureTest() {
-  const { addObject } = useEditorStore();
+  const { objects, addObject } = useEditorStore();
   const { presets } = usePresetStore();
   
   const testCensorship = () => {

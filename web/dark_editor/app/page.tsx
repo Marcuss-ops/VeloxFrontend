@@ -1,5 +1,5 @@
-import DarkEditorHome from './DarkEditorHome';
+import InstaEditorHome from './InstaEditorHome';
 
 export default function Home() {
-  return <DarkEditorHome />;
+  return <InstaEditorHome />;
 }

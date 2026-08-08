@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
-import { selectSingleSelectedObject } from '@/lib/editorSelectors';
-import { uploadImage } from '@/lib/api';
+import { resolveEditorAssetUrl, uploadImage, translateText } from '@/lib/api';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
-import { Settings, Lock, Sparkles, Type, Move, Scaling, Palette, Image as ImageIcon, Upload, X } from 'lucide-react';
+import { Settings, Lock, Sparkles, Type, Globe, ShieldAlert, Move, Scaling, Palette, Image as ImageIcon, Upload, X, Languages } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
 import { Section, Field, FieldRow, NumberField, ColorSwatch, Toggle, PropertySlider, RotationDial } from './properties/ui';
 import DropShadowPanel from './properties/DropShadowPanel';
@@ -26,19 +25,48 @@ const FONT_WEIGHTS = [
   { label: 'Black', value: '900' },
 ] as const;
 
+const LANGUAGES = [
+  { code: 'it', label: 'Italian' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'ru', label: 'Russian' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'tr', label: 'Turkish' },
+  { code: 'pl', label: 'Polish' },
+] as const;
 
 export default function PropertiesPanel() {
-  const { selectedIds, updateObject } = useEditorStore();
-  const selectedObject = useEditorStore((state) => selectSingleSelectedObject(state));
+  const { objects, selectedIds, updateObject } = useEditorStore();
+  const [targetLang, setTargetLang] = React.useState('en');
+  const [isTranslating, setIsTranslating] = React.useState(false);
+
+  const selectedObject = selectedIds.length === 1
+    ? objects.find((obj) => obj.id === selectedIds[0])
+    : null;
 
   const { updateObjectLive, saveToHistory } = useEditorStore();
+
+  const handleTranslate = async () => {
+    if (!selectedObject || selectedObject.type !== 'text' || !selectedObject.text) return;
+    setIsTranslating(true);
+    try {
+      const res = await translateText({ text: selectedObject.text, target_language: targetLang });
+      if (res.translated_text) updateObject(selectedObject.id, { text: res.translated_text });
+    } catch (err) {
+      console.error('Failed to translate:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   const handleImageFillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       const data = await uploadImage(file);
-      handleChange('imageFill', { src: data.url, scale: 1, offsetX: 0, offsetY: 0 });
+      handleChange('imageFill', { src: resolveEditorAssetUrl(data.url), scale: 1, offsetX: 0, offsetY: 0 });
     } catch (err) {
       console.error('Failed to upload image fill:', err);
     }
@@ -46,7 +74,7 @@ export default function PropertiesPanel() {
 
   if (!selectedObject) {
     return (
-      <div className="flex flex-col h-full bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.10),_transparent_56%),radial-gradient(circle_at_bottom_left,_rgba(15,23,42,0.30),_transparent_58%),linear-gradient(180deg,_rgba(6,11,20,0.98),_rgba(8,13,23,0.94))] backdrop-blur-xl">
+      <div className="properties-panel flex flex-col h-full bg-white text-black">
         <div className="sidebar-section shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="rounded-lg bg-sky-500/10 p-1.5 ring-1 ring-sky-400/15">
@@ -80,7 +108,7 @@ export default function PropertiesPanel() {
   const commitChanges = () => saveToHistory();
 
   return (
-    <div className="flex flex-col h-full bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.12),_transparent_56%),radial-gradient(circle_at_bottom_left,_rgba(15,23,42,0.34),_transparent_50%),linear-gradient(180deg,_rgba(6,11,20,0.98),_rgba(8,13,23,0.94))] backdrop-blur-xl">
+    <div className="properties-panel flex flex-col h-full bg-white text-black">
       {/* Header */}
       <div className="sidebar-section shrink-0">
         <div className="flex items-center gap-2.5 min-w-0">
@@ -146,8 +174,8 @@ export default function PropertiesPanel() {
           <Section icon={<Type className="w-3.5 h-3.5" />} title="Typography">
             <Field label="Font Family">
               <Select value={selectedObject.fontFamily || 'Arial'} onValueChange={(v) => handleChange('fontFamily', v)}>
-                <SelectTrigger className="w-full justify-between"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="properties-select w-full justify-between"><SelectValue /></SelectTrigger>
+                <SelectContent className="properties-select-menu">
                   {FONT_FAMILIES.map((f) => (
                     <SelectItem key={f.value} value={f.value}>
                       <span style={{ fontFamily: f.css }}>{f.label}</span>
@@ -158,12 +186,21 @@ export default function PropertiesPanel() {
             </Field>
             <Field label="Font Weight">
               <Select value={selectedObject.fontWeight || '400'} onValueChange={(v) => handleChange('fontWeight', v)}>
-                <SelectTrigger className="w-full justify-between"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="properties-select w-full justify-between"><SelectValue /></SelectTrigger>
+                <SelectContent className="properties-select-menu">
                   {FONT_WEIGHTS.map((w) => <SelectItem key={w.value} value={w.value}>{w.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-black/10 bg-white px-3 py-2.5 text-xs">
+              <span className="font-semibold text-black">Translate in batch</span>
+              <input
+                type="checkbox"
+                checked={selectedObject.translate !== false}
+                onChange={(event) => handleChange('translate', event.target.checked)}
+                className="h-4 w-4 accent-black"
+              />
+            </label>
             <FieldRow>
               <PropertySlider
                 label="Size"
@@ -224,19 +261,15 @@ export default function PropertiesPanel() {
 
         {/* Opacity */}
         <Section icon={<Scaling className="w-3.5 h-3.5" />} title="Opacity">
-          <div className="space-y-2">
-            <div className="relative h-2 rounded-full bg-white/[0.05] ring-1 ring-white/10 overflow-hidden">
-              <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 to-cyan-400 rounded-full" style={{ width: `${(selectedObject.opacity ?? 1) * 100}%` }} />
-              <input type="range" min={0} max={1} step={0.01} value={selectedObject.opacity ?? 1}
-                onChange={(e) => handleLiveChange('opacity', parseFloat(e.target.value))} onMouseUp={commitChanges}
-                className="absolute inset-0 w-full opacity-0 cursor-pointer" />
-            </div>
-            <div className="flex justify-between text-[10px] text-slate-500 font-medium tabular-nums">
-              <span>0%</span>
-              <span className="text-sky-200 font-bold">{Math.round((selectedObject.opacity ?? 1) * 100)}%</span>
-              <span>100%</span>
-            </div>
-          </div>
+          <PropertySlider
+            label="Opacity"
+            min={0}
+            max={100}
+            value={Math.round((selectedObject.opacity ?? 1) * 100)}
+            suffix="%"
+            onChange={(val) => handleLiveChange('opacity', Math.max(0, Math.min(100, val)) / 100)}
+            onBlur={commitChanges}
+          />
         </Section>
 
         {/* Image Crop Effects (Feather & Reset) */}

@@ -11,7 +11,7 @@ import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorTemplates } from '@/hooks/useEditorTemplates';
 import { useSidebarState } from '@/hooks/useSidebarState';
-import { uploadImage } from '@/lib/api';
+import { resolveEditorAssetUrl, uploadImage } from '@/lib/api';
 import { v4 as uuidv4 } from 'uuid';
 
 interface CustomAsset {
@@ -86,10 +86,7 @@ export default function EditorSidebar() {
       const newAsset: CustomAsset = {
         id: uuidv4(),
         name: file.name.split('.')[0],
-        src:
-          res.url.startsWith('http') || res.url.startsWith('data:')
-            ? res.url
-            : `/dark_editor_v2/${res.url}`,
+        src: resolveEditorAssetUrl(res.url),
       };
       const updated = [newAsset, ...customAssets];
       setCustomAssets(updated);

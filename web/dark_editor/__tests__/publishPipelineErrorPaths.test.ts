@@ -174,7 +174,7 @@ describe('publish pipeline error paths', () => {
         // errAttachSessionNotEditable (mapped to HTTP 409) when
         // AttachThumbnail CAS-losses because the session row's
         // status moved to 'publishing' or 'published' between the
-        // upload completing and the PATCH arriving. The dark editor
+        // upload completing and the PATCH arriving. The InstaEditor
         // MUST surface this so its catch-block can re-render the
         // publish button as "retry" rather than "publishing...".
         vi.stubGlobal(
@@ -199,7 +199,7 @@ describe('publish pipeline error paths', () => {
         // The InstaeditLogin publish orchestrator maps a non-2xx
         // response from thumbnails.set + videos.update into a 502
         // Bad Gateway with the original YouTube error in the
-        // `error` field. The dark editor's BFF must surface that
+        // `error` field. The InstaEditor's BFF must surface that
         // field verbatim so the toast UI shows the operator-friendly
         // text instead of a generic "HTTP 502".
         vi.stubGlobal(

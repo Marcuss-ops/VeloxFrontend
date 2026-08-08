@@ -1,4 +1,4 @@
-// Shape effects renderer for the Dark Editor canvas.
+// Shape effects renderer for the InstaEditor canvas.
 //
 // Owns the ShapeEffectsRenderer class + its module-level singleton.
 // Methods paint shape decorations (drop shadow, gradient, texture

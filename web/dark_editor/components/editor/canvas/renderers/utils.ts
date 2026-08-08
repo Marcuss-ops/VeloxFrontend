@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
+import { resolveEditorAssetUrl } from '@/lib/api';
 
 /**
  * resolveFontFamily \u2014 maps a font name (which can be either a FontKey
@@ -20,13 +21,9 @@ export function resolveFontFamily(name?: string): string {
 }
 
 /**
- * useImageLoader \u2014 loads an <img> element from a URL with the
- * dark-editor base path prefix applied to relative URLs.
- *
- * The hook mirrors the dark editor's `/dark_editor_v2/` basePath
- * (see next.config.js) so a relative `src` like `covers/foo.png`
- * resolves to `/dark_editor_v2/covers/foo.png`. Absolute http(s)
- * and data: URLs are passed through verbatim.
+ * useImageLoader \u2014 loads an <img> element from a URL. Relative assets
+ * are resolved by the shared editor API helper; the deployment
+ * compatibility namespace is intentionally not part of renderer logic.
  *
  * The hook is used by:
  *   - the 'image' case in ObjectRenderer (media renderer)
@@ -46,10 +43,7 @@ export function useImageLoader(src?: string): HTMLImageElement | null {
     }
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
-    img.src =
-      src.startsWith('http') || src.startsWith('data:')
-        ? src
-        : `/dark_editor_v2/${src}`;
+    img.src = resolveEditorAssetUrl(src);
     img.onload = () => setImage(img);
   }, [src]);
 

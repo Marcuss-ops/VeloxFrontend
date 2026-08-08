@@ -15,31 +15,22 @@ import initWasm, {
 } from '../wasm/wasm_filters.js';
 import type { FilterOptions } from '../imageFilters';
 
-// Encapsulate the worker's mutable global state in a single context object
-// so that initialization is atomic and thread-safe within this worker.
-class FilterWorkerContext {
-  private wasmInitialized: Promise<void> | null = null;
-  private gpuContext: GpuFilterContext | null = null;
+let wasmInitialized: Promise<void> | null = null;
+let gpuContext: GpuFilterContext | null = null;
 
-  async ensureWasm(): Promise<void> {
-    this.wasmInitialized ??= (async () => {
-      await initWasm();
+async function ensureWasm() {
+  if (!wasmInitialized) {
+    wasmInitialized = initWasm().then(async () => {
       try {
-        this.gpuContext = await GpuFilterContext.create();
+        gpuContext = await GpuFilterContext.create();
         console.log("WebGPU Filter Context initialized successfully.");
       } catch (err) {
         console.warn("WebGPU not available, falling back to CPU Wasm filters.", err);
       }
-    })();
-    return this.wasmInitialized;
+    });
   }
-
-  getGpuContext(): GpuFilterContext | null {
-    return this.gpuContext;
-  }
+  return wasmInitialized;
 }
-
-const workerContext = new FilterWorkerContext();
 
 self.onmessage = async (e: MessageEvent) => {
   const { jobId, imageData, width, height, options } = e.data as {
@@ -51,7 +42,7 @@ self.onmessage = async (e: MessageEvent) => {
   };
 
   try {
-    await workerContext.ensureWasm();
+    await ensureWasm();
 
     // Data must be passed as an array to match signature, 
     // or cast appropriately if we alter the rust binding
@@ -62,7 +53,6 @@ self.onmessage = async (e: MessageEvent) => {
     }
     
     if (options.blur && options.blur > 0) {
-      const gpuContext = workerContext.getGpuContext();
       if (gpuContext) {
         // Run on GPU
         try {

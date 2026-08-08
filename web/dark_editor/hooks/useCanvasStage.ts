@@ -1,4 +1,4 @@
-// hooks/useCanvasStage.ts — Konva stage interaction hook for the dark editor.
+// hooks/useCanvasStage.ts — Konva stage interaction hook for the InstaEditor.
 //
 // Extracted from components/editor/Canvas.tsx (commit 1 of 3 in the canvas
 // hooks refactor) so the canvas component can stay focused on rendering and

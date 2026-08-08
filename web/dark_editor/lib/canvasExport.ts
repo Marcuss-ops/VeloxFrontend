@@ -24,8 +24,8 @@ export function getCanvasElement(): HTMLCanvasElement | null {
   return null;
 }
 
-const YOUTUBE_THUMBNAIL_WIDTH = 1280;
-const YOUTUBE_THUMBNAIL_HEIGHT = 720;
+const YOUTUBE_THUMBNAIL_WIDTH = 1920;
+const YOUTUBE_THUMBNAIL_HEIGHT = 1080;
 
 /** Convert any legacy/accidental WebP request to JPEG so the produced
  *  blob is always publishable on YouTube. */
@@ -77,7 +77,7 @@ function imageToBlob(
   });
 }
 
-/** Renders the logical project canvas from a Konva stage as a 1280x720 thumbnail blob.
+/** Renders the logical project canvas from a Konva stage as a 1920x1080 thumbnail blob.
  *  Temporarily hides nodes marked with `name="export-exclude"` (grid, guides,
  *  transformer handles, crop overlays) and neutralises zoom/pan while capturing. */
 export async function exportStageToBlob(
@@ -93,6 +93,20 @@ export async function exportStageToBlob(
   }
   const q = Math.max(0.01, Math.min(1, quality / 100));
 
+  // The Stage is normally sized to the editor viewport, while the artwork
+  // lives in logical document coordinates. Capturing a 1920x1080 crop from a
+  // shorter viewport leaves the part outside the backing canvas transparent
+  // (and it is later displayed as white). Resize the same Stage temporarily
+  // so the real background Rect and every object are rendered on a complete
+  // logical surface.
+  const logicalWidth = Math.max(1, canvasWidth);
+  const logicalHeight = Math.max(1, canvasHeight);
+  const stageWithSize = stage as Konva.Stage & {
+    size?: (size?: { width: number; height: number }) => { width: number; height: number } | void;
+  };
+  const originalWidth = typeof stageWithSize.width === 'function' ? stageWithSize.width() : undefined;
+  const originalHeight = typeof stageWithSize.height === 'function' ? stageWithSize.height() : undefined;
+
   // 1. Identify and hide editor-only overlays.
   const excludeNodes = stage.find('.export-exclude');
   const previousVisibility = new Map<Konva.Node, boolean>();
@@ -106,16 +120,39 @@ export async function exportStageToBlob(
   const originalY = stage.y();
   const originalScaleX = stage.scaleX();
   const originalScaleY = stage.scaleY();
+  const layerTransforms = stage.find('Layer')
+    .filter((layer) => {
+      const candidate = layer as unknown as Record<string, unknown>;
+      return typeof candidate.x === 'function'
+        && typeof candidate.y === 'function'
+        && typeof candidate.scaleX === 'function'
+        && typeof candidate.scaleY === 'function'
+        && typeof candidate.rotation === 'function';
+    })
+    .map((layer) => ({
+    layer,
+    x: layer.x(),
+    y: layer.y(),
+    scaleX: layer.scaleX(),
+    scaleY: layer.scaleY(),
+    rotation: layer.rotation(),
+  }));
 
+  if (stageWithSize.size) {
+    stageWithSize.size({ width: logicalWidth, height: logicalHeight });
+  }
+  for (const { layer } of layerTransforms) {
+    layer.position({ x: 0, y: 0 });
+    layer.scale({ x: 1, y: 1 });
+    layer.rotation(0);
+  }
   stage.position({ x: 0, y: 0 });
   stage.scale({ x: 1, y: 1 });
   stage.batchDraw();
 
+  let dataURL: string;
   try {
-    const logicalWidth = Math.max(1, canvasWidth);
-    const logicalHeight = Math.max(1, canvasHeight);
-
-    const dataURL = stage.toDataURL({
+    dataURL = stage.toDataURL({
       x: 0,
       y: 0,
       width: logicalWidth,
@@ -124,32 +161,43 @@ export async function exportStageToBlob(
       mimeType: mime,
       quality: q,
     });
-
-    const image = await dataURLToImage(dataURL);
-    const blob = await imageToBlob(
-      image,
-      YOUTUBE_THUMBNAIL_WIDTH,
-      YOUTUBE_THUMBNAIL_HEIGHT,
-      mime,
-      q
-    );
-
-    if (!blob) return null;
-    return { blob, mime };
+    // Capture is synchronous from Konva's point of view. Restore the visible
+    // editor before awaiting image decoding/blob encoding so the UI never
+    // spends an async interval in export dimensions.
   } finally {
     // 3. Restore stage state and overlay visibility exactly once.
     stage.position({ x: originalX, y: originalY });
     stage.scale({ x: originalScaleX, y: originalScaleY });
+    for (const { layer, x, y, scaleX, scaleY, rotation } of layerTransforms) {
+      layer.position({ x, y });
+      layer.scale({ x: scaleX, y: scaleY });
+      layer.rotation(rotation);
+    }
+    if (stageWithSize.size && originalWidth != null && originalHeight != null) {
+      stageWithSize.size({ width: originalWidth, height: originalHeight });
+    }
     for (const [node, wasVisible] of previousVisibility) {
       node.visible(wasVisible);
     }
     stage.batchDraw();
   }
+
+  const image = await dataURLToImage(dataURL);
+  const blob = await imageToBlob(
+    image,
+    YOUTUBE_THUMBNAIL_WIDTH,
+    YOUTUBE_THUMBNAIL_HEIGHT,
+    mime,
+    q
+  );
+
+  if (!blob) return null;
+  return { blob, mime };
 }
 
 /** Public export entry point. When a Konva stage and the project logical
  *  dimensions are provided the export is overlay-free and sized to
- *  1280x720; otherwise it degrades to the legacy DOM querySelector behaviour. */
+ *  1920x1080; otherwise it degrades to the legacy DOM querySelector behaviour. */
 export function exportCanvasToBlob(
   format: string,
   quality: number,

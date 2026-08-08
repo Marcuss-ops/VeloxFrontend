@@ -1,8 +1,8 @@
 /**
- * Real-flow E2E test — InstaEdit Social → Dark Editor via /groups/{id}/videos.
+ * Real-flow E2E test — InstaEdit Social → InstaEditor via /groups/{id}/videos.
  *
  * Validates the only legitimate path an operator can use to reach the
- * Dark Editor:
+ * InstaEditor:
  *
  *   1. InstaEdit Social homepage (Vite SPA on :3000) is the entry point.
  *   2. Operator navigates to /groups/:groupId/videos.
@@ -10,32 +10,32 @@
  *      "Crea sessione" (because editor_url is null while editor_status
  *      is 'ready').
  *   4. Click → createYouTubeEditorSession → POST /api/v1/youtube/editor-sessions
- *      returns 201 with editor_url "/dark_editor_v2/editor/{velox_project_id}".
+ *      returns 201 with editor_url "/instaeditor/editor/{velox_project_id}".
  *   5. onSuccess opens editor_url in a new tab (window.open with
  *      _blank + noopener + noreferrer).
- *   6. The popup lands on the Dark Editor (Next.js on :3001).
+ *   6. The popup lands on the InstaEditor (Next.js on :3001).
  *      The gate (Azione 1-4) calls GET /editor-sessions/by-project/{id},
  *      resolves to status='editing' → editable_editing → Canvas mounts
  *      with the project row loaded.
  *
  * What this test does NOT cover (kept isolated for debuggability):
- *   - Direct-URL access to /dark_editor_v2/editor/{fake} blocked by the
+ *   - Direct-URL access to /instaeditor/editor/{fake} blocked by the
  *     gate → covered by session_gate.spec.ts.
- *   - Publish pipeline from Dark Editor to Velox job → covered by
+ *   - Publish pipeline from InstaEditor to Velox job → covered by
  *     cross_repo_smoke.spec.ts and cross_repo_smoke_polling.spec.ts.
  *
  * Mocks:
  *   context.route (shared across the Vite SPA page AND the popup):
  *     - GET /api/v1/auth/me (used by both halves)
- *     - GET /api/v1/youtube/editor-sessions/by-project/{id} (Dark Editor gate)
- *     - GET /dark_editor_v2/api/projects/{id} (editor's useProjectLoader)
+ *     - GET /api/v1/youtube/editor-sessions/by-project/{id} (InstaEditor gate)
+ *     - GET /instaeditor/api/projects/{id} (editor's useProjectLoader)
  *     - dark_editor's sibling endpoints (drive/process/presets/folders)
  *       to satisfy mount-time fetches
  *   page.route (Vite SPA only):
  *     - GET /api/v1/groups/{id}/youtube/videos (the listing)
  *     - POST /api/v1/youtube/editor-sessions (the mint endpoint)
  *
- * Dev servers on :3000 (Vite) and :3001 (Dark Editor) are started by
+ * Dev servers on :3000 (Vite) and :3001 (InstaEditor) are started by
  * playwright.config.ts via `npm run dev`.
  */
 
@@ -58,7 +58,7 @@ interface CapturedMint {
 
 test.beforeEach(async ({ context }) => {
     // CSRF double-submit cookie — domain='localhost' so it travels
-    // across :3000 (Vite SPA) and :3001 (Dark Editor) navigations.
+    // across :3000 (Vite SPA) and :3001 (InstaEditor) navigations.
     await context.addCookies([
         {
             name: 'csrf_token',
@@ -69,7 +69,7 @@ test.beforeEach(async ({ context }) => {
     ]);
 });
 
-test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark Editor mounts', async ({ page, context }) => {
+test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → InstaEditor mounts', async ({ page, context }) => {
     const capturedMint: CapturedMint = { body: null, responseStatus: 0 };
 
     // ----------------------------------------------------------------
@@ -77,7 +77,7 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
     // ----------------------------------------------------------------
 
     // GET /api/v1/auth/me — used by Vite's AuthProvider AND by the
-    // dark editor's bff.ts. Both SPA halves share this contract.
+    // InstaEditor's bff.ts. Both SPA halves share this contract.
     await context.route('**/api/v1/auth/me', async (route) => {
         await route.fulfill({
             json: { user: { id: 123, name: 'Real Flow Tester', workspaceId: WORKSPACE_ID, isAdmin: false } },
@@ -85,7 +85,7 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
     });
 
     // GET /api/v1/youtube/editor-sessions/by-project/{id} — the
-    // Dark Editor's gate endpoint. status='editing' → the loader
+    // InstaEditor's gate endpoint. status='editing' → the loader
     // resolves to editable_editing and the Canvas mounts.
     await context.route('**/api/v1/youtube/editor-sessions/by-project/**', async (route) => {
         await route.fulfill({
@@ -103,7 +103,7 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
         });
     });
 
-    // GET /dark_editor_v2/api/projects/{id} — the editor's own
+    // GET /instaeditor/api/projects/{id} — the editor's own
     // useProjectLoader endpoint. Returns the project row that
     // populates the "Senza nome" input.
     await context.route('**/api/projects/*', async (route) => {
@@ -128,16 +128,16 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
     // bodies are safe — see existing session_gate.spec.ts + cross_repo_smoke
     // for the rationale (any auto-fire at mount would otherwise hit the
     // real Next dev server).
-    await context.route('**/dark_editor_v2/api/drive/**', async (route) => {
+    await context.route('**/instaeditor/api/drive/**', async (route) => {
         await route.fulfill({ json: {} });
     });
-    await context.route('**/dark_editor_v2/api/process/**', async (route) => {
+    await context.route('**/instaeditor/api/process/**', async (route) => {
         await route.fulfill({ json: {} });
     });
-    await context.route('**/dark_editor_v2/api/presets/**', async (route) => {
+    await context.route('**/instaeditor/api/presets/**', async (route) => {
         await route.fulfill({ json: [] });
     });
-    await context.route('**/dark_editor_v2/api/folders/**', async (route) => {
+    await context.route('**/instaeditor/api/folders/**', async (route) => {
         await route.fulfill({ json: { folders: [] } });
     });
 
@@ -171,7 +171,7 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
 
     // POST /api/v1/youtube/editor-sessions — the mint endpoint.
     // Captures the request body for assertion; returns 201 with the
-    // canonical editor_url pointing at the Dark Editor's basePath
+    // canonical editor_url pointing at the InstaEditor's basePath
     // route on :3001.
     await page.route('**/api/v1/youtube/editor-sessions', async (route) => {
         if (route.request().method() === 'POST') {
@@ -188,7 +188,7 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
                 json: {
                     session_id: EXPECTED_SESSION_ID,
                     velox_project_id: EXPECTED_VELOX_PROJECT_ID,
-                    editor_url: `${DARK_EDITOR_BASE}/dark_editor_v2/editor/${EXPECTED_VELOX_PROJECT_ID}`,
+                    editor_url: `${DARK_EDITOR_BASE}/instaeditor/editor/${EXPECTED_VELOX_PROJECT_ID}`,
                 },
             });
             return;
@@ -197,15 +197,15 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
     });
 
     // ----------------------------------------------------------------
-    // Step 0 — Land on InstaEdit Social homepage (NOT the Dark Editor)
+    // Step 0 — Land on InstaEdit Social homepage (NOT the InstaEditor)
     // ----------------------------------------------------------------
     // Architectural guard: the SPA root must be InstaEdit Social,
-    // not the Dark Editor. The Caddy proxy in production forwards
-    // `/dark_editor_v2/*` to Next.js, so a direct navigation to
+    // not the InstaEditor. The Caddy proxy in production forwards
+    // `/instaeditor/*` to Next.js, so a direct navigation to
     // http://localhost/ would land on InstaEdit Social — the test
     // must enforce that contract.
     await page.goto(VITE_SPA_BASE);
-    await expect(page).not.toHaveURL(/\/dark_editor_v2\//);
+    await expect(page).not.toHaveURL(/\/instaeditor\//);
     await expect(page.locator('canvas')).toHaveCount(0);
     await expect(page.locator('input[placeholder="Senza nome"]')).toHaveCount(0);
 
@@ -217,12 +217,12 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
     // ----------------------------------------------------------------
     // Step 2 — Wait for the video card to render
     // ----------------------------------------------------------------
-    // GroupVideoCard sets aria-label="Apri Dark Editor per {title}"
+    // GroupVideoCard sets aria-label="Apri InstaEditor per {title}"
     // REGARDLESS of the visible button text ("Crea sessione" vs
-    // "Apri Dark Editor"). Matching by aria-label keeps the test
+    // "Apri InstaEditor"). Matching by aria-label keeps the test
     // decoupled from the text variant and the editor_url state.
     const cardButton = page.getByRole('button', {
-        name: `Apri Dark Editor per ${PROJECT_NAME}`,
+        name: `Apri InstaEditor per ${PROJECT_NAME}`,
     });
     await expect(cardButton).toBeVisible({ timeout: 10_000 });
 
@@ -254,11 +254,11 @@ test('real flow: InstaEdit Social /groups/{id}/videos → Crea sessione → Dark
 
     const popupUrl = popup.url();
     expect(popupUrl).toBe(
-        `${DARK_EDITOR_BASE}/dark_editor_v2/editor/${EXPECTED_VELOX_PROJECT_ID}`,
+        `${DARK_EDITOR_BASE}/instaeditor/editor/${EXPECTED_VELOX_PROJECT_ID}`,
     );
 
     // ----------------------------------------------------------------
-    // Step 5 — Verify the Dark Editor mounted correctly
+    // Step 5 — Verify the InstaEditor mounted correctly
     // ----------------------------------------------------------------
     // The gate resolved to editable_editing, useProjectLoader fetched
     // the project row, and useProjectStore.setCurrentProject populated

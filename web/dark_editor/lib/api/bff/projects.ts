@@ -1,6 +1,6 @@
 // lib/api/bff/projects.ts — Velox projects + jobs BFF client surface
-// for the dark editor. Extracted from lib/api/bff.ts (commit 4 of 7 in
-// the api-bff refactor series). The dark editor only passes the opaque
+// for the InstaEditor. Extracted from lib/api/bff.ts (commit 4 of 7 in
+// the api-bff refactor series). The InstaEditor only passes the opaque
 // external_destination_id; no platform credentials ever leave InstaEdit.
 //
 // Public surface (preserved byte-identical so existing

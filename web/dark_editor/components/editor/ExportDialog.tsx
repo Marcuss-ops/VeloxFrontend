@@ -7,16 +7,14 @@ import { Slider } from '@/components/ui/Slider';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
-import { Download, Loader2, Youtube, CheckCircle2, ExternalLink, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { getCSRFHeaders, translateText } from '@/lib/api';
+import { CheckCircle2, Download, ExternalLink, Loader2, Youtube, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { translateText } from '@/lib/api';
 import { useProjectStore } from '@/stores/projectStore';
 import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
 import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
-import { YouTubeTargetBar } from '@/components/editor/export/YouTubeTargetBar';
 import { BatchVideoGrid } from '@/components/editor/export/BatchVideoGrid';
 import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
 import { requestEditorFlush } from '@/lib/editorEvents';
-import { createYouTubeThumbnailBatch, getYouTubeThumbnailBatch } from '@/lib/api/bff';
 
 type BatchVideo = GroupVideo;
 
@@ -54,42 +52,6 @@ function normalizedPlatformAccountId(video: BatchVideo): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
-async function uploadThumbnailMedia(blob: Blob, filename: string): Promise<string> {
-  const bytes = await blob.arrayBuffer();
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  const sha256 = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
-  const contentType = blob.type || 'image/png';
-  const csrfHeaders = getCSRFHeaders();
-  const presign = await fetch('/api/v1/media/presign', {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-    body: JSON.stringify({ filename, content_type: contentType, size_bytes: blob.size, sha256 }),
-  });
-  if (!presign.ok) throw new Error(`Media presign failed (${presign.status})`);
-  const grant = await presign.json() as { asset_id: string; upload_url: string; upload_headers?: Record<string, string> };
-  const uploaded = await fetch(grant.upload_url, { method: 'PUT', headers: grant.upload_headers || { 'Content-Type': contentType }, body: bytes });
-  if (!uploaded.ok) throw new Error(`Media upload failed (${uploaded.status})`);
-  const complete = await fetch(`/api/v1/media/${encodeURIComponent(grant.asset_id)}/complete`, {
-    method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', ...csrfHeaders },
-    body: JSON.stringify({ sha256 }),
-  });
-  if (!complete.ok) throw new Error(`Media complete failed (${complete.status})`);
-  return grant.asset_id;
-}
-
-async function createBatchIdempotencyKey(value: unknown): Promise<string> {
-  const bytes = new TextEncoder().encode(JSON.stringify(value));
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return `thumbnail-batch-${Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
-}
-
-const FORMATS = [
-  { value: 'png', label: 'PNG - Lossless', description: 'Best for graphics with transparency' },
-  { value: 'jpeg', label: 'JPEG - Compressed', description: 'Best for photos, smaller file size' },
-  { value: 'webp', label: 'WebP - Modern', description: 'Best for web, good compression' },
-];
-
 interface ExportDialogProps {
   isOpen?: boolean;
   onClose?: () => void;
@@ -98,38 +60,21 @@ interface ExportDialogProps {
 
 export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProps) {
   const { showExportDialog, setExportDialog, isExporting, addToast } = useUIStore();
-  const { objects, selectedIds, canvasWidth, canvasHeight, updateObject } = useEditorStore();
-  const { export: exportImage } = useImageProcessor();
+  const { objects, selectedIds, updateObject } = useEditorStore();
   const { currentProject } = useProjectStore();
 
   const [format, setFormat] = useState('png');
   const [quality, setQuality] = useState(90);
   const [selectedOnly, setSelectedOnly] = useState(false);
 
-  // YouTube integration state
-  const [uploadToYouTube] = useState(true);
-  const [isUploadingToYouTube, setIsUploadingToYouTube] = useState(false);
-  const [youtubeUploadComplete, setYoutubeUploadComplete] = useState(false);
-  const [youtubeVideoId, setYoutubeVideoId] = useState<string>('');
-
-  // YouTube target selection is isolated from the export/publish pipeline.
-  // Safety first: thumbnail export must not make a real video public by default.
-  const [publishAfterUpload, setPublishAfterUpload] = useState(false);
+  // The export surface consumes project-authorized target context only.
   const [youtubeTitle, setYoutubeTitle] = useState('');
   const [youtubeDescription, setYoutubeDescription] = useState('');
-  const [youtubeTags, setYoutubeTags] = useState('');
   const [translatedMetadata, setTranslatedMetadata] = useState<Record<string, LocalizedMetadata>>({});
   const [isTranslatingMetadata, setIsTranslatingMetadata] = useState(false);
   const [metadataTranslationError, setMetadataTranslationError] = useState('');
   const metadataTranslationKeyRef = useRef('');
   const metadataTranslationInFlightRef = useRef<string | null>(null);
-  const [youtubeUploadResults, setYoutubeUploadResults] = useState<Record<string, { status: 'pending' | 'success' | 'error'; message?: string }>>({});
-  const [youtubePublishResult, setYoutubePublishResult] = useState<{
-    videoId: string;
-    publicUrl: string;
-    privacyStatus: string;
-    status: string;
-  } | null>(null);
 
   // Export state
   const [exportComplete, setExportComplete] = useState(false);
@@ -160,14 +105,11 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     || textLayers[0];
   const hasSelection = selectedIds.length > 0;
   const isEditorSession = Boolean(currentProject?.id?.startsWith('ve_'));
+  // Upload-to-YouTube is owned by InstaEdit's publish flow; this editor
+  // only prepares the authorized render/export artifact.
+  const uploadToYouTube = false;
+  const isUploadingToYouTube = false;
   const {
-    groups: canonicalGroups,
-    selectedGroup: selectedYouTubeGroupDetails,
-    selectedGroupId: selectedCanonicalGroupId,
-    setSelectedGroupId: setSelectedCanonicalGroupId,
-    accounts: youtubeTargetAccounts,
-    selectedAccountId: selectedYouTubeAccountId,
-    setSelectedAccountId: setSelectedYouTubeAccountId,
     videos: privateVideos,
     visibleVideos: visiblePrivateVideos,
     latestPerChannel: latestPrivateVideos,
@@ -346,7 +288,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
 
   const generateVariants = useCallback(async () => {
     if (targetVideos.length === 0) {
-      addToast({ type: 'error', message: 'Seleziona almeno un video con account YouTube configurato.' });
+      addToast({ type: 'error', message: 'Il target video autorizzato non è disponibile.' });
       return;
     }
     setIsGeneratingPreviews(true);
@@ -417,7 +359,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     } finally {
       setIsGeneratingPreviews(false);
     }
-  }, [addToast, canvasHeight, canvasRef, canvasWidth, captureSnapshot, snapshotStale, targetVideos, translationLayer, youtubeDescription, youtubeTitle]);
+  }, [addToast, canvasRef, captureSnapshot, snapshotStale, targetVideos, translationLayer, youtubeDescription, youtubeTitle]);
 
   const saveVariantEdit = useCallback(async () => {
     if (!editingVideoId || !editingDraft || !translationLayer || !snapshotRef.current) return;
@@ -449,7 +391,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       }));
       setEditingVideoId(null);
       setEditingDraft(null);
-      addToast({ type: 'success', message: 'Variante aggiornata per questo canale.' });
+      addToast({ type: 'success', message: 'Variante aggiornata per il target autorizzato.' });
     } catch (error) {
       addToast({ type: 'error', message: error instanceof Error ? error.message : 'Modifica variante non riuscita' });
     } finally {
@@ -480,10 +422,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
   useEffect(() => {
     if (open) {
       resetSelection();
-      setYoutubeUploadResults({});
-      setYoutubeUploadComplete(false);
-      setYoutubeVideoId('');
-      setYoutubePublishResult(null);
       setExportComplete(false);
       setExportedBlob(null);
       setCoverPreviewUrl('');
@@ -515,15 +453,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     if (!currentSnapshot || currentSnapshot.signature !== liveSignature) {
       currentSnapshot = await captureSnapshot();
     }
-    if (uploadToYouTube && (snapshotStale || !currentSnapshot || currentSnapshot.signature !== liveSignature)) {
-      addToast({ type: 'error', message: 'Il progetto è cambiato. Attendi la rigenerazione delle anteprime prima dell’upload.' });
-      return;
-    }
-    if (uploadToYouTube && targetVideos.length > 0 && !allSelectedVariantsReady) {
-      addToast({ type: 'info', message: 'Attendi la generazione automatica delle copertine localizzate.' });
-      return;
-    }
-
     const stage = canvasRef?.current?.getStage?.();
     const mime = format === 'jpeg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
     const q = Math.max(0.01, Math.min(1, quality / 100));
@@ -543,92 +472,8 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     if (format !== 'png') setCoverPreviewUrl(URL.createObjectURL(blob));
     setExportComplete(true);
 
-    let youtubeSuccess = false;
-
-    if (uploadToYouTube && targetVideos.length > 0) {
-      setIsUploadingToYouTube(true);
-      try {
-        const group = selectedYouTubeGroupDetails;
-        const workspaceId = group?.workspace_id;
-        if (!group || !workspaceId) throw new Error('Seleziona un gruppo InstaEdit valido.');
-        const mediaByVariant = new Map<string, string>();
-        const results: typeof youtubeUploadResults = {};
-        const batchItems: Array<{
-          platform_account_id: number;
-          youtube_video_id: string;
-          variant_id: string;
-          thumbnail_media_id: string;
-          title?: string;
-          description?: string;
-          tags?: string[];
-        }> = [];
-        for (const video of targetVideos) {
-          const videoId = video.video_id;
-          const variant = variantPreviews[videoId];
-          if (!variant || variant.snapshotId !== currentSnapshot?.id) throw new Error(`Variante mancante per ${videoId}`);
-          const actualHash = await sha256Hex(variant.blob);
-          if (actualHash !== variant.sha256) throw new Error(`Hash non valido per la variante ${variant.variantId}`);
-          results[videoId] = { status: 'pending' };
-          setYoutubeUploadResults({ ...results });
-          let mediaId = mediaByVariant.get(variant.variantId);
-          if (!mediaId) {
-            mediaId = await uploadThumbnailMedia(variant.blob, `${projectName}-${variant.language}.png`);
-            mediaByVariant.set(variant.variantId, mediaId);
-          }
-          const platformAccountId = normalizedPlatformAccountId(video);
-          if (!platformAccountId) throw new Error(`Canale non valido per ${videoId}`);
-          batchItems.push({
-            platform_account_id: platformAccountId,
-            youtube_video_id: videoId,
-            variant_id: variant.variantId,
-            thumbnail_media_id: mediaId,
-            title: variant.title || video.title,
-            description: variant.description || '',
-            tags: youtubeTags.split(',').map((tag) => tag.trim()).filter(Boolean),
-          });
-        }
-
-        const idempotencyKey = await createBatchIdempotencyKey({
-          groupId: group.id,
-          snapshotId: currentSnapshot?.id,
-          items: batchItems.map((item) => ({
-            platform_account_id: item.platform_account_id,
-            youtube_video_id: item.youtube_video_id,
-            variant_id: item.variant_id,
-            thumbnail_media_id: item.thumbnail_media_id,
-            title: item.title,
-            description: item.description,
-            tags: item.tags,
-          })),
-        });
-        const createdBatch = await createYouTubeThumbnailBatch(Number(group.id), batchItems, idempotencyKey);
-        let batchStatus = await getYouTubeThumbnailBatch(createdBatch.batch_id);
-        for (let attempt = 0; attempt < 180 && !['completed', 'partial', 'failed'].includes(batchStatus.status); attempt += 1) {
-          await new Promise((resolve) => window.setTimeout(resolve, 1000));
-          batchStatus = await getYouTubeThumbnailBatch(createdBatch.batch_id);
-        }
-        for (const item of batchStatus.items) {
-          results[item.youtube_video_id] = item.status === 'completed'
-            ? { status: 'success' }
-            : item.status === 'failed'
-              ? { status: 'error', message: item.last_error || 'Operazione non riuscita' }
-              : { status: 'pending' };
-        }
-        setYoutubeUploadResults({ ...results });
-        const completedItem = batchStatus.items.find((item) => item.status === 'completed');
-        if (completedItem) {
-          setYoutubePublishResult({ videoId: completedItem.youtube_video_id, publicUrl: completedItem.public_url || `https://www.youtube.com/watch?v=${completedItem.youtube_video_id}`, privacyStatus: 'private', status: batchStatus.status });
-        }
-        youtubeSuccess = batchStatus.completed > 0;
-        setYoutubeUploadComplete(youtubeSuccess);
-      } catch (error) {
-        addToast({ type: 'error', message: error instanceof Error ? error.message : 'YouTube batch failed' });
-      } finally {
-        setIsUploadingToYouTube(false);
-      }
-    }
-    if (youtubeSuccess) addToast({ type: 'success', message: 'Export e upload completati' });
-  }, [addToast, allSelectedVariantsReady, captureSnapshot, canvasRef, currentProject, format, quality, selectedYouTubeGroupDetails, snapshotStale, targetVideos, uploadToYouTube, variantPreviews, youtubeTags]);
+    addToast({ type: 'success', message: 'Export locale completato.' });
+  }, [addToast, captureSnapshot, canvasRef, currentProject, format, quality]);
 
   if (open) {
     return (
@@ -679,17 +524,17 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                     <textarea value={youtubeDescription} onChange={(event) => setYoutubeDescription(event.target.value)} onBlur={() => void translateCompletedMetadata()} maxLength={5000} rows={5} className="publish-control w-full resize-y px-3 py-2.5 text-sm text-white/90 outline-none focus:border-white/[0.18]" placeholder="Descrizione del video" />
                     <p className="mt-1.5 text-[10px] text-white/35">{isTranslatingMetadata ? 'Traduzioni in corso…' : metadataTranslationError || (Object.keys(translatedMetadata).length > 0 ? 'Traduzioni aggiornate.' : 'Le traduzioni partono quando esci dal campo.')}</p>
                   </div>
-                  <div>
-                    <label className="mb-1.5 block text-[11px] font-medium text-white/50">Tag</label>
-                    <input value={youtubeTags} onChange={(event) => setYoutubeTags(event.target.value)} className="publish-control h-10 w-full px-3 text-sm text-white/90 outline-none focus:border-white/[0.18]" placeholder="tag1, tag2, tag3" />
-                  </div>
                 </div>
               </div>
             </section>
 
             <section className="min-w-0 flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="flex min-h-0 flex-1 flex-col">
-                <YouTubeTargetBar groups={canonicalGroups} accounts={youtubeTargetAccounts} groupId={selectedCanonicalGroupId} accountId={selectedYouTubeAccountId} onGroupChange={setSelectedCanonicalGroupId} onAccountChange={setSelectedYouTubeAccountId} />
+                <div className="flex h-[68px] shrink-0 items-center gap-2 border-b px-5">
+                  <Youtube className="h-4 w-4 fill-red-500 text-red-500" />
+                  <span className="text-sm font-semibold text-white">Contesto progetto autorizzato</span>
+                  <span className="text-xs text-white/40">Target ricevuto da InstaEdit</span>
+                </div>
                 <div className="flex h-14 shrink-0 items-center justify-between px-5">
                   <h2 className="text-[15px] font-semibold text-white">{selectedVideoCount} video selezionati</h2>
                   <div className="flex items-center gap-4 text-xs">
@@ -705,11 +550,11 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                   {loadingPrivateVideos ? (
                     <div className="flex items-center gap-2 py-8 text-sm text-white/45"><Loader2 className="h-4 w-4 animate-spin" />Caricamento video privati…</div>
                   ) : visiblePrivateVideos.length === 0 ? (
-                    <div className="rounded-[10px] border border-white/[0.07] bg-white/[0.018] p-5 text-sm text-white/50">Non ci sono video privati nel gruppo selezionato.</div>
+                    <div className="rounded-[10px] border border-white/[0.07] bg-white/[0.018] p-5 text-sm text-white/50">Il contesto video autorizzato non è disponibile.</div>
                   ) : (
-                    <BatchVideoGrid videos={visiblePrivateVideos} selectedVideoIds={selectedVideoIds} variantPreviews={variantPreviews} localizedMetadata={localizedMetadataByVideo} uploadResults={youtubeUploadResults} onToggle={toggleVideo} onEdit={(video) => { const variant = variantPreviews[video.video_id]; if (!variant) return; setEditingVideoId(video.video_id); setEditingDraft({ title: variant.title || video.title, description: variant.description || '', coverText: variant.translatedText || '' }); }} />
+                    <BatchVideoGrid videos={visiblePrivateVideos} selectedVideoIds={selectedVideoIds} variantPreviews={variantPreviews} localizedMetadata={localizedMetadataByVideo} uploadResults={{}} onToggle={toggleVideo} onEdit={(video) => { const variant = variantPreviews[video.video_id]; if (!variant) return; setEditingVideoId(video.video_id); setEditingDraft({ title: variant.title || video.title, description: variant.description || '', coverText: variant.translatedText || '' }); }} />
                   )}
-                  {youtubePublishResult && <div className="mt-4 rounded-[10px] border border-emerald-400/20 bg-emerald-500/10 p-3 text-xs text-emerald-100"><div className="flex items-center gap-2 font-semibold"><CheckCircle2 className="h-4 w-4" />YouTube aggiornato correttamente</div><div className="mt-2 text-emerald-200/70">Stato: {youtubePublishResult.status} · Privacy: {youtubePublishResult.privacyStatus} · ID: {youtubePublishResult.videoId}</div><a href={youtubePublishResult.publicUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1 text-emerald-200 hover:underline">Apri il video <ExternalLink className="h-3 w-3" /></a></div>}
+
                 </div>
               </div>
             </section>
@@ -718,7 +563,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
           {editingVideoId && editingDraft && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4" onClick={() => { if (!isSavingVariantEdit) { setEditingVideoId(null); setEditingDraft(null); } }}>
               <div className="max-h-[94vh] w-[min(1280px,96vw)] max-w-6xl overflow-y-auto rounded-2xl border border-white/[0.1] bg-[#111318] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-                <div className="mb-4 flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-white">Modifica variante canale</h3><p className="mt-1 text-xs text-white/45">{privateVideos.find((video) => video.video_id === editingVideoId)?.channel_name || editingVideoId} · lingua {variantPreviews[editingVideoId]?.language || '—'} · render 1920 × 1080</p></div><button type="button" className="text-white/45 hover:text-white" onClick={() => { setEditingVideoId(null); setEditingDraft(null); }} disabled={isSavingVariantEdit}>✕</button></div>
+                <div className="mb-4 flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold text-white">Modifica variante target</h3><p className="mt-1 text-xs text-white/45">{privateVideos.find((video) => video.video_id === editingVideoId)?.channel_name || editingVideoId} · lingua {variantPreviews[editingVideoId]?.language || '—'} · render 1920 × 1080</p></div><button type="button" className="text-white/45 hover:text-white" onClick={() => { setEditingVideoId(null); setEditingDraft(null); }} disabled={isSavingVariantEdit}>✕</button></div>
                 <div className="grid gap-5 md:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between"><span className="text-xs font-semibold text-white/60">Anteprima cover tradotta</span><span className="rounded-md bg-white/[0.05] px-2 py-1 text-[10px] text-white/45">1920 × 1080 · {variantPreviews[editingVideoId]?.language || '—'}</span></div>
@@ -826,19 +671,14 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                 {isTranslatingMetadata ? 'Traduzioni in corso dopo la modifica…' : metadataTranslationError ? metadataTranslationError : Object.keys(translatedMetadata).length > 0 ? 'Traduzioni aggiornate.' : 'Completa titolo e descrizione per tradurre.'}
               </p>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-300">Tag</label>
-              <input value={youtubeTags} onChange={(event) => setYoutubeTags(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-slate-400" placeholder="tag1, tag2, tag3" />
-              <p className="mt-1 text-[11px] text-slate-500">Separa i tag con una virgola.</p>
-            </div>
             </div>
           </div>
 
-          {/* YouTube Integration Section */}
+          {/* Project-authorized target context */}
           <div className="min-w-0 space-y-3 lg:border-l lg:border-slate-800 lg:pl-5">
             <div className="flex items-center gap-2">
               <Youtube className="h-5 w-5 text-red-500" />
-              <span className="text-sm font-bold text-slate-100">Aggiorna direttamente su YouTube</span>
+              <span className="text-sm font-bold text-slate-100">Varianti del target autorizzato</span>
             </div>
 
             <div className="space-y-4">
@@ -850,7 +690,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                   </div>
                 )}
                 <p className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-400">
-                  Il gruppo, il canale e il video arrivano dal contesto di progetto autorizzato da InstaEdit.
+                  Il target arriva dal contesto di progetto autorizzato da InstaEdit. InstaEditor non gestisce gruppi, canali o pubblicazione.
                 </p>
 
                 {/* Video Selection List */}
@@ -892,13 +732,13 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                     </div>
                   ) : privateVideos.length === 0 ? (
                     <div className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-500/10">
-                      Non ci sono video privati in questo gruppo.
+                      Il contesto video autorizzato non è disponibile.
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 gap-5 overflow-y-auto rounded-2xl border border-border/80 bg-slate-950/40 p-3 sm:grid-cols-2 lg:grid-cols-3 max-h-[500px]">
                       {sortedVideos.map((video) => {
                         const isSelected = selectedVideoIds.includes(video.video_id);
-                        const result = youtubeUploadResults[video.video_id];
+                        const result = undefined;
                         const variant = variantPreviews[video.video_id];
                         const hasChannel = normalizedPlatformAccountId(video) !== null;
                         const hasLanguage = Boolean(video.language?.trim());
@@ -942,29 +782,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                             >
                               {variant ? <img src={variant.previewUrl} alt={`Copertina ${variant.language}`} className="w-full h-full object-cover" /> : <div className="flex h-full flex-col items-center justify-center gap-1 px-2 text-center text-[10px] text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Generazione anteprima…</div>}
 
-                              {/* Result overlay */}
-                              {result && (
-                                <div className="absolute inset-0 bg-black/75 flex flex-col items-center justify-center p-2 text-center z-10">
-                                  {result.status === 'pending' && (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                                      <span className="text-[9px] text-slate-300">Applying...</span>
-                                    </div>
-                                  )}
-                                  {result.status === 'success' && (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <span className="text-green-400 font-bold text-lg">✓</span>
-                                      <span className="text-[9px] text-green-400 font-bold bg-green-950/80 px-1.5 py-0.5 rounded border border-green-500/20">{publishAfterUpload ? 'Applied & Published' : 'Applied · Private'}</span>
-                                    </div>
-                                  )}
-                                  {result.status === 'error' && (
-                                    <div className="flex flex-col items-center gap-1">
-                                      <span className="text-destructive font-bold text-lg">✗</span>
-                                      <span className="text-[9px] text-destructive font-bold bg-destructive/10 px-1.5 py-0.5 rounded border border-destructive/20" title={result.message}>Failed</span>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
                             </div>
 
                             {/* Video Title and Channel info */}
@@ -1001,27 +818,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                   )}
                 </div>
 
-                {youtubePublishResult && (
-                  <div className="rounded-xl border border-emerald-400/30 bg-emerald-950/25 p-3 text-sm text-emerald-100">
-                    <div className="flex items-center gap-2 font-bold">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-300" />
-                      YouTube aggiornato correttamente
-                    </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-emerald-200/80">
-                      <span>Stato: <b className="text-emerald-100">{youtubePublishResult.status}</b></span>
-                      <span>Privacy: <b className="text-emerald-100">{youtubePublishResult.privacyStatus}</b></span>
-                      <span className="col-span-2 truncate">Video ID: {youtubePublishResult.videoId}</span>
-                    </div>
-                    <a
-                      href={youtubePublishResult.publicUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-sky-300 hover:text-sky-200 hover:underline"
-                    >
-                      Apri il video su YouTube <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -1032,7 +828,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
             <div className="w-full max-w-xl rounded-2xl border border-slate-700 bg-slate-950 p-5 shadow-2xl" onClick={(event) => event.stopPropagation()}>
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-bold text-white">Modifica variante canale</h3>
+                  <h3 className="text-base font-bold text-white">Modifica variante target</h3>
                   <p className="mt-1 text-xs text-slate-400">
                     {privateVideos.find((video) => video.video_id === editingVideoId)?.channel_name || editingVideoId} · lingua {variantPreviews[editingVideoId]?.language || '—'} · render 1920 × 1080
                   </p>
@@ -1059,57 +855,20 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
         )}
 
         <DialogFooter className="flex-col gap-2 sm:flex-row">
-          {youtubeUploadComplete ? (
-            <>
-              <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
-                Done
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (uploadToYouTube && targetVideos.length > 0) {
-                    if (snapshotStale || !snapshotRef.current) void captureSnapshot();
-                    else if (!allSelectedVariantsReady) return;
-                    else void handleExport();
-                  } else void handleExport();
-                }}
-                disabled={isExporting || isUploadingToYouTube || isGeneratingPreviews}
-                className="w-full sm:w-auto"
-              >
-                {(isExporting || isUploadingToYouTube || isGeneratingPreviews) ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isUploadingToYouTube ? 'Uploading to YouTube...' : isGeneratingPreviews ? 'Generazione anteprime…' : 'Exporting...'}
-                  </>
-                ) : (
-                  <>
-                    {uploadToYouTube ? <Youtube className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-                    {uploadToYouTube && targetVideos.length > 0 ? (snapshotStale || !allSelectedVariantsReady ? 'Generazione automatica…' : `Applica ${targetVideos.length} copertine`) : 'Export'}
-                  </>
-                )}
-              </Button>
-              {!isEditorSession && latestPrivateVideos.length > 0 && (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    const ids = latestPrivateVideos.map((video) => video.video_id);
-                    setSelectedVideoIds(ids);
-                  }}
-                  disabled={isExporting || isUploadingToYouTube || loadingPrivateVideos}
-                  className="w-full sm:w-auto"
-                  title="Seleziona l'ultimo video privato di ogni canale e genera le anteprime"
-                >
-                  <Youtube className="w-4 h-4 mr-2" />
-                  Seleziona ultimi privati ({latestPrivateVideos.length})
-                </Button>
-              )}
-            </>
-          )}
+          <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
+            Annulla
+          </Button>
+          <Button
+            onClick={() => void handleExport()}
+            disabled={isExporting || isGeneratingPreviews}
+            className="w-full sm:w-auto"
+          >
+            {(isExporting || isGeneratingPreviews) ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{isGeneratingPreviews ? 'Generazione anteprime…' : 'Exporting...'}</>
+            ) : (
+              <><Download className="w-4 h-4 mr-2" />Export</>
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

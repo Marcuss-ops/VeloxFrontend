@@ -23,7 +23,7 @@ import type { PublishYouTubeEditorSessionResponse } from '@/lib/api/bff/youtube'
  *   InstaeditLogin/pkg/api/youtube_editor_sessions_contract_test.go
  *
  * Together the two tests close the cross-repo drift gap on the one
- * shape that the dark editor's publishBroadcast consumer reads.
+ * shape that the InstaEditor's publishBroadcast consumer reads.
  * Loosening any of the three layers breaks the consumer immediately:
  *
  *   - If the OpenAPI yaml drops `status` from required or strips

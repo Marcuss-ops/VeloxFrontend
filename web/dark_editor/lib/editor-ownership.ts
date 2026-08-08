@@ -1,6 +1,6 @@
 // Keep this in lockstep with the InstaEdit BFF parser: 128 characters
 // total, including the mandatory `ve_` prefix.
-const PROJECT_ID_PATTERN = /^ve_[A-Za-z0-9_-]{1,125}$/;
+const PROJECT_ID_PATTERN = /^(?:ve_|vx_)[A-Za-z0-9_-]{1,125}$/;
 
 const RETIRED_YOUTUBE_CATALOG_PREFIXES = [
   '/groups',
@@ -40,7 +40,8 @@ export async function authorizeEditorProject(
   }
 
   const cookie = request.headers.get('cookie');
-  if (!cookie) {
+  const authorization = request.headers.get('authorization');
+  if (!cookie && !authorization) {
     return { ok: false, status: 401, error: 'authentication required' };
   }
 
@@ -50,7 +51,11 @@ export async function authorizeEditorProject(
       `${baseURL}/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(projectId)}`,
       {
         method: 'GET',
-        headers: { cookie, accept: 'application/json' },
+        headers: {
+          ...(cookie ? { cookie } : {}),
+          ...(authorization ? { authorization } : {}),
+          accept: 'application/json',
+        },
         cache: 'no-store',
       },
     );

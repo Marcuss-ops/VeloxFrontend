@@ -6,8 +6,8 @@ import { ThemeProvider } from '@/components/ui/ThemeProvider';
 import { fontVariables } from '@/lib/fonts';
 
 export const metadata: Metadata = {
-  title: 'Dark Editor — Velox',
-  description: 'Image editing, templates and social-agnostic asset creation.',
+  title: 'InstaEditor',
+  description: 'Copertine YouTube e asset di editing, aperti dal flusso InstaEdit.',
 };
 
 export default function RootLayout({

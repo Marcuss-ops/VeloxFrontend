@@ -6,7 +6,7 @@
  *   - Next.js dark_editor on http://localhost:3001  (the editor lives here)
  *
  * The dual webServer is required so the cross-repo smoke spec can navigate
- * from /editor/{id} (dark editor on :3001) into /velox/jobs/{id} (Vite on :3000)
+ * from /editor/{id} (InstaEditor on :3001) into /velox/jobs/{id} (Vite on :3000)
  * with both backends mocked via page.route().
  */
 
@@ -40,10 +40,10 @@ export default defineConfig({
         {
             command: 'npm run dev',
             cwd: './dark_editor',
-            // Next.js has basePath: '/dark_editor_v2' so the root '/' 404s;
+            // Next.js has basePath: '/instaeditor' so the root '/' 404s;
             // health-check the basePath route instead so Playwright can
             // detect an already-running server (e.g. systemd service).
-            url: 'http://localhost:3001/dark_editor_v2/',
+            url: 'http://localhost:3001/instaeditor/',
             reuseExistingServer: !process.env.CI,
             timeout: 180 * 1000,
         },

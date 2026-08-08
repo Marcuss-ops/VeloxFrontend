@@ -1,4 +1,4 @@
-// Shared API types for the Dark Editor BFF clients.
+// Shared API types for the InstaEditor BFF clients.
 //
 // All endpoints route through the InstaEdit BFF at /api/v1/editor
 // which proxies to the Velox master. The browser stays on the same

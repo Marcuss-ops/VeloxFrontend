@@ -1,11 +1,11 @@
-// Server-side utilities for Dark Editor API
+// Server-side utilities for InstaEditor API
 import { NextRequest } from 'next/server';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 
-// Base directories
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Base directories — use env var so upload and fetch always use the same absolute path
+const DATA_DIR = process.env.DARK_EDITOR_DATA_DIR || path.join(process.cwd(), 'data');
 const TEMP_DIR = path.join(DATA_DIR, 'temp');
 const PROJECTS_DIR = path.join(DATA_DIR, 'projects');
 
@@ -51,11 +51,6 @@ export async function saveToTemp(file: File): Promise<string> {
   return filename;
 }
 
-// Build a public URL for a temp file
-export function getTempFileUrl(filename: string): string {
-  return `/dark_editor_v2/temp/${filename}`;
-}
-
 // Get file from temp
 export function getTempFile(filename: string): Buffer | null {
   const filepath = path.join(TEMP_DIR, filename);
@@ -63,6 +58,16 @@ export function getTempFile(filename: string): Buffer | null {
     return fs.readFileSync(filepath);
   }
   return null;
+}
+
+// Get a relative temp asset path; the browser resolves it through the editor runtime.
+export function getTempFileUrl(filename: string): string {
+  return `temp/${filename}`;
+}
+
+// Check if temp file exists
+export function tempFileExists(filename: string): boolean {
+  return fs.existsSync(path.join(TEMP_DIR, filename));
 }
 
 // Delete file from temp

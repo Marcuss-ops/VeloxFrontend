@@ -1,4 +1,4 @@
-// BFF YouTube client — Dark Editor's thin wrapper around the InstaEdit
+// BFF YouTube client — InstaEditor's thin wrapper around the InstaEdit
 // BFF's /api/v1/youtube/* endpoints (publish + draft auto-save +
 // session-detail read + short-poll helper).
 //
@@ -51,7 +51,7 @@ export interface YouTubeTranslation {
 //   - default_audio_language: BCP-47 code
 //   - translations:           map[lang] → {title, description}
 //
-// On the SPA side the Dark Editor stays thin: we ship the form values
+// On the SPA side the InstaEditor stays thin: we ship the form values
 // verbatim + let the backend enforce bounds + idempotency. If the
 // backend returns 400 (validation) the toast surfaces the original
 // `data.error` string so the operator sees a friendly message instead
@@ -232,7 +232,7 @@ export async function pollEditorSessionUntilConfirmed(
 
 // ------------------------------------------------------------------
 // Publish draft auto-save (P2). Mirrors the publish endpoint shape,
-// minus the strict validation + side-effects. The Dark Editor calls
+// minus the strict validation + side-effects. The InstaEditor calls
 // this on debounce + on-blur so an operator who closes the tab
 // mid-edit can resume the same form state on reload. The server
 // returns the echoed draft + draft_updated_at; the SPA renders the

@@ -1,5 +1,5 @@
 // Preset client — list / read / write / update / delete for the
-// Dark Editor's preset library (complete + text-type presets).
+// InstaEditor's preset library (complete + text-type presets).
 //
 // Talks to the InstaEdit BFF via the primitives in
 // lib/api/httpClient (apiGet / apiPost / apiPut / apiDelete). The

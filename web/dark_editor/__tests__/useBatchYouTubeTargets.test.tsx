@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
@@ -40,7 +42,7 @@ describe('useBatchYouTubeTargets project context', () => {
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock).toHaveBeenCalledWith(
-      '/dark_editor_v2/api/v1/youtube/editor-sessions/by-project/ve_project-1',
+      '/instaeditor/api/v1/youtube/editor-sessions/by-project/ve_project-1',
       expect.objectContaining({ credentials: 'include', cache: 'no-store' }),
     );
     expect(result.current.videos).toHaveLength(1);

@@ -53,8 +53,8 @@ describe('server-utils', () => {
     expect(filename).toMatch(/^\d+_[a-f0-9]{16}\.$/);
   });
 
-  it('getTempFileUrl builds the correct path', () => {
-    expect(getTempFileUrl('file.png')).toBe('/dark_editor_v2/temp/file.png');
+  it('getTempFileUrl builds a relative temp path resolved via the editor runtime', () => {
+    expect(getTempFileUrl('file.png')).toBe('temp/file.png');
   });
 
   it('getNvidiaApiKey returns the env variable', () => {

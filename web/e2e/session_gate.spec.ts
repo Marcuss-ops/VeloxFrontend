@@ -1,12 +1,12 @@
 /**
  * Session gate E2E test
  *
- * Verifica che il Dark Editor non permetta l'accesso diretto senza
+ * Verifica che il InstaEditor non permetta l'accesso diretto senza
  * una sessione YouTube valida. Il flusso corretto richiede:
  *   InstaEdit Social → selezione video → creazione sessione → editor_url reale
  *
  * Tutti i test partono dalla SPA Vite (:3000), cliccano "Crea sessione"
- * su una card video, e solo a quel punto il popup atterra sul Dark Editor.
+ * su una card video, e solo a quel punto il popup atterra sul InstaEditor.
  * Il comportamento del gate è determinato dal mock di
  * GET /api/v1/youtube/editor-sessions/by-project/{velox_project_id}
  * che ogni test configura con il verdict atteso.
@@ -22,7 +22,7 @@
  *      progetto caricato.
  *   5. Backend risponde 401 sul gate → redirect immediato a /login.
  *
- * Nessun entrypoint diretto a /dark_editor_v2/editor/<hardcoded-id>:
+ * Nessun entrypoint diretto a /instaeditor/editor/<hardcoded-id>:
  * ogni test mint una nuova session via POST /editor-sessions.
  */
 

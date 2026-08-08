@@ -4,18 +4,18 @@
  * Architectural rule: every e2e spec in this directory starts from
  * InstaEdit Social (Vite SPA on :3000), navigates to /groups/{id}/videos,
  * clicks "Crea sessione", and only after POST /api/v1/youtube/editor-sessions
- * returns 201 does the popup open at /dark_editor_v2/editor/{velox_project_id}.
+ * returns 201 does the popup open at /instaeditor/editor/{velox_project_id}.
  *
  * This file is the single source of truth for:
  *   - CSRF cookie injection
  *   - GET /api/v1/auth/me
  *   - GET /api/v1/groups/{id}/youtube/videos (SPA list)
  *   - POST /api/v1/youtube/editor-sessions (SPA mint)
- *   - GET /api/v1/youtube/editor-sessions/by-project/{id} (Dark Editor gate)
- *   - GET /dark_editor_v2/api/projects/{id} (loader)
- *   - Dark Editor mount-time sibling endpoints (drive/process/presets/folders)
+ *   - GET /api/v1/youtube/editor-sessions/by-project/{id} (InstaEditor gate)
+ *   - GET /instaeditor/api/projects/{id} (loader)
+ *   - InstaEditor mount-time sibling endpoints (drive/process/presets/folders)
  *
- * Direct navigation to /dark_editor_v2/editor/<hardcoded-id> is reserved for
+ * Direct navigation to /instaeditor/editor/<hardcoded-id> is reserved for
  * the gate-defense tests that explicitly need to test the gate's response to
  * arbitrary URLs (none in current specs; kept as a pattern only).
  */
@@ -71,10 +71,10 @@ export async function setupBaseContext(
         });
     });
 
-    // Sibling endpoints mounted by Dark Editor at load time. Empty bodies
+    // Sibling endpoints mounted by InstaEditor at load time. Empty bodies
     // are safe: any auto-fire at mount would otherwise hit the real Next
     // dev server (502 / EAI_AGAIN).
-    await context.route('**/dark_editor_v2/api/drive/**', async (route) => {
+    await context.route('**/instaeditor/api/drive/**', async (route) => {
         if (route.request().method() === 'GET') {
             const url = route.request().url();
             if (url.includes('/groups')) {
@@ -100,7 +100,7 @@ export async function setupBaseContext(
         await route.fallback();
     });
 
-    await context.route('**/dark_editor_v2/api/process/**', async (route) => {
+    await context.route('**/instaeditor/api/process/**', async (route) => {
         if (route.request().method() === 'POST') {
             await route.fulfill({ json: {} });
             return;
@@ -108,7 +108,7 @@ export async function setupBaseContext(
         await route.fallback();
     });
 
-    await context.route('**/dark_editor_v2/api/presets/**', async (route) => {
+    await context.route('**/instaeditor/api/presets/**', async (route) => {
         if (route.request().method() === 'GET') {
             await route.fulfill({ json: [] });
             return;
@@ -116,7 +116,7 @@ export async function setupBaseContext(
         await route.fallback();
     });
 
-    await context.route('**/dark_editor_v2/api/folders/**', async (route) => {
+    await context.route('**/instaeditor/api/folders/**', async (route) => {
         if (route.request().method() === 'GET') {
             await route.fulfill({ json: { folders: [] } });
             return;
@@ -126,7 +126,7 @@ export async function setupBaseContext(
 }
 
 /**
- * Mock GET /dark_editor_v2/api/projects/{id} — the loader endpoint.
+ * Mock GET /instaeditor/api/projects/{id} — the loader endpoint.
  * Required for editing/publishing/published states (loader fetches).
  * NOT needed for 404/401 (loader short-circuits).
  */
@@ -192,7 +192,7 @@ export async function setupSpaVideosListMock(
 
 /**
  * Mock POST /api/v1/youtube/editor-sessions — the SPA's mint endpoint.
- * Returns 201 with the canonical editor_url pointing at the Dark Editor's
+ * Returns 201 with the canonical editor_url pointing at the InstaEditor's
  * basePath route on :3001.
  *
  * `captured` is mutated so callers can assert the request body the SPA
@@ -220,7 +220,7 @@ export async function setupSpaMintMock(
                 json: {
                     session_id: response.sessionId,
                     velox_project_id: response.veloxProjectId,
-                    editor_url: `${DARK_EDITOR_BASE}/dark_editor_v2/editor/${response.veloxProjectId}`,
+                    editor_url: `${DARK_EDITOR_BASE}/instaeditor/editor/${response.veloxProjectId}`,
                 },
             });
             return;
@@ -231,7 +231,7 @@ export async function setupSpaMintMock(
 
 /**
  * Mock GET /api/v1/youtube/editor-sessions/by-project/{id} — the
- * Dark Editor's gate endpoint. The verdict controls the gate state:
+ * InstaEditor's gate endpoint. The verdict controls the gate state:
  *   - '404' → state='not_found', SessionGateError visible
  *   - '401' → state='unauthorized', redirect to /login
  *   - '200' with status='editing'    → state='editable_editing', Canvas mounts
@@ -278,7 +278,7 @@ export async function setupGateMock(
 }
 
 /**
- * Helper: click the "Apri Dark Editor per {title}" button on a group
+ * Helper: click the "Apri InstaEditor per {title}" button on a group
  * video card and return the popup page. Uses the Promise.all idiom to
  * register waitForEvent('popup') BEFORE the click is dispatched.
  */
@@ -287,7 +287,7 @@ export async function clickCreaSessioneAndCapturePopup(
     title: string,
 ): Promise<Page> {
     const cardButton = page.getByRole('button', {
-        name: `Apri Dark Editor per ${title}`,
+        name: `Apri InstaEditor per ${title}`,
     });
     await cardButton.waitFor({ state: 'visible', timeout: 10_000 });
     const [popup] = await Promise.all([page.waitForEvent('popup'), cardButton.click()]);

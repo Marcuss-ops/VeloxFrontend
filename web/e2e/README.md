@@ -21,7 +21,7 @@ fails to come up, no test executes — the suite blocks at the
 readiness probe.
 
 If `cd web/dark_editor && npm install` is skipped (or the install
-fails midway), the dark editor's `node_modules` is empty or
+fails midway), the InstaEditor's `node_modules` is empty or
 incomplete and `next dev -p 3001` aborts immediately with a
 `Cannot find module <pkg>` error (typically `'next'`, but the
 exact message depends on which dependency dropped out of
@@ -53,7 +53,7 @@ will then pass without any edits.
 
 ## Specs in this directory
 
-- `cross_repo_smoke.spec.ts` — dark editor queues a Velox
+- `cross_repo_smoke.spec.ts` — InstaEditor queues a Velox
   render+publish job, Vite SPA loads `/velox/jobs/{id}`, the
   delivery row's `social_delivery_id` is visible. Pins the
   **security deny-list** on the POST `/api/v1/velox/jobs` body:

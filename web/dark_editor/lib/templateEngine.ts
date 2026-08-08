@@ -1,11 +1,11 @@
-// lib/templateEngine.ts — Dark Editor's template-variable substitution engine.
+// lib/templateEngine.ts — InstaEditor's template-variable substitution engine.
 //
 // Originally the body of the `applyTemplate` + `batchApplyTemplate` actions
 // inside stores/templateStore.ts. They live here now so:
 //   1) The substitution logic is testable in isolation (no zustand closure
 //      dependency). A future Vitest suite can import `applyTemplate` +
 //      `batchApplyTemplate` directly + run headless.
-//   2) It can be reused outside the dark editor (e.g., a server-side template
+//   2) It can be reused outside the InstaEditor (e.g., a server-side template
 //      preview endpoint, or a CLI gallery tool that renders templates
 //      headlessly).
 //   3) stores/templateStore.ts becomes a thin facade — the engine owns the

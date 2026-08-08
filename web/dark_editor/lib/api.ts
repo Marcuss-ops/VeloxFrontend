@@ -1,10 +1,19 @@
-// API client for Dark Editor V2
-// All endpoints point to Go backend at /dark_editor_v2
-// Single source of truth: Go backend owns all APIs
+// API client for InstaEditor.
+// The current deployment uses a compatibility namespace, isolated here so
+// callers do not treat it as a product route or launcher.
+import { editorRuntimePath } from './editor-runtime';
+import { editorAuthorizationHeaders } from './editor-session';
 
-// Use relative path - Go backend is the single owner of APIs
-// Browser will call directly to Go backend (port 8000) or through gateway
-const API_BASE = '/dark_editor_v2';
+const API_BASE = editorRuntimePath('');
+
+async function editorFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const authorization = await editorAuthorizationHeaders();
+  return fetch(input, {
+    ...init,
+    credentials: 'include',
+    headers: { ...authorization, ...getCSRFHeaders(), ...init.headers },
+  });
+}
 
 /** Headers required for cookie-authenticated mutating API requests. */
 export function getCSRFHeaders(): Record<string, string> {
@@ -22,7 +31,8 @@ export function resolveEditorAssetUrl(value: string | undefined): string {
   if (/^(https?:|data:|blob:)/i.test(value)) return value;
   if (value.startsWith(`${API_BASE}/`)) return value;
   if (value.startsWith('/')) return value;
-  // The Go/Next upload APIs return temp/<filename>; the file route is /api/temp/.
+  // The editor upload APIs return temp/<filename>; the runtime helper resolves
+  // it against the current deployment boundary.
   if (value.startsWith('temp/')) return `${API_BASE}/api/${value}`;
   return `${API_BASE}/${value.replace(/^\/+/, '')}`;
 }
@@ -165,7 +175,7 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE}/api/upload`, {
+  const response = await editorFetch(`${API_BASE}/api/upload`, {
     method: 'POST',
     body: formData,
   });
@@ -180,7 +190,7 @@ export async function uploadImage(file: File): Promise<UploadResponse> {
 
 // Apply a filter to an image
 export async function applyFilter(request: FilterRequest): Promise<FilterResponse> {
-  const response = await fetch(`${API_BASE}/process/filter`, {
+  const response = await editorFetch(`${API_BASE}/process/filter`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -196,7 +206,7 @@ export async function applyFilter(request: FilterRequest): Promise<FilterRespons
 
 // Transform an image (crop/resize)
 export async function transformImage(request: TransformRequest): Promise<FilterResponse> {
-  const response = await fetch(`${API_BASE}/process/transform`, {
+  const response = await editorFetch(`${API_BASE}/process/transform`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -212,7 +222,7 @@ export async function transformImage(request: TransformRequest): Promise<FilterR
 
 // Export an image
 export async function exportImage(request: ExportRequest): Promise<{ url: string; filename: string }> {
-  const response = await fetch(`${API_BASE}/export`, {
+  const response = await editorFetch(`${API_BASE}/export`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -228,7 +238,7 @@ export async function exportImage(request: ExportRequest): Promise<{ url: string
 
 // Generate an image using AI
 export async function generateImage(request: GenerateRequest): Promise<GenerateResponse> {
-  const response = await fetch(`${API_BASE}/generate`, {
+  const response = await editorFetch(`${API_BASE}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -243,7 +253,7 @@ export async function generateImage(request: GenerateRequest): Promise<GenerateR
 }
 
 export async function upscaleImage(request: UpscaleRequest): Promise<UpscaleResponse> {
-  const response = await fetch(`${API_BASE}/api/upscale`, {
+  const response = await editorFetch(`${API_BASE}/api/upscale`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -259,7 +269,7 @@ export async function upscaleImage(request: UpscaleRequest): Promise<UpscaleResp
 
 // Grab YouTube thumbnail
 export async function grabYouTubeThumbnail(request: YouTubeGrabRequest): Promise<YouTubeGrabResponse> {
-  const response = await fetch(`${API_BASE}/api/tools/youtube_grab`, {
+  const response = await editorFetch(`${API_BASE}/api/tools/youtube_grab`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -277,7 +287,7 @@ export async function grabYouTubeThumbnail(request: YouTubeGrabRequest): Promise
 export async function removeBackground(request: RemoveBgRequest): Promise<RemoveBgResponse> {
   const signal = requestManager.getSignal(`remove-bg-${request.filename}`);
 
-  const response = await fetch(`${API_BASE}/api/remove-bg`, {
+  const response = await editorFetch(`${API_BASE}/api/remove-bg`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
@@ -296,7 +306,7 @@ export async function removeBackground(request: RemoveBgRequest): Promise<Remove
 
 // Get background removal status
 export async function getBackgroundRemovalStatus(taskId: string): Promise<RemoveBgStatusResponse> {
-  const response = await fetch(`${API_BASE}/api/remove-bg/status/${taskId}`);
+  const response = await editorFetch(`${API_BASE}/api/remove-bg/status/${taskId}`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -312,7 +322,7 @@ export async function listProjects(type?: string): Promise<Project[]> {
     ? `${API_BASE}/api/projects?type=${encodeURIComponent(type)}`
     : `${API_BASE}/api/projects`;
 
-  const response = await fetch(url);
+  const response = await editorFetch(url);
 
   if (!response.ok) {
     const error = await response.json();
@@ -326,10 +336,10 @@ export async function listProjects(type?: string): Promise<Project[]> {
 export async function getProject(id: string): Promise<Project> {
   if (id.startsWith('ve_')) {
     // YouTube editor sessions provide the initial thumbnail metadata, while
-    // the Dark Editor project endpoint stores the actual canvas snapshot.
+    // the editor project endpoint stores the actual canvas snapshot.
     // Prefer the persisted canvas on reload; otherwise every refresh would
     // rebuild the editor from the original thumbnail and discard edits.
-    const persistedResponse = await fetch(`${API_BASE}/api/projects/${encodeURIComponent(id)}`, {
+    const persistedResponse = await editorFetch(`${API_BASE}/api/projects/${encodeURIComponent(id)}`, {
       credentials: 'include',
       cache: 'no-store',
     });
@@ -337,7 +347,7 @@ export async function getProject(id: string): Promise<Project> {
       return persistedResponse.json();
     }
 
-    const response = await fetch(`${API_BASE}/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(id)}`, {
+    const response = await editorFetch(`${API_BASE}/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(id)}`, {
       credentials: 'include',
       cache: 'no-store',
     });
@@ -384,7 +394,7 @@ export async function getProject(id: string): Promise<Project> {
     };
   }
 
-  const response = await fetch(`${API_BASE}/api/projects/${id}`);
+  const response = await editorFetch(`${API_BASE}/api/projects/${id}`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -404,7 +414,7 @@ export async function saveProject(project: {
   canvas_json: Record<string, unknown>;
   preview_filename?: string;
 }): Promise<{ id: string; message: string }> {
-  const response = await fetch(`${API_BASE}/api/projects/${encodeURIComponent(project.id)}`, {
+  const response = await editorFetch(`${API_BASE}/api/projects/${encodeURIComponent(project.id)}`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...getCSRFHeaders() },
@@ -422,7 +432,7 @@ export async function saveProject(project: {
 
 // Delete a project
 export async function deleteProject(id: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/projects/${id}`, {
+  const response = await editorFetch(`${API_BASE}/api/projects/${id}`, {
     method: 'DELETE',
   });
 
@@ -462,7 +472,7 @@ export interface Preset {
 
 // List presets
 export async function listPresets(): Promise<Preset[]> {
-  const response = await fetch(`${API_BASE}/api/presets`);
+  const response = await editorFetch(`${API_BASE}/api/presets`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -474,7 +484,7 @@ export async function listPresets(): Promise<Preset[]> {
 
 // Get a preset
 export async function getPreset(id: string): Promise<Preset> {
-  const response = await fetch(`${API_BASE}/api/presets/${id}`);
+  const response = await editorFetch(`${API_BASE}/api/presets/${id}`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -492,7 +502,7 @@ export async function savePreset(preset: {
   objects?: Record<string, unknown>[];
   textObjects?: Record<string, unknown>[];
 }): Promise<{ id: string; message: string }> {
-  const response = await fetch(`${API_BASE}/api/presets`, {
+  const response = await editorFetch(`${API_BASE}/api/presets`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(preset),
@@ -514,7 +524,7 @@ export async function updatePreset(id: string, preset: {
   objects?: Record<string, unknown>[];
   textObjects?: Record<string, unknown>[];
 }): Promise<Preset> {
-  const response = await fetch(`${API_BASE}/api/presets/${id}`, {
+  const response = await editorFetch(`${API_BASE}/api/presets/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(preset),
@@ -530,7 +540,7 @@ export async function updatePreset(id: string, preset: {
 
 // Delete a preset
 export async function deletePreset(id: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/presets/${id}`, {
+  const response = await editorFetch(`${API_BASE}/api/presets/${id}`, {
     method: 'DELETE',
   });
 
@@ -553,14 +563,14 @@ export interface ProjectFolder {
   created_at?: string;
 }
 
-// Folder CRUD is exposed by the dark editor app under its Next.js basePath.
-// These calls must include the basePath, otherwise the browser resolves them
-// against `/api/*` and receives an HTML page instead of JSON.
+// Folder CRUD is exposed by the editor app under its deployment boundary.
+// These calls must include the runtime prefix, otherwise the browser resolves
+// them against the main InstaEdit SPA instead of the editor API.
 const FOLDERS_API_BASE = `${API_BASE}/api/folders`;
 
 // List folders
 export async function listFolders(): Promise<ProjectFolder[]> {
-  const response = await fetch(FOLDERS_API_BASE, { cache: 'no-store' });
+  const response = await editorFetch(FOLDERS_API_BASE, { cache: 'no-store' });
 
   if (!response.ok) {
     const error = await response.json();
@@ -575,7 +585,7 @@ export async function createFolder(folder: {
   name: string;
   parent_id?: string | null;
 }): Promise<ProjectFolder> {
-  const response = await fetch(FOLDERS_API_BASE, {
+  const response = await editorFetch(FOLDERS_API_BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(folder),
@@ -594,7 +604,7 @@ export async function updateFolder(id: string, folder: {
   name?: string;
   parent_id?: string | null;
 }): Promise<ProjectFolder> {
-  const response = await fetch(`${FOLDERS_API_BASE}/${id}`, {
+  const response = await editorFetch(`${FOLDERS_API_BASE}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(folder),
@@ -610,7 +620,7 @@ export async function updateFolder(id: string, folder: {
 
 // Delete folder
 export async function deleteFolder(id: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${FOLDERS_API_BASE}/${id}`, {
+  const response = await editorFetch(`${FOLDERS_API_BASE}/${id}`, {
     method: 'DELETE',
   });
 
@@ -624,7 +634,7 @@ export async function deleteFolder(id: string): Promise<{ success: boolean }> {
 
 // Assign project to folder
 export async function assignProjectToFolder(projectId: string, folderId: string | null): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/projects/${projectId}/folder`, {
+  const response = await editorFetch(`${API_BASE}/api/projects/${projectId}/folder`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ folder_id: folderId }),
@@ -655,7 +665,7 @@ export interface TranslateResponse {
 }
 
 export async function translateText(request: TranslateRequest): Promise<TranslateResponse> {
-  const response = await fetch(`${API_BASE}/api/v1/youtube/ai/translate`, {
+  const response = await editorFetch(`${API_BASE}/api/v1/youtube/ai/translate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),

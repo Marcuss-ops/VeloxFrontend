@@ -1,5 +1,5 @@
 // Media client — upload / filter / transform / export / generate /
-// upscale / background-removal for the Dark Editor.
+// upscale / background-removal for the InstaEditor.
 //
 // Talks to the InstaEdit BFF via the primitives in
 // lib/api/httpClient (apiPost / apiGet / apiUpload + the

@@ -1,4 +1,4 @@
-// HTTP infrastructure for the Dark Editor BFF clients.
+// HTTP infrastructure for the InstaEditor BFF clients.
 //
 // Centralises the base URL, CSRF + cookie handling, JSON encoding,
 // and the AbortController-backed RequestManager that backs the
@@ -13,7 +13,7 @@
 // Base URLs
 // ------------------------------------------------------------------
 
-/** Root of the Dark Editor BFF. All endpoints are nested under this. */
+/** Root of the InstaEditor BFF. All endpoints are nested under this. */
 export const API_BASE = '/api/v1/editor';
 
 /** Virtual base for the /api/folders family of endpoints. */

@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { saveEditorSessionDraft } from '@/lib/api/bff';
 
 // ------------------------------------------------------------------
-// useAutoSaveDraft — P2 Dark Editor auto-save
+// useAutoSaveDraft — P2 InstaEditor auto-save
 // ------------------------------------------------------------------
 //
-// The Dark Editor's publish form persisted to localStorage on every
+// The InstaEditor's publish form persisted to localStorage on every
 // click of the explicit "Salva bozza" button. Before this hook, an
 // operator who typed a title, closed the browser tab, and came back
 // found their work intact (the localStorage survived the reload) BUT
@@ -47,7 +47,7 @@ import { saveEditorSessionDraft } from '@/lib/api/bff';
 //
 // Why this is a custom hook (not just a useEffect inside the dialog):
 //   - Debounced timer + debouncedRef pattern is well-tested to extract.
-//   - Reusable across any future Dark Editor dialog (e.g. channel
+//   - Reusable across any future InstaEditor dialog (e.g. channel
 //     metadata edits, monetization settings).
 //   - Easier to unit test in isolation (vitest covers the debounce
 //     semantics + the abort-on-unmount behaviour).

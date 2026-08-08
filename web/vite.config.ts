@@ -46,7 +46,7 @@ export default defineConfig(() => ({
                 secure: false,
                 rewrite: (path) => path.replace(/^\/api\/ansible/, '/api/v1/ansible'),
             },
-            '/dark_editor_v2': {
+            '/instaeditor': {
                 target: 'http://127.0.0.1:8080',
                 changeOrigin: true,
                 secure: false,

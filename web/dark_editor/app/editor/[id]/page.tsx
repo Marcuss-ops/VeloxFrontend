@@ -58,6 +58,7 @@ import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useYouTubeSessionGate } from '@/hooks/useYouTubeSessionGate';
 import { getProject } from '@/lib/api';
 import { resolveEditorAssetUrl, uploadImage } from '@/lib/api';
+import { editorProjectContextPath } from '@/lib/editor-runtime';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { onEditorFlushRequest, onEditorSaveRequest } from '@/lib/editorEvents';
 import { v4 as uuidv4 } from 'uuid';
@@ -152,7 +153,7 @@ export default function EditorPage() {
       let sessionSourceThumbnail = '';
       if (projectId.startsWith('ve_')) {
         try {
-          const sessionResponse = await fetch(`/dark_editor_v2/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(projectId)}`, { cache: 'no-store' });
+          const sessionResponse = await fetch(editorProjectContextPath(projectId), { cache: 'no-store' });
           if (sessionResponse.ok) {
             const session = await sessionResponse.json() as { source_thumbnail_url?: string };
             sessionSourceThumbnail = String(session.source_thumbnail_url || '').trim();
@@ -807,7 +808,7 @@ export default function EditorPage() {
                           const newAsset = {
                             id: uuidv4(),
                             name: file.name.split('.')[0],
-                            src: res.url.startsWith('http') || res.url.startsWith('data:') ? res.url : `/dark_editor_v2/${res.url}`,
+                            src: resolveEditorAssetUrl(res.url),
                           };
                           const updated = [newAsset, ...customAssets];
                           setCustomAssets(updated);

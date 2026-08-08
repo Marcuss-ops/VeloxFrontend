@@ -1,4 +1,4 @@
-// data/defaultTemplates.ts — Dark Editor's 5 seeded template definitions.
+// data/defaultTemplates.ts — InstaEditor's 5 seeded template definitions.
 //
 // Originally hardcoded inline inside stores/templateStore.ts as the
 // `templates` array initializer for the persisted zustand store. They

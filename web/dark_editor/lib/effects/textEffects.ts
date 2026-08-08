@@ -1,4 +1,4 @@
-// Text effects renderer for the Dark Editor canvas.
+// Text effects renderer for the InstaEditor canvas.
 //
 // Owns the TextEffectsRenderer class + its module-level singleton.
 // Methods paint text decorations (shadow, stroke, gradient, curve)

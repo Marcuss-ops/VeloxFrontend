@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EditorSessionDetail } from '@/lib/api/bff/youtube';
 import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
+import { editorProjectContextPath } from '@/lib/editor-runtime';
 
 interface UseBatchYouTubeTargetsOptions {
   enabled: boolean;
@@ -100,7 +101,7 @@ export function useBatchYouTubeTargets({
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    void fetch(`/dark_editor_v2/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(currentProjectId)}`, {
+    void fetch(editorProjectContextPath(currentProjectId), {
       credentials: 'include',
       cache: 'no-store',
       signal: controller.signal,

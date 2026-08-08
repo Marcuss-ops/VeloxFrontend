@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Group, Image as KonvaImage, Rect } from 'react-konva';
 import Konva from 'konva';
 import { applyAllFilters } from '@/lib/imageFilters';
+import { resolveEditorAssetUrl } from '@/lib/api';
 import { useImageLoader } from './utils';
 
 function ImageRenderer({
@@ -32,7 +33,7 @@ function ImageRenderer({
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => setOriginalImage(img);
-    img.src = src.startsWith('http') || src.startsWith('data:') ? src : `/dark_editor_v2/${src}`;
+    img.src = resolveEditorAssetUrl(src);
   }, [src]);
 
   useEffect(() => {

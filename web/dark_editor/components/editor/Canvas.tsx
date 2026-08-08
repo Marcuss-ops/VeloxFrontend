@@ -1,22 +1,18 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { Stage, Layer, Rect, Transformer, Circle, Line, Group } from 'react-konva';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
-import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import Konva from 'konva';
-import { buildSelectedIdSet, findEditingObject } from '@/lib/canvasSelection';
-import { selectCropTarget } from '@/lib/editorSelectors';
-import CanvasObjectNode from './CanvasObjectNode';
-import { useCanvasStage } from '@/hooks/useCanvasStage';
 import {
   CropSelectionOverlay,
   GridOverlay,
   ObjectRenderer,
   TextEditorOverlay,
 } from '@/components/editor/canvas/CanvasRenderers';
+import { requestEditorSave } from '@/lib/editorEvents';
 
 interface CanvasProps {
   containerRef?: React.RefObject<HTMLDivElement>;
@@ -24,7 +20,20 @@ interface CanvasProps {
 }
 
 const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
+  const stageRef = React.useRef<Konva.Stage | null>(null);
+  const internalContainerRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = props.containerRef || internalContainerRef;
+
+  const actualRef = ref || props.canvasRef;
+
+  React.useImperativeHandle(actualRef, () => ({
+    getStage: () => stageRef.current
+  }));
+
+  const transformerRef = useRef<Konva.Transformer>(null);
+  
   const {
+    objects,
     selectedIds,
     canvasWidth,
     canvasHeight,
@@ -33,12 +42,11 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     offsetY,
     selectObject,
     updateObject,
+    addObject,
     setZoom,
     setOffset,
   } = useEditorStore();
-
-  const objects = useObjectsArray();
-
+  
   const {
     activeTool,
     setActiveTool,
@@ -52,60 +60,82 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     cancelCropEditing,
   } = useUIStore();
 
-  // Stage ref + useImperativeHandle + panning + drag/zoom handlers live in the hook.
-  const {
-    stageRef,
-    containerRef,
-    isPanning,
-    guides,
-    handleStageDragStart,
-    handleStageDragMove,
-    handleStageDragEnd,
-    handleWheel,
-  } = useCanvasStage({
-    forwardedRef: ref || props.canvasRef,
-    containerRef: props.containerRef,
-    zoom,
-    offsetX,
-    offsetY,
-    setZoom,
-    setOffset,
-    editingId,
-  });
-
-  const transformerRef = useRef<Konva.Transformer>(null);
-
+  const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
+  const [viewportSize, setViewportSize] = useState({ width: 1, height: 1 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const [cropDraft, setCropDraft] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [lassoPoints, setLassoPoints] = useState<{ x: number; y: number }[]>([]);
   const [isDrawingLasso, setIsDrawingLasso] = useState(false);
 
-  // Build a Set from selectedIds so per-object lookup in the render loop is O(1)
-  const selectedIdSet = useMemo(() => buildSelectedIdSet(selectedIds), [selectedIds]);
+  // The Konva stage is a viewport, not the document. Fit the logical
+  // 1920x1080 document into the actual 16:9 editor container and keep the
+  // user's zoom as a multiplier over that fit scale. The old implementation
+  // sized the stage from window.innerWidth/innerHeight, so the container
+  // clipped a different coordinate system than the exporter captured.
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) return;
 
-  // Memo the object currently being edited to avoid repeated linear scans
-  const editingObject = useMemo(
-    () => findEditingObject(objects, editingId),
-    [objects, editingId]
+    const updateViewportSize = () => {
+      setViewportSize({
+        width: Math.max(1, element.clientWidth),
+        height: Math.max(1, element.clientHeight),
+      });
+    };
+
+    updateViewportSize();
+    const observer = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(updateViewportSize)
+      : null;
+    observer?.observe(element);
+    window.addEventListener('resize', updateViewportSize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateViewportSize);
+    };
+  }, [containerRef]);
+
+  const fitScale = Math.min(
+    viewportSize.width / Math.max(1, canvasWidth),
+    viewportSize.height / Math.max(1, canvasHeight),
   );
+  const displayScale = Math.max(0.01, fitScale * zoom);
+  const fitOffsetX = (viewportSize.width - canvasWidth * fitScale) / 2;
+  const fitOffsetY = (viewportSize.height - canvasHeight * fitScale) / 2;
+  const displayOffsetX = fitOffsetX + offsetX;
+  const displayOffsetY = fitOffsetY + offsetY;
 
   useEffect(() => {
     setLassoPoints([]);
   }, [cropEditingId]);
 
+  const snap = useCallback(
+    (value: number) => {
+      if (!snapToGrid) return value;
+      const size = gridSize > 0 ? gridSize : 1;
+      return Math.round(value / size) * size;
+    },
+    [gridSize, snapToGrid]
+  );
+  
   // Update transformer when selection changes
   useEffect(() => {
     if (!transformerRef.current || !stageRef.current) return;
-
+    
     const nodes = selectedIds
       .filter((id) => id !== cropEditingId)
       .map((id) => stageRef.current?.findOne(`#${id}`))
       .filter((node): node is Konva.Node => node !== undefined);
-
+    
     transformerRef.current.nodes(nodes);
     transformerRef.current.getLayer()?.batchDraw();
   }, [selectedIds, cropEditingId]);
 
-  const cropTarget = useEditorStore((state) => selectCropTarget(state, cropEditingId));
+  const cropTarget = React.useMemo(() => {
+    if (!cropEditingId) return null;
+    return objects.find((obj) => obj.id === cropEditingId && obj.type === 'image') ?? null;
+  }, [cropEditingId, objects]);
 
   // Initialize crop selection to cover 100% of the image size (maintaining aspect ratio)
   useEffect(() => {
@@ -132,6 +162,78 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
       height: size,
     });
   }, [cropTarget, cropEditingMode]);
+  
+  // Spacebar panning
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !editingId && e.target === document.body) {
+        e.preventDefault();
+        setIsPanning(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        setIsPanning(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [editingId]);
+
+  const handleStageDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
+    if (!isPanning) return;
+    const stage = stageRef.current;
+    if (!stage) return;
+    panStartRef.current = {
+      x: e.evt.clientX,
+      y: e.evt.clientY,
+      ox: offsetX,
+      oy: offsetY,
+    };
+  }, [isPanning, offsetX, offsetY]);
+
+  const handleStageDragMove = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
+    if (!isPanning || !panStartRef.current) return;
+    const dx = e.evt.clientX - panStartRef.current.x;
+    const dy = e.evt.clientY - panStartRef.current.y;
+    setOffset(panStartRef.current.ox + dx, panStartRef.current.oy + dy);
+  }, [isPanning, setOffset]);
+
+  const handleStageDragEnd = useCallback(() => {
+    panStartRef.current = null;
+  }, []);
+
+  // Handle wheel zoom
+  const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
+    e.evt.preventDefault();
+    
+    const stage = stageRef.current;
+    if (!stage) return;
+    
+    const oldScale = displayScale;
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const mousePointTo = {
+      x: (pointer.x - displayOffsetX) / oldScale,
+      y: (pointer.y - displayOffsetY) / oldScale,
+    };
+
+    const speed = 1.05;
+    const nextZoom = e.evt.deltaY < 0 ? zoom * speed : zoom / speed;
+    const clampedZoom = Math.max(0.1, Math.min(5, nextZoom));
+    
+    setZoom(clampedZoom);
+    const nextDisplayScale = fitScale * clampedZoom;
+    setOffset(
+      pointer.x - mousePointTo.x * nextDisplayScale - fitOffsetX,
+      pointer.y - mousePointTo.y * nextDisplayScale - fitOffsetY,
+    );
+  }, [displayScale, displayOffsetX, displayOffsetY, fitOffsetX, fitOffsetY, fitScale, setOffset, setZoom, zoom]);
 
   const commitLassoCrop = useCallback(() => {
     if (!cropTarget || lassoPoints.length < 3) return;
@@ -191,13 +293,13 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     if (!cropTarget) return null;
     const scaleX = cropTarget.scaleX || 1;
     const scaleY = cropTarget.scaleY || 1;
-    const stageX = (pointer.x - offsetX) / zoom;
-    const stageY = (pointer.y - offsetY) / zoom;
+    const stageX = (pointer.x - displayOffsetX) / displayScale;
+    const stageY = (pointer.y - displayOffsetY) / displayScale;
     return {
       x: (stageX - cropTarget.x) / scaleX,
       y: (stageY - cropTarget.y) / scaleY
     };
-  }, [cropTarget, offsetX, offsetY, zoom]);
+  }, [cropTarget, displayOffsetX, displayOffsetY, displayScale]);
 
   const handleStageMouseDown = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (isPanning) return;
@@ -247,18 +349,47 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     const isBackground = e.target === stageRef.current || e.target.name() === 'canvas-background';
     if (!isBackground) return;
 
+    if (activeTool === 'text' || activeTool === 'rect' || activeTool === 'circle') {
+      const stage = stageRef.current;
+      const pointer = stage?.getPointerPosition();
+      if (!pointer) return;
+      const x = (pointer.x - displayOffsetX) / displayScale;
+      const y = (pointer.y - displayOffsetY) / displayScale;
+      const id = `${activeTool}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const base = {
+        id,
+        x: Math.max(0, x - 120),
+        y: Math.max(0, y - 40),
+        width: activeTool === 'text' ? 360 : 240,
+        height: activeTool === 'text' ? 80 : 160,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        visible: true,
+        locked: false,
+        name: activeTool === 'text' ? 'Text' : activeTool === 'rect' ? 'Shape' : 'Circle',
+      };
+      addObject(activeTool === 'text'
+        ? { ...base, type: 'text', text: 'Testo', translate: true, fill: '#111111', fontSize: 48, fontFamily: 'Arial', fontWeight: 'bold', lineHeight: 1.1, padding: 4 }
+        : { ...base, type: activeTool, fill: activeTool === 'rect' ? '#2563eb' : '#7c3aed', stroke: '#ffffff', strokeWidth: 2 });
+      selectObject(id);
+      setActiveTool('select');
+      return;
+    }
+
     // Deselect if clicking on empty background
     selectObject(null);
-  }, [cropEditingId, isPanning, selectObject]);
+  }, [activeTool, addObject, cropEditingId, displayOffsetX, displayOffsetY, displayScale, isPanning, selectObject, setActiveTool]);
 
   const handleTextDblClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>, id: string) => {
     e.cancelBubble = true;
-    const obj = useEditorStore.getState().objects[id];
+    const obj = objects.find((o) => o.id === id);
     if (obj && obj.type === 'text') {
       setEditingId(id);
       selectObject(id);
     }
-  }, [selectObject, setEditingId]);
+  }, [objects, selectObject, setEditingId]);
 
   const commitCrop = useCallback(() => {
     if (!cropTarget || !cropDraft) return;
@@ -319,18 +450,86 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cropEditingId, cropEditingMode, commitCrop, commitLassoCrop, discardCrop]);
 
+  const renderObject = (obj: CanvasObject) => {
+    const isSelected = selectedIds.includes(obj.id);
+    const isEditing = editingId === obj.id;
+    const isCropTarget = cropEditingId === obj.id && obj.type === 'image' && cropDraft;
+    
+    // Hide standard transformer bounding box controls when image crop editing is active
+    const isTransformable = isSelected && !isEditing && !isCropTarget && !obj.locked;
 
+    const commonProps = {
+      id: obj.id,
+      x: obj.x,
+      y: obj.y,
+      rotation: obj.rotation,
+      scaleX: obj.scaleX,
+      scaleY: obj.scaleY,
+      opacity: obj.opacity,
+      visible: obj.visible,
+      draggable: !obj.locked && activeTool !== 'pan' && !isPanning && !(cropEditingId === obj.id && obj.type === 'image'),
+      listening: !(cropEditingId === obj.id && obj.type === 'image'),
+      onClick: (e: Konva.KonvaEventObject<MouseEvent>) => {
+        if (activeTool === 'pan' || isPanning) return;
+        e.cancelBubble = true;
+        
+        // Multi-select with Shift
+        const isShift = e.evt.shiftKey;
+        selectObject(obj.id, isShift);
+      },
+      onDragStart: () => {
+        // Clear selection or perform actions on drag start
+      },
+      onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
+        const node = e.target;
+        updateObject(obj.id, {
+          x: Math.round(node.x()),
+          y: Math.round(node.y()),
+        });
+      },
+      onTransformEnd: () => {
+        const node = stageRef.current?.findOne(`#${obj.id}`);
+        if (!node) return;
+        
+        updateObject(obj.id, {
+          x: Math.round(node.x()),
+          y: Math.round(node.y()),
+          scaleX: node.scaleX(),
+          scaleY: node.scaleY(),
+          rotation: Math.round(node.rotation()),
+        });
+      },
+    };
+
+    const shadowProps = obj.dropShadow ? {
+      shadowColor: obj.dropShadow.color,
+      shadowBlur: obj.dropShadow.blur,
+      shadowOffset: { x: obj.dropShadow.offsetX, y: obj.dropShadow.offsetY },
+      shadowOpacity: 0.5,
+    } : {};
+    
+    return (
+      <ObjectRenderer
+        key={obj.id}
+        obj={obj}
+        commonProps={commonProps}
+        shadowProps={shadowProps}
+        editingId={editingId}
+        handleTextDblClick={handleTextDblClick}
+      />
+    );
+  };
 
   return (
-    <div className="canvas-container w-full h-full overflow-hidden">
+    <div ref={containerRef} className="canvas-container relative w-full h-full overflow-hidden">
       <Stage
         ref={stageRef}
-        width={typeof window !== 'undefined' ? window.innerWidth - 400 : 800}
-        height={typeof window !== 'undefined' ? window.innerHeight - 100 : 600}
-        scaleX={zoom}
-        scaleY={zoom}
-        x={offsetX}
-        y={offsetY}
+        width={viewportSize.width}
+        height={viewportSize.height}
+        scaleX={displayScale}
+        scaleY={displayScale}
+        x={displayOffsetX}
+        y={displayOffsetY}
         draggable={isPanning}
         onDragStart={handleStageDragStart}
         onDragMove={handleStageDragMove}
@@ -360,46 +559,31 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
             shadowOpacity={0.2}
           />
 
-          {showGrid ? (
-            <GridOverlay width={canvasWidth} height={canvasHeight} gridSize={gridSize} />
-          ) : null}
+          {objects.map(renderObject)}
+          <Group name="export-exclude">
+            {showGrid ? (
+              <GridOverlay width={canvasWidth} height={canvasHeight} gridSize={gridSize} />
+            ) : null}
 
-          {guides.v.map((x, i) => (
-            <Rect key={`gvline-${i}`} name="export-exclude" x={x} y={0} width={1} height={canvasHeight} fill="rgba(59,130,246,0.8)" listening={false} />
-          ))}
-          {guides.h.map((y, i) => (
-            <Rect key={`ghline-${i}`} name="export-exclude" x={0} y={y} width={canvasWidth} height={1} fill="rgba(59,130,246,0.8)" listening={false} />
-          ))}
+            {guides.v.map((x, i) => (
+              <Rect key={`gvline-${i}`} x={x} y={0} width={1} height={canvasHeight} fill="rgba(59,130,246,0.8)" listening={false} />
+            ))}
+            {guides.h.map((y, i) => (
+              <Rect key={`ghline-${i}`} x={0} y={y} width={canvasWidth} height={1} fill="rgba(59,130,246,0.8)" listening={false} />
+            ))}
 
-          {objects.map((obj) => (
-            <CanvasObjectNode
-              key={obj.id}
-              obj={obj}
-              isSelected={selectedIdSet.has(obj.id)}
-              isEditing={editingId === obj.id}
-              isCropEditingObject={cropEditingId === obj.id && obj.type === 'image'}
-              activeTool={activeTool}
-              isPanning={isPanning}
-              handleTextDblClick={handleTextDblClick}
-              selectObject={selectObject}
-              updateObject={updateObject}
-              stageRef={stageRef}
-            />
-          ))}
-          {cropTarget && cropDraft && cropEditingMode !== 'free' && (
-            <Group name="export-exclude">
+            {cropTarget && cropDraft && cropEditingMode !== 'free' && (
               <CropSelectionOverlay
                 target={cropTarget}
                 draft={cropDraft}
                 mode={cropEditingMode || 'free'}
                 onDraftChange={setCropDraft}
               />
-            </Group>
-          )}
-          {cropTarget && cropEditingMode === 'free' && (
-            <>
+            )}
+            {cropTarget && cropEditingMode === 'free' && (
+              <>
               {lassoPoints.length > 0 && (
-                <Line name="export-exclude"
+                <Line
                   points={[
                     ...lassoPoints.map(p => [
                       cropTarget.x + p.x * (cropTarget.scaleX || 1),
@@ -420,7 +604,6 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
                 return (
                   <Circle
                     key={idx}
-                    name="export-exclude"
                     x={cropTarget.x + p.x * (cropTarget.scaleX || 1)}
                     y={cropTarget.y + p.y * (cropTarget.scaleY || 1)}
                     radius={isStart ? 8 : 5}
@@ -442,31 +625,34 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
                   />
                 );
               })}
-            </>
-          )}
+              </>
+            )}
 
-          <Transformer
-            ref={transformerRef}
-            name="export-exclude"
-            boundBoxFunc={(oldBox, newBox) => {
-              if (newBox.width < 5 || newBox.height < 5) return oldBox;
-              return newBox;
-            }}
-          />
+            <Transformer
+              ref={transformerRef}
+              boundBoxFunc={(oldBox, newBox) => {
+                if (newBox.width < 5 || newBox.height < 5) return oldBox;
+                return newBox;
+              }}
+            />
+          </Group>
         </Layer>
       </Stage>
 
       {/* Inline Text Editor Overlay */}
-      {editingObject && (
+      {editingId && objects.find(o => o.id === editingId) && (
         <TextEditorOverlay
-          obj={editingObject}
+          obj={objects.find(o => o.id === editingId)!}
           stage={stageRef.current!}
-          zoom={zoom}
-          offsetX={offsetX}
-          offsetY={offsetY}
+          zoom={displayScale}
+          offsetX={displayOffsetX}
+          offsetY={displayOffsetY}
           onSave={(text) => {
-            updateObject(editingObject.id, { text });
+            updateObject(editingId, { text });
             setEditingId(null);
+            // Enter closes the inline editor; persist the mutation immediately
+            // instead of waiting for the debounce timer.
+            requestEditorSave();
           }}
           onClose={() => setEditingId(null)}
         />

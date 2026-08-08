@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ensureEditorSessionToken } from '@/lib/editor-session';
+import { editorRuntimePath } from '@/lib/editor-runtime';
 
 // Detail shape returned by GET /api/v1/youtube/editor-sessions/by-project/{projectId}.
 // Mirrors the row-level DTO in
@@ -51,7 +53,7 @@ export type SessionGateState =
     | { state: 'error'; message: string };
 
 const GATE_ENDPOINT = (projectId: string): string =>
-    `/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(projectId)}`;
+    editorRuntimePath(`api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(projectId)}`);
 
 // Default redirect target on InstaEdit Social when the user opens
 // a session they don't have permission to access.
@@ -88,8 +90,10 @@ export function useYouTubeSessionGate(projectId: string): SessionGateState {
 
         async function validate() {
             try {
+                const token = await ensureEditorSessionToken();
                 const res = await fetch(GATE_ENDPOINT(projectId), {
                     credentials: 'include',
+                    headers: { Authorization: `Bearer ${token}` },
                 });
 
                 if (cancelled) return;
@@ -159,9 +163,8 @@ export function useYouTubeSessionGate(projectId: string): SessionGateState {
 }
 
 /**
- * Effettua il redirect fuori dal Dark Editor verso InstaEdit Social.
- * Usa window.location perché il Next.js router opera solo all'interno
- * del basePath /dark_editor_v2.
+ * Redirects from InstaEditor back to InstaEdit Social.
+ * Uses window.location because this handoff crosses application boundaries.
  */
 export function redirectToInstaEdit(path: string = INSTAEDIT_SOCIAL_URL): void {
     window.location.href = path;

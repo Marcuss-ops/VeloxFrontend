@@ -1,4 +1,4 @@
-// BFF auth client \u2014 the dark editor's thin wrapper around InstaEdit's
+// BFF auth client \u2014 the InstaEditor's thin wrapper around InstaEdit's
 // /api/v1/auth/me endpoint.
 //
 // Domain module. Imports the shared CSRF-aware fetcher from the
@@ -28,7 +28,7 @@ export interface BffUser {
 /**
  * Round-trip the current InstaEdit session cookie + return the user
  * row (id + name + email + workspace_id + is_admin). Used by the
- * dark editor on mount to gate workspace-scoped UI behind auth.
+ * InstaEditor on mount to gate workspace-scoped UI behind auth.
  */
 export function getMe(): Promise<{ user: BffUser }> {
   return bffFetch('/api/v1/auth/me');

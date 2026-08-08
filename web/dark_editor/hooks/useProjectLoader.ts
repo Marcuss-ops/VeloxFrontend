@@ -39,7 +39,7 @@ export interface UseProjectLoaderReturn {
  * The loader never overrules the gate: it never mounts the Canvas on
  * its own and never fetches the project when the gate forbids it.
  * Mounting the Canvas is always the consumer's call. This means a
- * direct hit to /dark_editor_v2/editor/<unknown-id> that 404s the
+ * direct hit to the editor route with an unknown project id that 404s the
  * gate will NOT trigger a second fetch from the loader — the page
  * renders SessionGateError and stays there.
  */
@@ -57,7 +57,7 @@ export function useProjectLoader(
 
   // Derive mode from the gate's discriminated state. The loader's
   // contract is encoded in these two booleans:
-  //   shouldFetch: should we hit GET /dark_editor_v2/api/projects/{id}?
+  //   shouldFetch: should we hit the project API for {id}?
   //   readonly:    should the Canvas be read-only after a successful load?
   // Both flags are stable for the lifetime of the gate state. When the
   // gate resolves to a different state (e.g. publishing → editing after

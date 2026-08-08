@@ -2,7 +2,7 @@
 // Cross-SPA BroadcastChannel — publish-success instant card update
 //
 // Lives in lib/api/bff/broadcast.ts (commit 7 of the api-bff refactor
-// series; the FINAL structural commit). The dark editor (publisher)
+// series; the FINAL structural commit). The InstaEditor (publisher)
 // and the InstaEdit Social SPA (listener) MUST use the same channel
 // name — the InstaEdit Social app owns the listener side.
 //

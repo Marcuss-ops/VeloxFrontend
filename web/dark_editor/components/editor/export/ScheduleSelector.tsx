@@ -43,7 +43,7 @@ export interface ScheduleSelectorProps {
 }
 
 /**
- * ScheduleSelector — date/time picker for the Dark Editor's publish
+ * ScheduleSelector — date/time picker for the InstaEditor's publish
  * panel. Uses a native datetime-local input with Europe/Rome timezone
  * indicator, past-date validation, and DST note.
  *

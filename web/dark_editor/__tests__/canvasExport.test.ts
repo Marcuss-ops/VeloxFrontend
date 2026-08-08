@@ -106,18 +106,18 @@ function createMockStage() {
  *       - "produces byte-identical blob across zoom 50% / 100% / 200% with
  *          active pan offsets"
  *
- *  3. The OUTPUT dimensions are exactly 1280×720 regardless of the project's
+ *  3. The OUTPUT dimensions are exactly 1920×1080 regardless of the project's
  *     logical canvas size (it can be 1920×1080, 3000×2000, 800×450, etc.).
  *
  *     Covered by:
- *       - "produces a 1280x720 thumbnail canvas regardless of input logical size"
- *       - "output thumbnail blob decodes to image.naturalWidth=1280 /
- *          naturalHeight=720 regardless of project logical dimensions
+ *       - "produces a 1920x1080 thumbnail canvas regardless of input logical size"
+ *       - "output thumbnail blob decodes to image.naturalWidth=1920 /
+ *          naturalHeight=1080 regardless of project logical dimensions
  *          (incl. 1920x1080, 3000x2000, 800x450)"
  *
  *  4. Transformer + grid + guides + crop-overlay nodes
  *     (`name === 'export-exclude'` on Konva.Node) are HIDDEN during the
- *     `stage.toDataURL` call (so the final 1280×720 PNG is free of
+ *     `stage.toDataURL` call (so the final 1920×1080 PNG is free of
  *     editor UI artefacts).
  *
  *     Covered by:
@@ -169,9 +169,9 @@ describe('canvasExport', () => {
     vi.stubGlobal('document', {
       createElement: vi.fn((tag: string) => {
         if (tag === 'canvas') {
-          return createMockCanvas(1280, 720);
+          return createMockCanvas(1920, 1080);
         }
-        return createMockCanvas(1280, 720);
+        return createMockCanvas(1920, 1080);
       }),
       querySelector: vi.fn(),
     } as unknown as Document);
@@ -244,14 +244,14 @@ describe('canvasExport', () => {
     expect(result?.mime).toBe('image/jpeg');
   });
 
-  it('produces a 1280x720 thumbnail blob from a 1920x1080 logical canvas', async () => {
+  it('produces a 1920x1080 thumbnail blob from a 1920x1080 logical canvas', async () => {
     const stage = createMockStage();
     (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
 
     const createdCanvases: { width: number; height: number }[] = [];
     vi.stubGlobal('document', {
       createElement: vi.fn((tag: string) => {
-        const canvas = createMockCanvas(1280, 720);
+        const canvas = createMockCanvas(1920, 1080);
         if (tag === 'canvas') {
           createdCanvases.push({ width: canvas.width, height: canvas.height });
         }
@@ -271,7 +271,7 @@ describe('canvasExport', () => {
       mimeType: 'image/png',
       quality: 0.9,
     });
-    expect(createdCanvases).toContainEqual({ width: 1280, height: 720 });
+    expect(createdCanvases).toContainEqual({ width: 1920, height: 1080 });
     expect(result).not.toBeNull();
     expect(result?.blob).toBeInstanceOf(Blob);
     expect(result?.mime).toBe('image/png');
@@ -381,13 +381,13 @@ describe('canvasExport', () => {
     expect(result!.blob.type, 'Blob.type must be image/jpeg -- otherwise POST /media/presign returns 400').toBe('image/jpeg');
   });
 
-  it('produces a 1280x720 thumbnail canvas regardless of input logical size', async () => {
+  it('produces a 1920x1080 thumbnail canvas regardless of input logical size', async () => {
     const stage = createMockStage();
     (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
     let outputCanvas: HTMLCanvasElement | undefined;
     vi.stubGlobal('document', {
       createElement: vi.fn((tag: string) => {
-        const canvas = createMockCanvas(1280, 720);
+        const canvas = createMockCanvas(1920, 1080);
         if (tag === 'canvas') {
           outputCanvas = canvas;
         }
@@ -400,12 +400,12 @@ describe('canvasExport', () => {
 
     expect(result).not.toBeNull();
     expect(outputCanvas).toBeDefined();
-    expect(outputCanvas!.width).toBe(1280);
-    expect(outputCanvas!.height).toBe(720);
+    expect(outputCanvas!.width).toBe(1920);
+    expect(outputCanvas!.height).toBe(1080);
   });
 
-  it('output thumbnail blob decodes to image.naturalWidth=1280 / naturalHeight=720 regardless of project logical dimensions (incl. 1920x1080, 3000x2000, 800x450)', async () => {
-    // YouTube requires the final PNG/JPEG to be exactly 1280x720.
+  it('output thumbnail blob decodes to image.naturalWidth=1920 / naturalHeight=1080 regardless of project logical dimensions (incl. 1920x1080, 3000x2000, 800x450)', async () => {
+    // The editor contract requires the final PNG/JPEG to be exactly 1920x1080.
     // The OUTPUT canvas (whose toBlob produces the project blob) is the
     // single source of truth for those dimensions: in any browser the
     // PNG/JPEG header mirrors canvas.width/canvas.height, and the
@@ -425,7 +425,7 @@ describe('canvasExport', () => {
       let outputCanvas: CanvasLike | undefined;
       vi.stubGlobal('document', {
         createElement: vi.fn((tag: string) => {
-          const canvas = createMockCanvas(1280, 720);
+      const canvas = createMockCanvas(1920, 1080);
           if (tag === 'canvas') {
             outputCanvas = canvas;
           }
@@ -441,8 +441,8 @@ describe('canvasExport', () => {
 
       // JS-side canvas dimensions — what toBlob bakes into the PNG/JPEG
       // header.
-      expect(outputCanvas!.width).toBe(1280);
-      expect(outputCanvas!.height).toBe(720);
+      expect(outputCanvas!.width).toBe(1920);
+      expect(outputCanvas!.height).toBe(1080);
 
       // Image-side mirror — what an <img> decoding the resulting blob
       // would expose. This is the user-facing contract: any consumer
@@ -451,8 +451,8 @@ describe('canvasExport', () => {
       // canvas size, the viewport, the editor zoom level, and the
       // current pan offset (zooming/panning are neutralised inside
       // exportStageToBlob before the capture).
-      expect(outputCanvas!.naturalWidth).toBe(1280);
-      expect(outputCanvas!.naturalHeight).toBe(720);
+      expect(outputCanvas!.naturalWidth).toBe(1920);
+      expect(outputCanvas!.naturalHeight).toBe(1080);
     }
   });
 

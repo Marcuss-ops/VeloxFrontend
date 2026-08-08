@@ -1,4 +1,4 @@
-// URL / filename helpers for the Dark Editor.
+// URL / filename helpers for the InstaEditor.
 //
 // Lives separately from lib/api/types.ts (which carries wire-level
 // interface types) and lib/api/httpClient.ts (which carries HTTP

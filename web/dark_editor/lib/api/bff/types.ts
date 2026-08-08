@@ -1,4 +1,4 @@
-// Shared BFF interface types + helpers for the Dark Editor.
+// Shared BFF interface types + helpers for the InstaEditor.
 //
 // LEAF module of the lib/api/bff/ subtree. ZERO outbound imports.
 // Every other bff/<X>.ts module (auth, youtube, projects, upload,
@@ -51,7 +51,7 @@ export interface SocialDestination {
 
 // ------------------------------------------------------------------
 // Velox projects / jobs
-// (the dark editor only passes the opaque external_destination_id;
+// (the InstaEditor only passes the opaque external_destination_id;
 //  no platform credentials ever leave InstaEdit)
 // ------------------------------------------------------------------
 
@@ -198,6 +198,9 @@ export interface PollResult {
 // ------------------------------------------------------------------
 
 // ------------------------------------------------------------------
+import { editorAuthorizationHeaders } from '../../editor-session';
+import { editorRuntimePath } from '../../editor-runtime';
+
 // Shared HTTP infrastructure (BFF base + CSRF-aware fetch)
 // ------------------------------------------------------------------
 
@@ -237,11 +240,12 @@ export async function bffFetch<T>(
     }
   }
 
-  const url = `${BFF_BASE}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+  const url = editorRuntimePath(`${BFF_BASE}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`);
+  const authorization = await editorAuthorizationHeaders();
   const response = await fetch(url, {
     ...options,
     method,
-    headers,
+    headers: { ...headers, ...authorization },
     credentials: 'include',
   });
 

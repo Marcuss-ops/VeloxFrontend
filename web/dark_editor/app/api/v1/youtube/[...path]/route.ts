@@ -128,7 +128,9 @@ async function handle(request: Request, params: Params): Promise<Response> {
 
   const headers: Record<string, string> = {};
   const cookie = request.headers.get('cookie');
+  const authorization = request.headers.get('authorization');
   if (cookie) headers.cookie = cookie;
+  if (authorization) headers.authorization = authorization;
   if (body) headers['content-type'] = request.headers.get('content-type') ?? 'application/json';
 
   const proxied = await proxyToGo(pathWithQuery, {

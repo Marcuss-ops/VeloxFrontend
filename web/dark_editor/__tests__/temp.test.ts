@@ -15,7 +15,7 @@ function createMockRequest(): Request {
   return {
     headers: new Headers(),
     method: 'GET',
-    url: 'http://localhost:3001/dark_editor_v2/temp/test.png',
+    url: 'http://localhost:3001/instaeditor/temp/test.png',
   } as unknown as Request;
 }
 

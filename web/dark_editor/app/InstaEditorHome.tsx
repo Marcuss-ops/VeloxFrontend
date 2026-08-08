@@ -3,7 +3,7 @@
 import { ExternalLink, Clapperboard, Share2 } from 'lucide-react';
 const INSTAEDIT_URL = (process.env.NEXT_PUBLIC_INSTAEDIT_URL ?? '').replace(/\/+$/, '');
 
-export default function DarkEditorHome() {
+export default function InstaEditorHome() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.10),_transparent_28%),linear-gradient(180deg,_var(--background),_var(--background))] text-foreground">
       <header className="sticky top-0 z-50 border-b border-border/40 bg-slate-950/20 backdrop-blur-md">
@@ -13,13 +13,13 @@ export default function DarkEditorHome() {
               <Clapperboard className="h-5 w-5 text-white" />
             </div>
             <div>
-              <div className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">Velox Studio</div>
+              <div className="text-sm font-black uppercase tracking-[0.18em] text-slate-100">InstaEditor</div>
               <div className="text-xs text-slate-400">Editing e rendering, senza credenziali social</div>
             </div>
           </div>
           {INSTAEDIT_URL && (
             <a
-              href={`${INSTAEDIT_URL}/dashboard-channels`}
+              href={`${INSTAEDIT_URL}/content`}
               className="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
             >
               Apri InstaEdit <ExternalLink className="ml-2 h-4 w-4" />
@@ -36,7 +36,7 @@ export default function DarkEditorHome() {
               <h1 className="text-lg font-bold">Progetti di editing</h1>
             </div>
             <p className="text-sm leading-6 text-muted-foreground">
-              Qui restano canvas, template, asset e operazioni di editing. Velox produce gli artifact;
+              Qui restano canvas, template, asset e operazioni di editing. InstaEditor produce gli artifact;
               non gestisce account, gruppi, canali o pubblicazioni social.
             </p>
           </div>
@@ -56,10 +56,10 @@ export default function DarkEditorHome() {
           <Clapperboard className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
           <h2 className="font-semibold">Apri l’editor da InstaEdit</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Seleziona gruppo, canale e video in InstaEdit. Velox riceve solo il contesto del progetto autorizzato.
+            Seleziona gruppo, canale e video in InstaEdit. InstaEditor riceve solo il contesto del progetto autorizzato.
           </p>
           {INSTAEDIT_URL ? (
-            <a href={`${INSTAEDIT_URL}/dashboard-channels`} className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline">
+            <a href={`${INSTAEDIT_URL}/content`} className="mt-4 inline-flex text-sm font-semibold text-primary hover:underline">
               Vai alla selezione progetto <ExternalLink className="ml-1.5 h-4 w-4" />
             </a>
           ) : (

@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useEditorStore } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
-import { uploadImage } from '@/lib/api';
+import { resolveEditorAssetUrl, uploadImage } from '@/lib/api';
 
 export interface UseDragDropUploadReturn {
   isDragging: boolean;
@@ -79,10 +79,7 @@ export function useDragDropUpload(maxDim = 400): UseDragDropUploadReturn {
       try {
         for (const file of imageFiles) {
           const result = await uploadImage(file);
-          const src =
-            result.url.startsWith('http') || result.url.startsWith('data:')
-              ? result.url
-              : `/dark_editor_v2/${result.url}`;
+          const src = resolveEditorAssetUrl(result.url);
 
           const dimensions = await loadImage(src);
           const { width, height } = constrainDimensions(dimensions.width, dimensions.height, maxDim);

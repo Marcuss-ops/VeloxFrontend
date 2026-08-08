@@ -1,6 +1,6 @@
 // ------------------------------------------------------------------
 // Social destinations — generic, platform-agnostic list used by the
-// dark editor to render the workspace's connected accounts (YouTube
+// InstaEditor to render the workspace's connected accounts (YouTube
 // and other future platforms).
 //
 // Lives in lib/api/bff/socialDestinations.ts (commit 6 of the api-bff
@@ -43,7 +43,7 @@ export interface SocialDestination {
 
 /**
  * List every social destination the workspace has connected. The
- * dark editor only needs the opaque external_destination_id + the
+ * InstaEditor only needs the opaque external_destination_id + the
  * platform_account_id to render account pickers; the rest of the
  * fields surface in the workspace-settings UI on the main SPA.
  */

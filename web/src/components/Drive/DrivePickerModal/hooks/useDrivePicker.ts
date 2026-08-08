@@ -112,13 +112,9 @@ export const useDrivePicker = ({
         setPreviewClip(null);
 
         const run = async () => {
-            let folderId: string | null = initialFolderId || null;
-            let folderName: string = initialFolderName || 'Root';
-            let startPath: FolderNode[] = [];
-
-            if (folderId) {
-                startPath = [{ id: folderId, name: folderName }];
-            }
+            const folderId: string | null = initialFolderId || null;
+            const folderName: string = initialFolderName || 'Root';
+            const startPath: FolderNode[] = folderId ? [{ id: folderId, name: folderName }] : [];
 
             if (!folderId) {
                 setFolders([]);

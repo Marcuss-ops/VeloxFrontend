@@ -1,8 +1,8 @@
 /**
- * Minimal BFF client for the dark editor to call the InstaEdit BFF.
+ * Minimal BFF client for the InstaEditor to call the InstaEdit BFF.
  *
  * The web/src/lib/api/client.ts is Vite-specific (import.meta.env),
- * so the dark editor keeps its own thin wrapper. Calls rely on the
+ * so the InstaEditor keeps its own thin wrapper. Calls rely on the
  * same session cookie + CSRF double-submit used by the main Vite app.
  *
  * LIVE-UPDATE EXTENSION (this commit):
@@ -67,14 +67,14 @@ import {
 
 // ------------------------------------------------------------------
 // Velox projects/jobs — lib/api/bff/projects.ts (commit 4 of the
-// api-bff refactor series). The dark editor only passes the opaque
+// api-bff refactor series). The InstaEditor only passes the opaque
 // external_destination_id; no platform credentials ever leave InstaEdit.
 // Re-exported below for back-compat with legacy `@/lib/api/bff`
 // callers.
 // ------------------------------------------------------------------
 
 // ------------------------------------------------------------------
-// Media upload — used by the dark editor to store thumbnails in
+// Media upload — used by the InstaEditor to store thumbnails in
 // InstaEdit before publishing them to YouTube. Lives in
 // lib/api/bff/upload.ts (commit 5 of the api-bff refactor series).
 // Re-exported below for back-compat with legacy `@/lib/api/bff`

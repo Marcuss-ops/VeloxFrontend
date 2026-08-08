@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------
-// Media upload — used by the dark editor to store thumbnails in
+// Media upload — used by the InstaEditor to store thumbnails in
 // InstaEdit before publishing them to YouTube.
 //
 // Lives in lib/api/bff/upload.ts (commit 5 of the api-bff refactor

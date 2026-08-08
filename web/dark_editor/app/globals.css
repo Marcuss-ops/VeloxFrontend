@@ -67,41 +67,258 @@
 }
 
 @layer components {
+  .publish-surface {
+    background:
+      radial-gradient(circle at 18% 0%, rgba(120, 90, 255, 0.055), transparent 30%),
+      #111318;
+  }
+
+  .publish-separator {
+    border-color: rgba(255, 255, 255, 0.07);
+  }
+
+  .publish-control {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.025);
+    border-radius: 10px;
+  }
+
+  .publish-card {
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(255, 255, 255, 0.018);
+    border-radius: 14px;
+  }
+
+  /* Keep wheel, touch and keyboard scrolling, but do not show a scrollbar
+     inside the publish workspace. */
+  .publish-scroll {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .publish-scroll::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   .sidebar-shell {
-    background: linear-gradient(180deg, rgba(8, 14, 24, 0.98), rgba(11, 17, 29, 0.96));
-    border-color: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 24px 80px rgba(2, 6, 23, 0.58);
-    backdrop-filter: blur(28px);
+    background: #f7f7f5;
+    color: #171717;
+    border-color: rgba(0, 0, 0, 0.10);
+    box-shadow: -18px 0 50px rgba(0, 0, 0, 0.12);
+    backdrop-filter: blur(24px);
   }
 
   .sidebar-section {
-    @apply px-5 py-4 border-b border-white/[0.06];
+    @apply px-5 py-4 border-b border-black/[0.08];
   }
 
   .sidebar-section-title {
-    @apply text-[11px] font-black uppercase tracking-[0.22em] text-slate-100;
+    @apply text-[11px] font-black uppercase tracking-[0.18em] text-black/65;
   }
 
   .sidebar-panel {
-    @apply rounded-2xl border border-white/[0.06] bg-white/[0.03] ring-1 ring-white/[0.04];
+    @apply rounded-2xl border border-black/[0.08] bg-white/70 ring-1 ring-black/[0.03];
   }
 
   .sidebar-panel-soft {
-    @apply rounded-2xl border border-white/[0.05] bg-white/[0.02];
+    @apply rounded-2xl border border-black/[0.06] bg-black/[0.02];
   }
 
   .layer-item {
-    @apply flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 text-slate-300 transition-all;
+    @apply flex items-center gap-2 rounded-xl border border-black/[0.08] bg-white/75 px-3 py-2 text-black/70 transition-all;
   }
 
   .layer-item:hover {
-    @apply border-sky-400/30 bg-sky-400/10 text-white;
-    box-shadow: 0 10px 24px rgba(14, 165, 233, 0.10);
+    @apply border-black/15 bg-black/[0.05] text-black;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   }
 
   .layer-item.active {
-    @apply border-sky-400/40 bg-sky-400/10 text-white;
-    box-shadow: 0 12px 28px rgba(14, 165, 233, 0.14);
+    @apply border-black/20 bg-black/[0.08] text-black;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.10);
+  }
+
+  /* Existing editor panels use slate utility classes. Normalize them inside
+     the new monochrome inspector without changing the canvas theme. */
+  .sidebar-shell [class*="bg-slate-900"] { background-color: #f7f7f5 !important; }
+  .sidebar-shell [class*="bg-slate-950"] { background-color: rgba(255,255,255,.72) !important; }
+  .sidebar-shell [class*="border-slate"] { border-color: rgba(0,0,0,.09) !important; }
+  .sidebar-shell [class*="text-slate-100"],
+  .sidebar-shell [class*="text-slate-200"],
+  .sidebar-shell [class*="text-slate-300"] { color: rgba(23,23,23,.78) !important; }
+  .sidebar-shell [class*="text-slate-400"],
+  .sidebar-shell [class*="text-slate-500"] { color: rgba(23,23,23,.48) !important; }
+
+  /* Monochrome Apple-like inspector. Keep the canvas independent while
+     removing the legacy neon/tech styling from the properties controls. */
+  .properties-panel {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, ui-sans-serif, system-ui, sans-serif;
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+  .properties-panel .text-slate-100,
+  .properties-panel .text-slate-200,
+  .properties-panel .text-slate-300,
+  .properties-panel .text-slate-400,
+  .properties-panel .text-slate-500,
+  .properties-panel .text-sky-200,
+  .properties-panel .text-sky-300,
+  .properties-panel .text-violet-200,
+  .properties-panel .text-violet-300,
+  .properties-panel .text-violet-400,
+  .properties-panel .text-fuchsia-300,
+  .properties-panel .text-rose-300 { color: #111111 !important; }
+  .properties-panel [class*="bg-white/"] { background-color: #ffffff !important; }
+  .properties-panel [class*="bg-slate-"] { background-color: #f7f7f5 !important; }
+  .properties-panel [class*="bg-rose-"] { background-color: #ffffff !important; }
+  .properties-panel [class*="bg-gradient-"] { background: #111111 !important; }
+  .properties-panel [class*="ring-"] { --tw-ring-color: rgba(0,0,0,.14) !important; }
+  .properties-panel [class*="border-white"] { border-color: rgba(0,0,0,.12) !important; }
+  .properties-panel [class*="border-rose"] { border-color: rgba(0,0,0,.18) !important; }
+  .properties-panel [class*="hover:bg-"]:hover { background-color: #f2f2f0 !important; }
+  .properties-panel input,
+  .properties-panel button,
+  .properties-panel select { font-family: inherit; }
+  .properties-panel input[type="number"],
+  .properties-panel input[type="text"] { color: #111111 !important; }
+  .properties-panel input[type="number"]:focus,
+  .properties-panel input[type="text"]:focus,
+  .properties-panel button:focus-visible,
+  .properties-panel select:focus-visible {
+    outline: 2px solid rgba(0,0,0,.16) !important;
+    outline-offset: 1px;
+  }
+  .properties-panel input[type="range"] { accent-color: #111111; }
+  .properties-panel .group .bg-gradient-to-r { background: #111111 !important; }
+  .properties-panel .group .ring-violet-400,
+  .properties-panel .group .border-sky-400 { border-color: #111111 !important; }
+  .properties-panel .shadow-lg,
+  .properties-panel .shadow-md,
+  .properties-panel .shadow-inner { box-shadow: none !important; }
+  .properties-select {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1px solid rgba(0,0,0,.16) !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+  }
+  .properties-select-menu {
+    background: #ffffff !important;
+    color: #111111 !important;
+    border: 1px solid rgba(0,0,0,.14) !important;
+    box-shadow: 0 14px 35px rgba(0,0,0,.14) !important;
+  }
+  .properties-select-menu [data-highlighted] {
+    background: #f0f0ee !important;
+    color: #111111 !important;
+  }
+  .properties-panel [class*="border-sky-400"][class*="rounded-full"] {
+    background: #111111 !important;
+    border-color: #111111 !important;
+    box-shadow: none !important;
+  }
+
+  /* Refined light surface: airy like Apple settings, with enough hierarchy
+     to avoid the flat white-on-white appearance. */
+  .properties-panel {
+    background: #fbfbfd !important;
+    letter-spacing: -0.01em;
+  }
+  .properties-panel > .sidebar-section {
+    background: #ffffff !important;
+    border-bottom: 1px solid #e5e5ea !important;
+    padding: 18px 20px !important;
+  }
+  .properties-panel > .sidebar-section .rounded-lg {
+    background: #f2f2f7 !important;
+    border: 1px solid #e5e5ea !important;
+    box-shadow: none !important;
+  }
+  .properties-panel .sidebar-section-title {
+    color: #1d1d1f !important;
+    font-size: 12px !important;
+    letter-spacing: .12em !important;
+  }
+  .properties-panel > .flex-1 {
+    padding: 20px !important;
+    scrollbar-color: #c7c7cc transparent;
+  }
+  .properties-panel > .flex-1 > div {
+    padding: 14px 0 16px;
+    border-bottom: 1px solid #e5e5ea;
+  }
+  .properties-panel > .flex-1 > div:first-child { padding-top: 0; }
+  .properties-panel > .flex-1 > div:last-child { border-bottom: 0; }
+  .properties-panel .border-b {
+    border-color: #e5e5ea !important;
+  }
+  .properties-panel label,
+  .properties-panel .text-slate-500 {
+    color: #6e6e73 !important;
+    font-weight: 600 !important;
+  }
+  .properties-panel input[type="number"],
+  .properties-panel input[type="text"],
+  .properties-panel .properties-select {
+    background: #ffffff !important;
+    border: 1px solid #d2d2d7 !important;
+    border-radius: 9px !important;
+    min-height: 34px;
+    padding: 7px 9px !important;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .properties-panel input[type="number"]:focus,
+  .properties-panel input[type="text"]:focus,
+  .properties-panel .properties-select:focus {
+    border-color: #1d1d1f !important;
+    box-shadow: 0 0 0 3px rgba(0,0,0,.08) !important;
+    outline: none !important;
+  }
+  .properties-panel .properties-select {
+    padding-left: 12px !important;
+  }
+  .properties-panel [class*="rounded-2xl"] {
+    border-radius: 12px !important;
+  }
+  .properties-panel [class*="bg-white/"] {
+    background: #ffffff !important;
+    border: 1px solid #e5e5ea !important;
+  }
+  .properties-panel [class*="bg-slate-"] {
+    background: #f2f2f7 !important;
+  }
+  .properties-panel .group .bg-gradient-to-r {
+    background: #1d1d1f !important;
+  }
+  .properties-panel .group .bg-white {
+    background: #1d1d1f !important;
+  }
+  .properties-panel input[type="range"] + div,
+  .properties-panel input[type="range"] ~ div {
+    transition: none;
+  }
+  .properties-panel button:not(.properties-select) {
+    transition: background-color .15s ease, transform .15s ease, border-color .15s ease;
+  }
+  .properties-panel button:not(.properties-select):hover {
+    transform: translateY(-1px);
+  }
+  .properties-panel > .px-5 {
+    background: #ffffff !important;
+    border-top: 1px solid #e5e5ea !important;
+    padding: 16px 20px !important;
+  }
+  .properties-panel > .px-5 button {
+    min-height: 42px;
+    background: #1d1d1f !important;
+    color: #ffffff !important;
+    border: 0 !important;
+    box-shadow: 0 5px 12px rgba(0,0,0,.12) !important;
+  }
+  .properties-panel > .px-5 button:hover {
+    background: #000000 !important;
   }
 }
 

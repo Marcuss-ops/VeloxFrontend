@@ -1,4 +1,4 @@
-// Canvas element pool for the Dark Editor effect renderers.
+// Canvas element pool for the InstaEditor effect renderers.
 //
 // Module-private CanvasPool class + a single, lazily-acquired
 // singleton. The class never escapes this file; consumers must use

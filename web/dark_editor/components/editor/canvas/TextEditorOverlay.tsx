@@ -1,4 +1,4 @@
-// canvas/TextEditorOverlay.tsx — Dark Editor's textarea overlay for inline
+// canvas/TextEditorOverlay.tsx — InstaEditor's textarea overlay for inline
 // text editing on the Konva canvas.
 //
 // Originally part of components/editor/canvas/CanvasRenderers.tsx (816 LOC

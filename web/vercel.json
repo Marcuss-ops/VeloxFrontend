@@ -5,8 +5,8 @@
       "destination": "https://api.instaedit.org/api/:path*"
     },
     {
-      "source": "/dark_editor_v2/:path*",
-      "destination": "https://dev.instaedit.org/dark_editor_v2/:path*"
+      "source": "/instaeditor/:path*",
+      "destination": "https://dev.instaedit.org/instaeditor/:path*"
     },
     {
       "source": "/((?!assets/).*)",

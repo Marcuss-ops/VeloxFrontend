@@ -1,4 +1,4 @@
-// Vitest test for the Dark Editor's saveEditorSessionDraft BFF helper.
+// Vitest test for the InstaEditor's saveEditorSessionDraft BFF helper.
 //
 // What is under test
 // ==================

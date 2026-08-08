@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { CanvasObject } from './editorStore';
+import { editorApiPath } from '@/lib/editor-runtime';
 
 export interface Preset {
   id: string;
@@ -51,7 +52,7 @@ export const usePresetStore = create<PresetState>((set, get) => ({
   createPreset: async (presetData) => {
     set({ isLoading: true });
     try {
-      const response = await fetch('/dark_editor_v2/api/presets', {
+      const response = await fetch(editorApiPath('api/presets'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(presetData),
@@ -78,7 +79,7 @@ export const usePresetStore = create<PresetState>((set, get) => ({
   updatePreset: async (id, updates) => {
     set({ isLoading: true });
     try {
-      const response = await fetch(`/dark_editor_v2/api/presets/${id}`, {
+      const response = await fetch(editorApiPath(`api/presets/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
@@ -105,7 +106,7 @@ export const usePresetStore = create<PresetState>((set, get) => ({
   deletePreset: async (id) => {
     set({ isLoading: true });
     try {
-      const response = await fetch(`/dark_editor_v2/api/presets/${id}`, {
+      const response = await fetch(editorApiPath(`api/presets/${id}`), {
         method: 'DELETE',
       });
       
@@ -129,7 +130,7 @@ export const usePresetStore = create<PresetState>((set, get) => ({
   loadPresets: async () => {
     set({ isLoading: true });
     try {
-      const response = await fetch('/dark_editor_v2/api/presets');
+      const response = await fetch(editorApiPath('api/presets'));
       
       if (!response.ok) {
         throw new Error('Failed to load presets');
