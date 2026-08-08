@@ -34,3 +34,33 @@ export function editorAssetPath(path: string): string {
 export function editorProjectContextPath(projectId: string): string {
   return editorApiPath(`v1/youtube/editor-sessions/by-project/${encodeURIComponent(projectId)}`);
 }
+
+/**
+ * Origin of the InstaEdit SPA the editor hands back to. The editor is a
+ * separately deployed app (often a different host than the SPA), so the
+ * return destination must be configured explicitly; `app.instaedit.org`
+ * is the production default.
+ */
+export const INSTAEDIT_APP_URL = (process.env.NEXT_PUBLIC_INSTAEDIT_URL ?? 'https://app.instaedit.org').replace(/\/+$/, '');
+
+/**
+ * Relative InstaEdit SPA path the user should return to after leaving the
+ * editor (read from the launch URL's `return_to` query parameter, stamped
+ * by the InstaEdit SPA when it opens the editor). Falls back to the
+ * Copertine hub when no return context was provided.
+ */
+export function editorReturnToPath(): string {
+  if (typeof window === 'undefined') return '/app/covers';
+  const params = new URLSearchParams(window.location.search);
+  const returnTo = params.get('return_to')?.trim();
+  if (returnTo && returnTo.startsWith('/') && !/^\/\//.test(returnTo)) return returnTo;
+  return '/app/covers';
+}
+
+/**
+ * Absolute return URL on the InstaEdit SPA — the destination of the
+ * in-editor Home / back pill.
+ */
+export function editorReturnToUrl(): string {
+  return `${INSTAEDIT_APP_URL}${editorReturnToPath()}`;
+}

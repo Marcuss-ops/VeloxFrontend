@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import {
   Home,
   Film,
@@ -58,7 +57,7 @@ import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { useYouTubeSessionGate } from '@/hooks/useYouTubeSessionGate';
 import { getProject } from '@/lib/api';
 import { resolveEditorAssetUrl, uploadImage } from '@/lib/api';
-import { editorProjectContextPath } from '@/lib/editor-runtime';
+import { editorProjectContextPath, editorReturnToUrl } from '@/lib/editor-runtime';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { onEditorFlushRequest, onEditorSaveRequest } from '@/lib/editorEvents';
 import { v4 as uuidv4 } from 'uuid';
@@ -75,9 +74,18 @@ const Canvas = dynamic(() => import('@/components/editor/Canvas'), {
 
 export default function EditorPage() {
   const params = useParams();
-  const router = useRouter();
   const projectId = params.id as string;
   const sessionGate = useYouTubeSessionGate(projectId);
+
+  // Destination of the in-editor Home / back pill: the launch URL carries
+  // a relative `return_to` (stamped by the InstaEdit SPA, e.g.
+  // `/app/covers?group=7`) so the user lands back on the exact Copertine
+  // hub of the group they opened the editor from. Read in an effect so
+  // server-rendered markup never differs from the client value.
+  const [returnUrl, setReturnUrl] = useState<string>(editorReturnToUrl);
+  useEffect(() => {
+    setReturnUrl(editorReturnToUrl());
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -492,10 +500,10 @@ export default function EditorPage() {
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => window.location.assign(returnUrl)}
             className="text-primary hover:underline"
           >
-            Go back to projects
+            Torna a Copertine
           </button>
         </div>
       </div>
@@ -530,9 +538,16 @@ export default function EditorPage() {
         <main className="flex-1 relative bg-slate-950 overflow-hidden flex items-center justify-center p-12 mr-[30px]">
           {/* Floating Top-Left Navigation Pill */}
           <div className="absolute top-6 left-6 z-30 glass-dock px-3 py-1.5 rounded-xl flex items-center gap-2.5 shadow-dock">
-            <Link href="/" className="text-slate-450 hover:text-white transition-colors" title="Home">
+            {/* Back to the InstaEdit Copertine hub of the group the user
+                opened the editor from (relative return_to stamped by the
+                SPA launch URL; falls back to the hub without a group). */}
+            <a
+              href={returnUrl}
+              className="text-slate-450 hover:text-white transition-colors"
+              title="Torna a Copertine"
+            >
               <Home className="w-4 h-4" />
-            </Link>
+            </a>
             <span className="text-slate-650 select-none text-xs">/</span>
             <div className="relative group max-w-[180px]">
               <input
