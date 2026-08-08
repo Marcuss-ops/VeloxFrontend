@@ -16,7 +16,7 @@ A modern, feature-rich video editing and YouTube management platform built with 
 # Install dependencies for main app
 npm install
 
-# Install dependencies for dark editor
+# Install dependencies for InstaEditor
 cd dark_editor
 npm install
 ```
@@ -27,7 +27,7 @@ npm install
 # Start main app (Vite)
 npm run dev
 
-# Start dark editor (Next.js) - open it through `/dark_editor` on the main app
+# Start InstaEditor (Next.js) as a separate application
 cd dark_editor
 npm run dev
 ```
@@ -38,7 +38,7 @@ npm run dev
 # Build main app
 npm run build
 
-# Build dark editor
+# Build InstaEditor
 cd dark_editor
 npm run build
 ```
@@ -78,7 +78,7 @@ web/
 │   │   ├── api.ts                # API types (centralized)
 │   │   └── scriptGenerator.ts    # Script generator types
 │   └── utils/                    # General utilities
-├── dark_editor/                  # Video editor (Next.js + Konva)
+├── dark_editor/                  # InstaEditor source tree (legacy technical directory)
 │   ├── app/                      # Next.js app directory
 │   │   ├── api/                  # API routes (proxy to Go backend)
 │   │   ├── editor/               # Editor pages
@@ -125,11 +125,11 @@ part of the ownership boundary.
 ### Frontend Stack
 
 - **Main App**: Vite + React 19 + TypeScript
-- **Dark Editor**: Next.js 14 + React 18 + TypeScript
+- **InstaEditor**: Next.js 14 + React 18 + TypeScript
 - **Styling**: Tailwind CSS
 - **State Management**: 
   - Main App: React Query + Context API
-  - Dark Editor: Zustand + Immer
+  - InstaEditor: Zustand + Immer
 - **Canvas**: Konva.js for video editing
 - **Performance**: WebAssembly for image filters
 
@@ -137,7 +137,7 @@ part of the ownership boundary.
 
 The frontend communicates with a Go backend server:
 
-- **API Base**: handled internally by the dark editor proxy layer
+- **API Base**: handled internally by the InstaEditor proxy layer
 - **API Versioning**: `/api/v1/*` for core endpoints
 - **Proxy**: Next.js API routes proxy requests to Go backend
 
@@ -214,14 +214,14 @@ npm run test:e2e:ui
 
 ### Environment Variables
 
-Create `.env.local` in `dark_editor/`:
+Create `.env.local` in the `dark_editor/` source directory (legacy technical path):
 
 ```env
 DARK_EDITOR_API_BASE=<backend-url>
 VELOX_PROJECT_BRIDGE_CONTRACT_VERSION=instaedit.velox.project-bridge.v1
 ```
 
-For the main app, set the dark editor URL with `VITE_DARK_EDITOR_URL` when it is not running on `/dark_editor`.
+The main app opens InstaEditor through the separately deployed `INSTAEDITOR_URL`; it does not embed or mount the editor under an InstaEdit route.
 
 ### Vite Configuration
 
@@ -233,7 +233,7 @@ Main app configuration in `vite.config.ts`:
 
 ### Next.js Configuration
 
-Dark editor configuration in `next.config.js`:
+InstaEditor configuration in `next.config.js`:
 
 - Image optimization
 - API rewrites
@@ -251,7 +251,7 @@ Dark editor configuration in `next.config.js`:
 - **Ansible**: Infrastructure management
 - **Drive**: Google Drive integration
 
-### Dark Editor
+### InstaEditor
 
 - **Canvas Editing**: Drag-and-drop object manipulation
 - **Layers**: Z-index management
@@ -273,7 +273,7 @@ Dark editor configuration in `next.config.js`:
 ### Browser DevTools
 
 - React DevTools for component inspection
-- Redux DevTools for Zustand stores (dark editor)
+- Redux DevTools for Zustand stores (InstaEditor)
 - Network tab for API calls
 
 ### Console Logging
@@ -289,7 +289,7 @@ console.log('[API] Retrying endpoint in 1000ms...');
 
 - [API Documentation](docs/API.md)
 - [Agent 13 Consolidated Plan](docs/AGENT_13_CONSOLIDATED_PLAN.md)
-- [Dark Editor Roadmap](dark_editor/DARK_EDITOR_ROADMAP.md)
+- [InstaEditor Roadmap](dark_editor/DARK_EDITOR_ROADMAP.md)
 - [TypeScript Fix Plan](TYPESCRIPT_FIX_PLAN.md)
 
 ## 🤝 Contributing

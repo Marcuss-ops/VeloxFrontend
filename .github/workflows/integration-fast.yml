@@ -9,7 +9,7 @@
 # repos gate deploys on `go test` / `npm run validate`).
 #
 # Coverage (this file):
-#   1. Dark Editor package `npm install` succeeds (the repo's
+#   1. InstaEditor package `npm install` succeeds (the repo's
 #      `web/.gitignore` excludes `package-lock.json` by design, so
 #      `npm ci` is not available — `npm install` is the cheaper-fail
 #      alternative).
@@ -17,7 +17,7 @@
 #      is green. This includes the contract test:
 #        web/dark_editor/__tests__/publishResponseContract.test.ts
 #   3. Main SPA `web/` package: `npm install` + `npm run test` + `npm run build`
-#      (the contract test lives in the Dark Editor package, but the main
+#      (the contract test lives in the InstaEditor package, but the main
 #      SPA must also stay green).
 #
 # The contract test reads:
@@ -113,7 +113,7 @@ jobs:
         # `npm run validate` runs:
         #   tsc --noEmit && vitest run && next lint --dir lib
         # which exercises the contract test along with the rest of
-        # the Dark Editor suite. If the vendored OpenAPI drifts from
+        # the InstaEditor suite. If the vendored OpenAPI drifts from
         # InstaeditLogin's canonical, OR the TS interface drops the
         # `status` field that the SPA's BroadcastChannel listener
         # depends on, this step fails.

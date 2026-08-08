@@ -59,7 +59,7 @@ Examples:
 # Main app
 npm run dev
 
-# Dark editor (separate terminal)
+# InstaEditor (separate terminal)
 cd dark_editor
 npm run dev
 ```

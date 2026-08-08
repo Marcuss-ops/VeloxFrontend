@@ -4,22 +4,22 @@
  * Validates the wired pipeline:
  *   InstaEdit Social (Vite SPA :3000)
  *     └→ /groups/{id}/videos → POST /api/v1/youtube/editor-sessions (mint)
- *     └→ Popup → Dark Editor (Next.js :3001)
+ *     └→ Popup → InstaEditor (Next.js :3001)
  *     └→ ExportDialog → fill title → click Pubblica
  *     └→ BFF: presign → upload → complete → PATCH thumbnail → POST publish
  *     └→ Success toast + security contract check
  *
- * Entrypoint: la SPA InstaEdit Social (NO accesso diretto al Dark Editor).
+ * Entrypoint: la SPA InstaEdit Social (NO accesso diretto al InstaEditor).
  * Il flow reale è:
  *   1. SPA root → /groups/{id}/videos
  *   2. Click "Crea sessione" → POST /editor-sessions → 201 + editor_url
- *   3. window.open popup → Dark Editor
+ *   3. window.open popup → InstaEditor
  *   4. ExportDialog → fill title → click Pubblica
  *   5. Toast "Pubblicato su YouTube"
  *   6. Security contract: no OAuth / channel_id / platform_account_id leakage
  *
  * Both backends are mocked locally via page.route(); the test runs against
- * the real DarkEditor and Vite SPA shells with NO live InstaeditLogin or
+ * the real InstaEditor and Vite SPA shells with NO live InstaeditLogin or
  * VeloxEditiingg running. The point of the smoke is the WIRING and the
  * SECURITY CONTRACT, not the live backends themselves.
  */
@@ -120,7 +120,7 @@ function registerPublishMocks(context: BrowserContext, capturedPublish: { post: 
     });
 }
 
-test('cross-repo smoke: SPA → mint → dark editor publish → security contract', async ({
+test('cross-repo smoke: SPA → mint → InstaEditor publish → security contract', async ({
     page,
     context,
     request,
@@ -202,7 +202,7 @@ test('cross-repo smoke: SPA → mint → dark editor publish → security contra
     const popup = await clickCreaSessioneAndCapturePopup(page, VIDEO_TITLE);
     await popup.waitForLoadState('domcontentloaded');
 
-    // ===== Step 2: Wait for dark editor to mount =====
+    // ===== Step 2: Wait for InstaEditor to mount =====
     await expect(popup.locator('input[placeholder="Senza nome"]')).toHaveValue(
         'Smoke Test Project',
         { timeout: 60_000 },

@@ -69,7 +69,7 @@
 
 ---
 
-## 3. VeloxFrontend — Dark Editor (13 file)
+## 3. VeloxFrontend — InstaEditor (13 file)
 
 ### 3.1 `stores/editorStore.ts` (679 LOC) — 🔴 CRITICAL
 

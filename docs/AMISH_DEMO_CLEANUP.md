@@ -6,7 +6,7 @@ This cleanup removes synthetic feed-preview content and the local JSON seed that
 only the non-production records `id-A` and `id-B`. It does **not** delete, migrate, or rewrite
 editor projects stored through the authorized project route.
 
-The Dark Editor receives project context from InstaEdit. It must not present bundled group,
+The InstaEditor receives project context from InstaEdit. It must not present bundled group,
 channel, competitor, or feed records as real social data.
 
 ## Safety rules
