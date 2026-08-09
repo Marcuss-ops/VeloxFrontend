@@ -44,21 +44,22 @@ function DockItem({ icon, label, onClick, disabled = false, active = false }: Do
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all group ${
+      className={`group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${
         active
-          ? 'bg-sky-400/15 text-sky-200 ring-1 ring-sky-300/35 shadow-[0_0_18px_rgba(56,189,248,0.16)]'
-          : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+          ? 'bg-[#111111] text-white shadow-sm'
+          : 'text-black/60 hover:bg-black/[0.06] hover:text-black'
       } ${disabled ? 'opacity-25 cursor-not-allowed' : ''}`}
       title={label}
       aria-label={label}
     >
       {icon}
-      <span className="pointer-events-none absolute left-12 top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-950/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 shadow-xl ring-1 ring-white/10 group-hover:block">{label}</span>
+      <span className="pointer-events-none absolute bottom-12 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#111111] px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-lg group-hover:block">{label}</span>
     </button>
   );
 }
 
-// Floating Toolbar Dock Component
+// Floating Toolbar Dock Component. It sits below the canvas so the document
+// remains the visual focus while tools stay reachable without a side rail.
 export default function ToolbarDock() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -279,9 +280,9 @@ export default function ToolbarDock() {
         onChange={handleFileChange}
       />
 
-      <div className="absolute left-4 top-1/2 z-30 max-h-[calc(100vh-2rem)] -translate-y-1/2">
-        <div className="glass-dock flex max-h-[calc(100vh-2rem)] flex-col items-center gap-1.5 overflow-y-auto overflow-x-visible rounded-2xl border border-white/[0.10] bg-slate-950/80 px-2 py-2.5 shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
-          <div className="flex flex-col items-center gap-0.5 rounded-xl bg-white/[0.045] p-1 ring-1 ring-white/[0.06]">
+      <div className="absolute bottom-5 left-1/2 z-30 max-w-[calc(100vw-2rem)] -translate-x-1/2">
+        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto overflow-y-visible rounded-[18px] border border-black/[0.08] bg-white/[0.96] px-2.5 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.10),0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-xl">
+          <div className="flex items-center gap-0.5 rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
             {/* Basic Tools */}
             {tools.map((tool) => {
             const IconComponent = tool.icon;
@@ -299,17 +300,17 @@ export default function ToolbarDock() {
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition-all group ${
+                className={`group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${
                   selectedImage?.cropMode && selectedImage.cropMode !== 'free'
-                    ? 'bg-sky-400/15 text-sky-200 ring-1 ring-sky-300/35'
-                    : 'text-slate-400 hover:bg-white/[0.08] hover:text-white'
+                    ? 'bg-[#111111] text-white shadow-sm'
+                    : 'text-black/60 hover:bg-black/[0.06] hover:text-black'
                 }`}
                 title="Crop"
                 aria-label="Crop"
                 type="button"
               >
                 <Crop className="h-[18px] w-[18px]" strokeWidth={1.8} />
-                <span className="pointer-events-none absolute left-12 top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-slate-950/95 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 shadow-xl ring-1 ring-white/10 group-hover:block">Crop</span>
+                <span className="pointer-events-none absolute bottom-12 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#111111] px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-lg group-hover:block">Crop</span>
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="center" side="top">
@@ -328,9 +329,9 @@ export default function ToolbarDock() {
             </DropdownMenu>
           </div>
 
-          <div className="mx-1 h-px w-7 bg-white/10"></div>
+          <div className="mx-1 h-7 w-px shrink-0 bg-black/[0.08]"></div>
 
-          <div className="flex flex-col items-center gap-0.5 rounded-xl bg-white/[0.045] p-1 ring-1 ring-white/[0.06]">
+          <div className="flex items-center gap-0.5 rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
             {/* Utility Tools */}
             {utilityTools.map((tool) => {
             const IconComponent = tool.icon;
@@ -345,10 +346,10 @@ export default function ToolbarDock() {
             })}
           </div>
 
-          <div className="mx-1 h-px w-7 bg-white/10"></div>
+          <div className="mx-1 h-7 w-px shrink-0 bg-black/[0.08]"></div>
 
           {/* History & View Controls */}
-          <div className="flex flex-col items-center gap-0.5 rounded-xl bg-white/[0.045] p-1 ring-1 ring-white/[0.06]">
+          <div className="flex items-center gap-0.5 rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
             <DockItem
               icon={<Undo className="h-[18px] w-[18px]" strokeWidth={1.8} />}
               label="Undo"
@@ -368,7 +369,7 @@ export default function ToolbarDock() {
               active={showGrid}
             />
             <DockItem
-              icon={<Magnet className={`h-[18px] w-[18px] ${snapToGrid ? 'text-sky-200' : ''}`} strokeWidth={1.8} />}
+              icon={<Magnet className="h-[18px] w-[18px]" strokeWidth={1.8} />}
               label="Snap"
               onClick={toggleSnapToGrid}
               active={snapToGrid}
@@ -381,11 +382,11 @@ export default function ToolbarDock() {
             />
           </div>
 
-          <div className="mx-1 h-px w-7 bg-white/10"></div>
+          <div className="mx-1 h-7 w-px shrink-0 bg-black/[0.08]"></div>
 
-          <div className="rounded-xl bg-sky-400/10 p-1 ring-1 ring-sky-300/20">
+          <div className="rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
             <DockItem
-              icon={<Share2 className="h-[18px] w-[18px] text-sky-300" strokeWidth={1.8} />}
+              icon={<Share2 className="h-[18px] w-[18px]" strokeWidth={1.8} />}
               label="Export"
               onClick={openExport}
             />
