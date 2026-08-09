@@ -15,7 +15,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 min-w-[11rem] overflow-hidden rounded-xl border border-white/10 bg-slate-950/95 p-1 text-slate-100 shadow-2xl shadow-black/40 backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
+        'z-50 min-w-[11rem] overflow-hidden rounded-xl border border-black/10 bg-white/95 p-1 text-[#111111] shadow-[0_14px_35px_rgba(0,0,0,0.10)] backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
         className
       )}
       {...props}
@@ -31,7 +31,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm outline-none transition-colors focus:bg-sky-400/12 focus:text-white data-[disabled]:pointer-events-none data-[disabled]:opacity-40',
+      'relative flex cursor-default select-none items-center rounded-lg px-3 py-2 text-sm text-[#111111] outline-none transition-colors focus:bg-[#f2f2f0] focus:text-[#111111] data-[disabled]:pointer-events-none data-[disabled]:opacity-40',
       className
     )}
     {...props}
@@ -45,7 +45,7 @@ const DropdownMenuLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
-    className={cn('px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400', className)}
+    className={cn('px-3 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-[#6e6e73]', className)}
     {...props}
   />
 ));
@@ -57,7 +57,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn('my-1 h-px bg-white/10', className)}
+    className={cn('my-1 h-px bg-black/10', className)}
     {...props}
   />
 ));

@@ -621,7 +621,7 @@ export default function EditorPage() {
               {sidebarTab === 'design' && (
                 <div className="flex-1 flex flex-col min-h-0">
                   <PropertiesPanel />
-                  <div className="border-t border-slate-800 flex-1 overflow-hidden flex flex-col min-h-0">
+                  <div className="border-t border-black/[0.08] flex-1 overflow-hidden flex flex-col min-h-0">
                     <LayersPanel />
                   </div>
                 </div>

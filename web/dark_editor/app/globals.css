@@ -427,3 +427,99 @@ canvas {
 .editor-toolbar .separator {
   background: rgba(0, 0, 0, 0.08) !important;
 }
+
+/* Inspector and layers are legacy components with dark utility classes in
+   their markup. Normalize all of those utilities at the boundary so every
+   tool panel follows the same white / graphite design system. */
+.sidebar-shell {
+  background: #ffffff !important;
+  color: #111111 !important;
+  box-shadow: -12px 0 30px rgba(0, 0, 0, 0.06) !important;
+}
+
+.sidebar-shell [class*="bg-slate-"],
+.sidebar-shell [class*="bg-black/"],
+.sidebar-shell [class*="bg-white/"] {
+  background: #ffffff !important;
+}
+
+.sidebar-shell [class*="bg-black/[0.0"],
+.sidebar-shell [class*="bg-black/5"],
+.sidebar-shell [class*="bg-black/10"] {
+  background: #f7f7f5 !important;
+}
+
+.sidebar-shell [class*="border-slate"],
+.sidebar-shell [class*="border-white"],
+.sidebar-shell [class*="border-black/"] {
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+.sidebar-shell [class*="text-slate-"],
+.sidebar-shell [class*="text-sky-"],
+.sidebar-shell [class*="text-violet-"],
+.sidebar-shell [class*="text-fuchsia-"],
+.sidebar-shell [class*="text-cyan-"] {
+  color: #555558 !important;
+}
+
+.properties-panel,
+.properties-panel > *,
+.properties-panel input,
+.properties-panel textarea,
+.properties-panel select,
+.properties-panel button:not(.bg-black) {
+  color: #111111 !important;
+}
+
+.properties-panel [class*="bg-slate-"],
+.properties-panel [class*="bg-white/"],
+.properties-panel [class*="bg-black/"],
+.properties-panel [class*="bg-sky-"],
+.properties-panel [class*="bg-rose-"],
+.properties-panel [class*="bg-violet-"],
+.properties-panel [class*="bg-fuchsia-"] {
+  background: #ffffff !important;
+}
+
+.properties-panel [class*="bg-black/[0.0"],
+.properties-panel [class*="bg-black/5"],
+.properties-panel [class*="bg-black/10"] {
+  background: #f7f7f5 !important;
+}
+
+.properties-panel [class*="bg-gradient-"] {
+  background: #111111 !important;
+}
+
+.properties-panel [class*="border-white"],
+.properties-panel [class*="border-slate"],
+.properties-panel [class*="border-rose"],
+.properties-panel [class*="ring-white"],
+.properties-panel [class*="ring-slate"],
+.properties-panel [class*="ring-violet"],
+.properties-panel [class*="ring-sky"] {
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  --tw-ring-color: rgba(0, 0, 0, 0.10) !important;
+}
+
+.properties-panel [class*="text-slate-"],
+.properties-panel [class*="text-sky-"],
+.properties-panel [class*="text-violet-"],
+.properties-panel [class*="text-fuchsia-"],
+.properties-panel [class*="text-rose-"] {
+  color: #6e6e73 !important;
+}
+
+.properties-panel [class*="shadow-"] {
+  box-shadow: none !important;
+}
+
+.properties-panel input[type="range"] {
+  accent-color: #111111;
+}
+
+.properties-panel > .px-5 button {
+  background: #111111 !important;
+  color: #ffffff !important;
+}
