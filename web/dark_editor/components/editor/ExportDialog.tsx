@@ -7,7 +7,7 @@ import { Slider } from '@/components/ui/Slider';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
-import { CheckCircle2, Download, ExternalLink, Loader2, Youtube, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle2, Download, ExternalLink, Loader2, Youtube, AlertCircle, Eye, EyeOff, UploadCloud } from 'lucide-react';
 import { translateText } from '@/lib/api';
 import { useProjectStore } from '@/stores/projectStore';
 import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
@@ -15,6 +15,7 @@ import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
 import { BatchVideoGrid } from '@/components/editor/export/BatchVideoGrid';
 import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
 import { requestEditorFlush } from '@/lib/editorEvents';
+import { uploadMediaAsset, updateEditorSessionThumbnail } from '@/lib/api/bff';
 
 type BatchVideo = GroupVideo;
 
@@ -46,6 +47,46 @@ type RenderedVariant = {
 
 const EXPORT_WIDTH = 1920;
 const EXPORT_HEIGHT = 1080;
+type ExportFormat = 'png' | 'jpeg' | 'webp';
+
+const EXPORT_FORMATS: Array<{ value: ExportFormat; label: string; mime: string; extension: string }> = [
+  { value: 'png', label: 'PNG', mime: 'image/png', extension: 'png' },
+  { value: 'jpeg', label: 'JPG', mime: 'image/jpeg', extension: 'jpg' },
+  { value: 'webp', label: 'WebP', mime: 'image/webp', extension: 'webp' },
+];
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function convertBlob(blob: Blob, mime: string, quality: number): Promise<Blob> {
+  if (blob.type === mime) return blob;
+  const sourceUrl = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Impossibile convertire il file esportato.'));
+      image.src = sourceUrl;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = EXPORT_WIDTH;
+    canvas.height = EXPORT_HEIGHT;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas di esportazione non disponibile.');
+    context.drawImage(image, 0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
+    const converted = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, mime === 'image/png' ? undefined : quality));
+    if (!converted) throw new Error('Conversione del formato non riuscita.');
+    return converted;
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
 
 function normalizedPlatformAccountId(video: BatchVideo): number | null {
   const value = Number(video.platform_account_id);
@@ -63,7 +104,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
   const { objects, selectedIds, updateObject } = useEditorStore();
   const { currentProject } = useProjectStore();
 
-  const [format, setFormat] = useState('png');
+  const [format, setFormat] = useState<ExportFormat>('png');
   const [quality, setQuality] = useState(90);
   const [selectedOnly, setSelectedOnly] = useState(false);
 
@@ -86,7 +127,10 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
   const snapshotRef = useRef<CanvasSnapshot | null>(null);
   const [snapshotStale, setSnapshotStale] = useState(false);
   const [variantPreviews, setVariantPreviews] = useState<Record<string, RenderedVariant>>({});
+  const variantPreviewsRef = useRef<Record<string, RenderedVariant>>({});
   const [isGeneratingPreviews, setIsGeneratingPreviews] = useState(false);
+  const [isApplyingToVideos, setIsApplyingToVideos] = useState(false);
+  const [uploadResults, setUploadResults] = useState<Record<string, { status: 'pending' | 'success' | 'error'; message?: string }>>({});
   const [editingVideoId, setEditingVideoId] = useState<string | null>(null);
   const [editingDraft, setEditingDraft] = useState<{ title: string; description: string; coverText: string } | null>(null);
   const [isSavingVariantEdit, setIsSavingVariantEdit] = useState(false);
@@ -105,10 +149,6 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     || textLayers[0];
   const hasSelection = selectedIds.length > 0;
   const isEditorSession = Boolean(currentProject?.id?.startsWith('ve_'));
-  // Upload-to-YouTube is owned by InstaEdit's publish flow; this editor
-  // only prepares the authorized render/export artifact.
-  const uploadToYouTube = false;
-  const isUploadingToYouTube = false;
   const {
     videos: privateVideos,
     visibleVideos: visiblePrivateVideos,
@@ -352,6 +392,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
         if (variant) assignments[video.video_id] = variant;
       }
       setTranslatedMetadata((current) => ({ ...current, ...metadataNext }));
+      variantPreviewsRef.current = assignments;
       setVariantPreviews(assignments);
       addToast({ type: 'success', message: `Generate ${Object.keys(assignments).length} anteprime assegnate ai video selezionati.` });
     } catch (error) {
@@ -430,6 +471,8 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       snapshotRef.current = null;
       setSnapshotStale(false);
       setVariantPreviews({});
+      variantPreviewsRef.current = {};
+      setUploadResults({});
       setTranslatedMetadata({});
       metadataTranslationKeyRef.current = '';
       let cancelled = false;
@@ -454,7 +497,8 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       currentSnapshot = await captureSnapshot();
     }
     const stage = canvasRef?.current?.getStage?.();
-    const mime = format === 'jpeg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
+    const formatSpec = EXPORT_FORMATS.find((item) => item.value === format) ?? EXPORT_FORMATS[0];
+    const mime = formatSpec.mime;
     const q = Math.max(0.01, Math.min(1, quality / 100));
     const blob = format === 'png' && currentSnapshot
       ? currentSnapshot.blob
@@ -464,16 +508,76 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       return;
     }
 
-    const extension = format === 'jpeg' ? 'jpg' : format;
     const projectName = currentProject?.name || 'thumbnail';
-    const downloadName = `${projectName}.${extension}`;
+    const downloadName = `${projectName}.${formatSpec.extension}`;
     setExportedBlob(blob);
     setExportedFilename(downloadName);
-    if (format !== 'png') setCoverPreviewUrl(URL.createObjectURL(blob));
+    setCoverPreviewUrl(URL.createObjectURL(blob));
     setExportComplete(true);
+    downloadBlob(blob, downloadName);
 
-    addToast({ type: 'success', message: 'Export locale completato.' });
+    addToast({ type: 'success', message: `Export ${formatSpec.label} completato (${EXPORT_WIDTH} × ${EXPORT_HEIGHT}).` });
   }, [addToast, captureSnapshot, canvasRef, currentProject, format, quality]);
+
+  const handleDownloadAllLanguages = useCallback(async () => {
+    const variants = Object.values(variantPreviewsRef.current);
+    if (variants.length === 0) {
+      addToast({ type: 'warning', message: 'Genera prima le anteprime per lingua.' });
+      return;
+    }
+    const formatSpec = EXPORT_FORMATS.find((item) => item.value === format) ?? EXPORT_FORMATS[0];
+    const q = Math.max(0.01, Math.min(1, quality / 100));
+    const projectName = currentProject?.name || 'thumbnail';
+    try {
+      for (const variant of variants) {
+        const blob = await convertBlob(variant.blob, formatSpec.mime, q);
+        downloadBlob(blob, `${projectName}_${variant.language}.${formatSpec.extension}`);
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 120));
+      }
+      addToast({ type: 'success', message: `${variants.length} varianti esportate in ${formatSpec.label}.` });
+    } catch (error) {
+      addToast({ type: 'error', message: error instanceof Error ? error.message : 'Export multilingua non riuscito.' });
+    }
+  }, [addToast, currentProject, format, quality]);
+
+  const handleApplyToSelectedVideos = useCallback(async () => {
+    if (targetVideos.length === 0) {
+      addToast({ type: 'warning', message: 'Nessun video autorizzato selezionato.' });
+      return;
+    }
+    const variants = variantPreviewsRef.current;
+    const missing = targetVideos.filter((video) => !variants[video.video_id]);
+    if (missing.length > 0) {
+      addToast({ type: 'warning', message: 'Attendi la generazione delle varianti per lingua.' });
+      return;
+    }
+    setIsApplyingToVideos(true);
+    setUploadResults(Object.fromEntries(targetVideos.map((video) => [video.video_id, { status: 'pending' as const }])));
+    const results = await Promise.all(targetVideos.map(async (video) => {
+      const variant = variants[video.video_id];
+      const projectId = video.velox_project_id || currentProject?.id;
+      if (!variant || !projectId) {
+        return { videoId: video.video_id, status: 'error' as const, message: 'Progetto video non disponibile.' };
+      }
+      try {
+        // InstaEdit accepts PNG/JPG for YouTube thumbnails. Variants are
+        // rendered as PNG regardless of the local download format.
+        const uploadBlob = await convertBlob(variant.blob, 'image/png', 1);
+        const mediaId = await uploadMediaAsset(uploadBlob, `${projectId}_${variant.language}.png`);
+        await updateEditorSessionThumbnail(projectId, mediaId);
+        return { videoId: video.video_id, status: 'success' as const, message: 'Copertina inviata.' };
+      } catch (error) {
+        return { videoId: video.video_id, status: 'error' as const, message: error instanceof Error ? error.message : 'Invio non riuscito.' };
+      }
+    }));
+    setUploadResults(Object.fromEntries(results.map((result) => [result.videoId, { status: result.status, message: result.message }])));
+    setIsApplyingToVideos(false);
+    const failed = results.filter((result) => result.status === 'error').length;
+    addToast({
+      type: failed === results.length ? 'error' : failed > 0 ? 'warning' : 'success',
+      message: failed > 0 ? `${results.length - failed} copertine inviate, ${failed} con errore.` : `${results.length} copertina/e inviata/e al video selezionato.`,
+    });
+  }, [addToast, currentProject?.id, targetVideos]);
 
   if (open) {
     return (
@@ -506,6 +610,28 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                     </div>
                   )}
                   {snapshotStale && <div className="border-t border-amber-400/20 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-200">Il progetto è cambiato. Rigenerazione automatica in corso…</div>}
+                </div>
+
+                <div className="publish-card space-y-3 p-3.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-white/80">Preset YouTube</p>
+                      <p className="mt-0.5 text-[10px] text-white/40">1920 × 1080 · pronto per le copertine</p>
+                    </div>
+                    <span className="rounded-md bg-white/[0.06] px-2 py-1 text-[10px] font-medium text-white/55">16:9</span>
+                  </div>
+                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3">
+                    <label className="space-y-1.5 text-[11px] text-white/50">
+                      <span className="block">Formato</span>
+                      <select value={format} onChange={(event) => setFormat(event.target.value as ExportFormat)} className="publish-control h-9 w-full px-2.5 text-xs text-white/85 outline-none">
+                        {EXPORT_FORMATS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+                      </select>
+                    </label>
+                    <div className="space-y-1.5 text-[11px] text-white/50">
+                      <div className="flex items-center justify-between"><span>Qualità</span><span className="text-white/75">{quality}%</span></div>
+                      <Slider value={[quality]} onValueChange={(value) => setQuality(value[0] ?? quality)} min={10} max={100} step={1} className="pt-2" aria-label="Qualità export" />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="h-px bg-white/[0.07]" />
@@ -552,7 +678,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                   ) : visiblePrivateVideos.length === 0 ? (
                     <div className="rounded-[10px] border border-white/[0.07] bg-white/[0.018] p-5 text-sm text-white/50">Il contesto video autorizzato non è disponibile.</div>
                   ) : (
-                    <BatchVideoGrid videos={visiblePrivateVideos} selectedVideoIds={selectedVideoIds} variantPreviews={variantPreviews} localizedMetadata={localizedMetadataByVideo} uploadResults={{}} onToggle={toggleVideo} onEdit={(video) => { const variant = variantPreviews[video.video_id]; if (!variant) return; setEditingVideoId(video.video_id); setEditingDraft({ title: variant.title || video.title, description: variant.description || '', coverText: variant.translatedText || '' }); }} />
+                    <BatchVideoGrid videos={visiblePrivateVideos} selectedVideoIds={selectedVideoIds} variantPreviews={variantPreviews} localizedMetadata={localizedMetadataByVideo} uploadResults={uploadResults} onToggle={toggleVideo} onEdit={(video) => { const variant = variantPreviews[video.video_id]; if (!variant) return; setEditingVideoId(video.video_id); setEditingDraft({ title: variant.title || video.title, description: variant.description || '', coverText: variant.translatedText || '' }); }} />
                   )}
 
                 </div>
@@ -586,9 +712,14 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
 
           <DialogFooter className="h-[70px] shrink-0 items-center justify-end gap-3 border-t border-white/[0.07] bg-[#111318]/95 px-5 backdrop-blur-xl">
             <Button variant="outline" onClick={handleClose} className="h-10 rounded-[10px] border-white/[0.09] px-4 text-sm text-white/75">Annulla</Button>
-            <Button onClick={() => { if (uploadToYouTube && targetVideos.length > 0) { if (snapshotStale || !snapshotRef.current) void captureSnapshot(); else if (!allSelectedVariantsReady) return; else void handleExport(); } else void handleExport(); }}                disabled={isExporting || isUploadingToYouTube || isGeneratingPreviews} className="h-10 rounded-[10px] bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-500">
-                  {(isExporting || isUploadingToYouTube || isGeneratingPreviews) ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{isGeneratingPreviews ? 'Generazione…' : 'Applicazione…'}</> : <><Youtube className="mr-2 h-4 w-4" />{uploadToYouTube && targetVideos.length > 0 ? (snapshotStale || !allSelectedVariantsReady ? 'Generazione automatica…' : `Applica ${targetVideos.length} copertine`) : 'Esporta'}</>}
-
+            <Button type="button" variant="outline" onClick={() => void handleDownloadAllLanguages()} disabled={isGeneratingPreviews || isApplyingToVideos || Object.keys(variantPreviews).length === 0} className="h-10 rounded-[10px] border-white/[0.09] px-4 text-sm text-white/75">
+              <Download className="mr-2 h-4 w-4" />Tutte le lingue
+            </Button>
+            {targetVideos.length > 0 && <Button type="button" onClick={() => void handleApplyToSelectedVideos()} disabled={isApplyingToVideos || isGeneratingPreviews || !allSelectedVariantsReady} className="h-10 rounded-[10px] bg-[#111111] px-5 text-sm font-semibold text-white hover:bg-black">
+              {isApplyingToVideos ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Invio…</> : <><UploadCloud className="mr-2 h-4 w-4" />Invia al video</>}
+            </Button>}
+            <Button type="button" onClick={() => void handleExport()} disabled={isExporting || isApplyingToVideos || isGeneratingPreviews} className="h-10 rounded-[10px] bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-500">
+              <Download className="mr-2 h-4 w-4" />Esporta {EXPORT_FORMATS.find((item) => item.value === format)?.label}
             </Button>
           </DialogFooter>
         </DialogContent>
