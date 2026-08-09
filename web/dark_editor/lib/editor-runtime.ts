@@ -43,6 +43,9 @@ export function editorProjectContextPath(projectId: string): string {
  */
 export const INSTAEDIT_APP_URL = (process.env.NEXT_PUBLIC_INSTAEDIT_URL ?? 'https://app.instaedit.org').replace(/\/+$/, '');
 
+/** Public API origin used when a direct editor refresh must mint a new launch token. */
+export const INSTAEDIT_API_URL = (process.env.NEXT_PUBLIC_INSTAEDIT_API_URL ?? 'https://api.instaedit.org').replace(/\/+$/, '');
+
 /**
  * Relative InstaEdit SPA path the user should return to after leaving the
  * editor (read from the launch URL's `return_to` query parameter, stamped

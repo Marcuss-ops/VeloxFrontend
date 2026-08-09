@@ -1,4 +1,4 @@
-import { editorRuntimePath } from './editor-runtime';
+import { editorRuntimePath, INSTAEDIT_API_URL } from './editor-runtime';
 
 let sessionToken: string | null = null;
 let sessionProjectId: string | null = null;
@@ -53,10 +53,16 @@ function storeSession(projectId: string, token: string, expiresAt?: number): voi
 }
 
 async function mintLaunchToken(projectId: string): Promise<string> {
-  const response = await fetch(editorRuntimePath('api/v1/editor/launch'), {
+  const csrfToken = typeof document !== 'undefined'
+    ? document.cookie.split('; ').find((cookie) => cookie.startsWith('csrf_token='))?.slice('csrf_token='.length)
+    : undefined;
+  const response = await fetch(`${INSTAEDIT_API_URL}/api/v1/editor/launch`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(csrfToken ? { 'X-CSRF-Token': decodeURIComponent(csrfToken) } : {}),
+    },
     body: JSON.stringify({ project_id: projectId }),
   });
   const payload = await response.json().catch(() => ({})) as { launch_token?: string; error?: string };

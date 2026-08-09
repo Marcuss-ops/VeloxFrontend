@@ -11,7 +11,7 @@ describe('editor session bootstrap', () => {
     vi.restoreAllMocks();
   });
 
-  it('re-mints through the authenticated BFF when the launch fragment is missing', async () => {
+  it('re-mints through the authenticated InstaEdit API when the launch fragment is missing', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ launch_token: 'fresh-launch' }), { status: 201 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ launch_token: 'editor-session', expires_at: Math.floor(Date.now() / 1000) + 300 }), { status: 201 }));
@@ -20,7 +20,7 @@ describe('editor session bootstrap', () => {
     await expect(ensureEditorSessionToken()).resolves.toBe('editor-session');
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      '/instaeditor/api/v1/editor/launch',
+      'https://api.instaedit.org/api/v1/editor/launch',
       expect.objectContaining({ method: 'POST', credentials: 'include' }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
