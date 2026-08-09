@@ -553,10 +553,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
             y={0}
             width={canvasWidth}
             height={canvasHeight}
-            fill="#e5e7eb"
-            shadowColor="black"
-            shadowBlur={10}
-            shadowOpacity={0.2}
+            fill="#FFFFFF"
           />
 
           {objects.map(renderObject)}

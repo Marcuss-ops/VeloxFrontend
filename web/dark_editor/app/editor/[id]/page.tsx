@@ -520,7 +520,7 @@ export default function EditorPage() {
   }
   return (
     <div
-      className="relative flex h-screen flex-col overflow-hidden bg-[#f7f7f5] text-[#111111]"
+      className="editor-app relative flex h-screen flex-col overflow-hidden bg-[#f7f7f5] text-[#111111]"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -544,9 +544,9 @@ export default function EditorPage() {
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden relative h-screen">
         {/* Main Canvas Area */}
-        <main className="relative mr-[30px] flex-1 overflow-hidden bg-[#f7f7f5] p-12 flex items-center justify-center">
+        <main className="editor-workspace relative mr-[30px] flex-1 overflow-hidden bg-[#f7f7f5] p-12 flex items-center justify-center">
           {/* Floating Top-Left Navigation Pill */}
-          <div className="absolute left-6 top-6 z-30 flex items-center gap-2.5 rounded-xl border border-black/[0.08] bg-white/[0.96] px-3 py-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.05)] backdrop-blur-xl">
+          <div className="editor-header absolute left-6 top-6 z-30 flex items-center gap-2.5 rounded-xl border border-black/[0.08] bg-white/[0.96] px-3 py-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.05)] backdrop-blur-xl">
             {/* Back to the InstaEdit Copertine hub of the group the user
                 opened the editor from (relative return_to stamped by the
                 SPA launch URL; falls back to the hub without a group). */}
@@ -575,7 +575,7 @@ export default function EditorPage() {
           </div>
 
           {/* Canvas wrapper */}
-          <div className="relative z-10 aspect-video w-full max-w-4xl overflow-hidden rounded-[3px] border border-black/[0.10] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
+          <div className="editor-canvas relative z-10 aspect-video w-full max-w-4xl overflow-hidden rounded-[3px] border border-black/[0.10] bg-white shadow-[0_12px_36px_rgba(0,0,0,0.055)]">
             <Canvas canvasRef={canvasRef} />
           </div>
 

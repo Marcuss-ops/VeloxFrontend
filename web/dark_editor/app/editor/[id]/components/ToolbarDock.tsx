@@ -44,7 +44,7 @@ function DockItem({ icon, label, onClick, disabled = false, active = false }: Do
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${
+      className={`tool-button group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${
         active
           ? 'bg-[#111111] text-white shadow-sm'
           : 'text-black/60 hover:bg-black/[0.06] hover:text-black'
@@ -281,8 +281,8 @@ export default function ToolbarDock() {
       />
 
       <div className="absolute bottom-16 left-1/2 z-30 max-w-[calc(100vw-2rem)] -translate-x-1/2">
-        <div className="flex max-w-full items-center gap-1.5 overflow-x-auto overflow-y-visible rounded-[18px] border border-black/[0.08] bg-white/[0.96] px-2.5 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.10),0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-xl">
-          <div className="flex items-center gap-0.5 rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
+        <div className="editor-toolbar flex max-w-full items-center gap-1.5 overflow-x-auto overflow-y-visible rounded-[18px] border border-black/[0.08] bg-white/[0.96] px-2.5 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.03)] backdrop-blur-xl">
+          <div className="flex items-center gap-0.5 rounded-xl bg-white p-1 ring-1 ring-black/[0.05]">
             {/* Basic Tools */}
             {tools.map((tool) => {
             const IconComponent = tool.icon;
@@ -300,7 +300,7 @@ export default function ToolbarDock() {
             <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className={`group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${
+                className={`tool-button group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${
                   selectedImage?.cropMode && selectedImage.cropMode !== 'free'
                     ? 'bg-[#111111] text-white shadow-sm'
                     : 'text-black/60 hover:bg-black/[0.06] hover:text-black'
@@ -331,7 +331,7 @@ export default function ToolbarDock() {
 
           <div className="mx-1 h-7 w-px shrink-0 bg-black/[0.08]"></div>
 
-          <div className="flex items-center gap-0.5 rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
+          <div className="flex items-center gap-0.5 rounded-xl bg-white p-1 ring-1 ring-black/[0.05]">
             {/* Utility Tools */}
             {utilityTools.map((tool) => {
             const IconComponent = tool.icon;
@@ -349,7 +349,7 @@ export default function ToolbarDock() {
           <div className="mx-1 h-7 w-px shrink-0 bg-black/[0.08]"></div>
 
           {/* History & View Controls */}
-          <div className="flex items-center gap-0.5 rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
+          <div className="flex items-center gap-0.5 rounded-xl bg-white p-1 ring-1 ring-black/[0.05]">
             <DockItem
               icon={<Undo className="h-[18px] w-[18px]" strokeWidth={1.8} />}
               label="Undo"
@@ -384,7 +384,7 @@ export default function ToolbarDock() {
 
           <div className="mx-1 h-7 w-px shrink-0 bg-black/[0.08]"></div>
 
-          <div className="rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
+          <div className="rounded-xl bg-white p-1 ring-1 ring-black/[0.05]">
             <DockItem
               icon={<Share2 className="h-[18px] w-[18px]" strokeWidth={1.8} />}
               label="Export"
