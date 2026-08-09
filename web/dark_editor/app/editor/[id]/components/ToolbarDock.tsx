@@ -280,7 +280,7 @@ export default function ToolbarDock() {
         onChange={handleFileChange}
       />
 
-      <div className="absolute bottom-5 left-1/2 z-30 max-w-[calc(100vw-2rem)] -translate-x-1/2">
+      <div className="absolute bottom-16 left-1/2 z-30 max-w-[calc(100vw-2rem)] -translate-x-1/2">
         <div className="flex max-w-full items-center gap-1.5 overflow-x-auto overflow-y-visible rounded-[18px] border border-black/[0.08] bg-white/[0.96] px-2.5 py-2 shadow-[0_8px_30px_rgba(0,0,0,0.10),0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-xl">
           <div className="flex items-center gap-0.5 rounded-xl bg-black/[0.03] p-1 ring-1 ring-black/[0.05]">
             {/* Basic Tools */}

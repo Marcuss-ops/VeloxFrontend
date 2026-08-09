@@ -585,7 +585,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
         <DialogContent className="h-[min(980px,96vh)] w-[min(1500px,94vw)] max-w-none gap-0 overflow-hidden rounded-[22px] border-white/[0.08] bg-[#111318] p-0 shadow-[0_32px_100px_rgba(0,0,0,0.62)]">
           <DialogHeader className="flex h-[50px] shrink-0 flex-row items-center border-b border-white/[0.07] px-5">
             <DialogTitle className="flex items-center gap-2 text-[15px] font-semibold text-white">
-              <Download className="h-4 w-4 text-violet-300" />
+              <Download className="h-4 w-4 text-[#111111]" />
               Pubblica copertine
             </DialogTitle>
           </DialogHeader>
@@ -696,7 +696,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
                     <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-black">
                       {variantPreviews[editingVideoId]?.previewUrl ? <img src={variantPreviews[editingVideoId].previewUrl} alt="Anteprima cover tradotta" className="block aspect-video h-auto w-full object-contain" /> : <div className="flex aspect-video items-center justify-center text-xs text-white/35">Anteprima non disponibile</div>}
                     </div>
-                    <p className="text-[11px] text-white/40">Testo renderizzato: <span className="text-violet-200/80">{variantPreviews[editingVideoId]?.translatedText || '—'}</span></p>
+                    <p className="text-[11px] text-white/40">Testo renderizzato: <span className="text-white/80">{variantPreviews[editingVideoId]?.translatedText || '—'}</span></p>
                   </div>
                   <div className="space-y-3">
                     <div className="rounded-xl border border-white/[0.07] bg-white/[0.018] p-3 text-xs text-white/55"><p className="font-semibold text-white/80">Metadati variante</p><p className="mt-1">Canale: {privateVideos.find((video) => video.video_id === editingVideoId)?.channel_name || '—'}</p><p>Lingua: {variantPreviews[editingVideoId]?.language || '—'}</p><p>Privacy: privata</p></div>
@@ -718,7 +718,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
             {targetVideos.length > 0 && <Button type="button" onClick={() => void handleApplyToSelectedVideos()} disabled={isApplyingToVideos || isGeneratingPreviews || !allSelectedVariantsReady} className="h-10 rounded-[10px] bg-[#111111] px-5 text-sm font-semibold text-white hover:bg-black">
               {isApplyingToVideos ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Invio…</> : <><UploadCloud className="mr-2 h-4 w-4" />Invia al video</>}
             </Button>}
-            <Button type="button" onClick={() => void handleExport()} disabled={isExporting || isApplyingToVideos || isGeneratingPreviews} className="h-10 rounded-[10px] bg-violet-600 px-5 text-sm font-semibold text-white hover:bg-violet-500">
+            <Button type="button" onClick={() => void handleExport()} disabled={isExporting || isApplyingToVideos || isGeneratingPreviews} className="h-10 rounded-[10px] bg-[#111111] px-5 text-sm font-semibold text-white hover:bg-black">
               <Download className="mr-2 h-4 w-4" />Esporta {EXPORT_FORMATS.find((item) => item.value === format)?.label}
             </Button>
           </DialogFooter>

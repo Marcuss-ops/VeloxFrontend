@@ -494,7 +494,7 @@ export default function EditorPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+      <div className="h-screen flex items-center justify-center bg-[#f7f7f5] text-[#111111]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-slate-500 dark:text-slate-400">Loading project...</p>
@@ -505,9 +505,9 @@ export default function EditorPage() {
 
   if (error) {
     return (
-      <div className="h-screen flex items-center justify-center bg-background-light dark:bg-background-dark">
+      <div className="h-screen flex items-center justify-center bg-[#f7f7f5] text-[#111111]">
         <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
+          <p className="mb-4 text-red-600">{error}</p>
           <button
             onClick={() => window.location.assign(returnUrl)}
             className="text-primary hover:underline"
@@ -520,7 +520,7 @@ export default function EditorPage() {
   }
   return (
     <div
-      className="h-screen flex flex-col bg-background-light dark:bg-background-dark overflow-hidden relative"
+      className="relative flex h-screen flex-col overflow-hidden bg-[#f7f7f5] text-[#111111]"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -528,14 +528,14 @@ export default function EditorPage() {
     >
       {/* Drag & Drop Overlay */}
       {isDragging && (
-        <div className="absolute inset-0 z-[100] bg-primary/20 backdrop-blur-sm border-4 border-dashed border-primary flex flex-col items-center justify-center p-12 pointer-events-none animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4 scale-110 border border-primary/20">
-            <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center text-primary animate-bounce">
+        <div className="pointer-events-none absolute inset-0 z-[100] flex flex-col items-center justify-center border-4 border-dashed border-black/20 bg-white/70 p-12 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="flex scale-110 flex-col items-center gap-4 rounded-3xl border border-black/10 bg-white p-8 shadow-2xl">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-black/[0.05] text-[#111111] animate-bounce">
               <Upload className="w-10 h-10" />
             </div>
             <div className="text-center">
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Drop to Upload</h3>
-              <p className="text-slate-500 dark:text-slate-400">Release your images to add them to the canvas</p>
+              <h3 className="text-2xl font-bold text-[#111111]">Drop to Upload</h3>
+              <p className="text-[#6e6e73]">Release your images to add them to the canvas</p>
             </div>
           </div>
         </div>
@@ -544,20 +544,20 @@ export default function EditorPage() {
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden relative h-screen">
         {/* Main Canvas Area */}
-        <main className="flex-1 relative bg-slate-950 overflow-hidden flex items-center justify-center p-12 mr-[30px]">
+        <main className="relative mr-[30px] flex-1 overflow-hidden bg-[#f7f7f5] p-12 flex items-center justify-center">
           {/* Floating Top-Left Navigation Pill */}
-          <div className="absolute top-6 left-6 z-30 glass-dock px-3 py-1.5 rounded-xl flex items-center gap-2.5 shadow-dock">
+          <div className="absolute left-6 top-6 z-30 flex items-center gap-2.5 rounded-xl border border-black/[0.08] bg-white/[0.96] px-3 py-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.05)] backdrop-blur-xl">
             {/* Back to the InstaEdit Copertine hub of the group the user
                 opened the editor from (relative return_to stamped by the
                 SPA launch URL; falls back to the hub without a group). */}
             <a
               href={returnUrl}
-              className="text-slate-450 hover:text-white transition-colors"
+              className="text-black/60 transition-colors hover:text-black"
               title="Torna a Copertine"
             >
               <Home className="w-4 h-4" />
             </a>
-            <span className="text-slate-650 select-none text-xs">/</span>
+            <span className="select-none text-xs text-black/30">/</span>
             <div className="relative group max-w-[180px]">
               <input
                 type="text"
@@ -565,7 +565,7 @@ export default function EditorPage() {
                 onChange={handleProjectNameChange}
                 onBlur={handleProjectNameBlur}
                 placeholder="Senza nome"
-                className="bg-transparent border-none text-xs font-semibold text-slate-200 focus:outline-none focus:bg-white/[0.04] focus:ring-1 focus:ring-sky-500/30 rounded px-1.5 py-0.5 placeholder:italic w-full truncate transition-all duration-200"
+                className="w-full truncate rounded border-none bg-transparent px-1.5 py-0.5 text-xs font-semibold text-[#111111] placeholder:italic transition-all duration-200 focus:bg-black/[0.03] focus:outline-none focus:ring-1 focus:ring-black/10"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -574,13 +574,8 @@ export default function EditorPage() {
             </div>
           </div>
 
-          {/* Blurred Background Gradient Blobs */}
-          <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-violet-600/10 blur-[100px] pointer-events-none" />
-          <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 rounded-full bg-fuchsia-600/10 blur-[120px] pointer-events-none" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-indigo-500/5 blur-[150px] pointer-events-none" />
-
           {/* Canvas wrapper */}
-          <div className="relative aspect-video w-full max-w-4xl bg-white dark:bg-slate-900 canvas-shadow rounded-sm overflow-hidden border border-slate-200 dark:border-slate-800 z-10">
+          <div className="relative z-10 aspect-video w-full max-w-4xl overflow-hidden rounded-[3px] border border-black/[0.10] bg-white shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
             <Canvas canvasRef={canvasRef} />
           </div>
 
