@@ -9,23 +9,23 @@ export default function Toolbar() {
   const { isDirty, isSaving } = useProjectStore();
   
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-3 rounded-full border border-black/[0.08] bg-white px-3 py-1.5">
       {/* Auto-save status indicator */}
-      <div className="flex items-center gap-1.5 text-xs font-semibold select-none tabular-nums text-slate-500">
+      <div className="flex select-none items-center gap-1.5 text-[11px] font-semibold tabular-nums text-[#6e6e73]">
         {isSaving ? (
           <>
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
-            <span>Saving...</span>
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-[#111111]" />
+            <span>Salvataggio…</span>
           </>
         ) : isDirty ? (
           <>
-            <div className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
-            <span>Unsaved changes</span>
+            <div className="size-1.5 animate-pulse rounded-full bg-[#111111]" />
+            <span>Modifiche non salvate</span>
           </>
         ) : (
           <>
-            <Check className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Saved</span>
+            <Check className="h-3.5 w-3.5 text-[#111111]" />
+            <span>Salvato</span>
           </>
         )}
       </div>

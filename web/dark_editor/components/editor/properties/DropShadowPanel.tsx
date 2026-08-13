@@ -11,17 +11,17 @@ function ShadowSlider({ label, value, min, max, step, onChange, unit }: {
   const pct = Math.round(((value - min) / (max - min)) * 100);
   return (
     <div className="flex items-center gap-3 group">
-      <span className="text-[11px] font-medium text-slate-400 w-16 shrink-0 capitalize">{label}</span>
+      <span className="w-16 shrink-0 text-[11px] font-medium capitalize text-[#6e6e73]">{label}</span>
       <div className="relative flex-1 h-5 flex items-center">
-        <div className="absolute inset-x-0 h-[3px] rounded-full bg-slate-800/80" />
-        <div className="absolute h-[3px] rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" style={{ width: `${pct}%` }} />
+        <div className="absolute inset-x-0 h-[3px] rounded-full bg-black/10" />
+        <div className="absolute h-[3px] rounded-full bg-[#111111]" style={{ width: `${pct}%` }} />
         <input type="range" min={min} max={max} step={step} value={value}
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="absolute inset-0 w-full opacity-0 cursor-pointer z-10" />
-        <div className="absolute h-3.5 w-3.5 rounded-full bg-white shadow-md shadow-black/30 ring-2 ring-violet-400 transition-transform group-hover:scale-110 pointer-events-none"
+        <div className="pointer-events-none absolute h-3.5 w-3.5 rounded-full border-2 border-[#111111] bg-white transition-transform group-hover:scale-110"
           style={{ left: `calc(${pct}% - 7px)` }} />
       </div>
-      <span className="text-[11px] font-semibold text-slate-300 tabular-nums w-10 text-right shrink-0">
+      <span className="w-10 shrink-0 text-right text-[11px] font-semibold tabular-nums text-[#4c4c50]">
         {step < 1 ? value.toFixed(1) : Math.round(value)}{unit || ''}
       </span>
     </div>
@@ -32,9 +32,9 @@ function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
   return (
     <button type="button" onClick={onChange}
       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-        on ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/40' : 'bg-white/[0.08] ring-1 ring-white/10'
+        on ? 'border border-[#111111] bg-[#111111]' : 'border border-black/15 bg-[#e5e5e5]'
       }`}>
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform mt-1 ${on ? 'translate-x-6' : 'translate-x-1'}`} />
+      <span className={`mt-0.5 inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`} />
     </button>
   );
 }
@@ -60,10 +60,10 @@ export default function DropShadowPanel({ object, onUpdate }: DropShadowPanelPro
 
   return (
     <div className="space-y-0">
-      <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.06]">
+      <div className="flex items-center justify-between border-b border-black/[0.08] pb-1.5">
         <div className="flex items-center gap-2">
-          <div className="text-violet-300/90"><CircleDot className="w-3.5 h-3.5" /></div>
-          <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">Drop Shadow</span>
+          <div className="text-[#111111]"><CircleDot className="h-3.5 w-3.5" /></div>
+          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[#111111]">Drop Shadow</span>
         </div>
         <Toggle on={!!ds}
           onChange={() => onUpdate('dropShadow', ds ? undefined : { offsetX: 4, offsetY: 4, blur: 12, spread: 0.6, color: '#000000' })} />
@@ -71,7 +71,7 @@ export default function DropShadowPanel({ object, onUpdate }: DropShadowPanelPro
 
       <div className={`pt-3 space-y-3 transition-opacity duration-200 ${ds ? '' : 'opacity-40 pointer-events-none'}`}>
         {/* Sliders */}
-        <div className="p-3 rounded-2xl bg-white/[0.02] ring-1 ring-white/[0.05] space-y-2.5">
+        <div className="space-y-2.5 rounded-xl border border-black/[0.08] bg-[#f7f7f5] p-3">
           <ShadowSlider label="Offset X" value={ds?.offsetX ?? 0} min={-50} max={50} step={1} unit="px" onChange={(v) => update({ offsetX: v })} />
           <ShadowSlider label="Offset Y" value={ds?.offsetY ?? 0} min={-50} max={50} step={1} unit="px" onChange={(v) => update({ offsetY: v })} />
           <ShadowSlider label="Blur" value={ds?.blur ?? 0} min={0} max={100} step={1} unit="px" onChange={(v) => update({ blur: v })} />
@@ -79,21 +79,21 @@ export default function DropShadowPanel({ object, onUpdate }: DropShadowPanelPro
         </div>
 
         {/* Color Flyout */}
-        <div className="p-3 rounded-2xl bg-white/[0.02] ring-1 ring-white/[0.05]">
+        <div className="rounded-xl border border-black/[0.08] bg-[#f7f7f5] p-3">
           <div className="relative group">
             <button type="button"
-              className="flex items-center justify-between w-full h-9 px-3 rounded-xl bg-white/[0.04] ring-1 ring-white/10 cursor-pointer transition-all group-hover:ring-violet-500/40 group-hover:bg-white/[0.06]">
+              className="flex h-9 w-full cursor-pointer items-center justify-between rounded-lg border border-black/[0.12] bg-white px-3 transition-all group-hover:border-black/30">
               <div className="flex items-center gap-2.5">
-                <div className="w-4 h-4 rounded-md ring-1 ring-white/20 shadow-sm" style={{ backgroundColor: currentColor }} />
-                <span className="text-[11px] font-medium text-slate-300 capitalize">Shadow Color</span>
+                <div className="h-4 w-4 rounded-md border border-black/15" style={{ backgroundColor: currentColor }} />
+                <span className="text-[11px] font-medium capitalize text-[#4c4c50]">Shadow Color</span>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-500 transition-transform duration-200 group-hover:rotate-180" />
+              <ChevronDown className="h-3.5 w-3.5 text-[#6e6e73] transition-transform duration-200 group-hover:rotate-180" />
             </button>
 
             {/* Flyout: pt-1 bridges the gap so hover persists */}
             <div className="absolute left-0 top-full z-50 hidden w-full pt-1 group-hover:block">
-              <div className="p-2.5 bg-[#1a1a1f] border border-white/[0.08] rounded-xl shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-150">
-                <div className="grid grid-cols-8 gap-0 overflow-hidden rounded-lg ring-1 ring-white/5">
+              <div className="rounded-xl border border-black/10 bg-white p-2.5 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="grid grid-cols-8 gap-0 overflow-hidden rounded-lg border border-black/10">
                   {PALETTE_ROWS.map((row, ri) =>
                     row.map((c) => (
                       <button key={`${ri}-${c}`} onClick={() => update({ color: c })}
@@ -104,11 +104,11 @@ export default function DropShadowPanel({ object, onUpdate }: DropShadowPanelPro
                     ))
                   )}
                 </div>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-                  <span className="text-[10px] font-mono text-slate-500">{currentColor.toUpperCase()}</span>
-                  <label className="flex items-center gap-1.5 h-6 px-2 rounded-md bg-white/[0.04] ring-1 ring-white/10 cursor-pointer hover:ring-violet-500/40 transition-all relative overflow-hidden">
-                    <Pipette className="w-3 h-3 text-slate-400" />
-                    <span className="text-[10px] font-medium text-slate-400 pointer-events-none">Custom</span>
+                <div className="mt-2 flex items-center justify-between border-t border-black/10 pt-2">
+                  <span className="font-mono text-[10px] text-[#6e6e73]">{currentColor.toUpperCase()}</span>
+                  <label className="relative flex h-6 cursor-pointer items-center gap-1.5 overflow-hidden rounded-md border border-black/10 bg-[#f7f7f5] px-2 transition-all hover:border-black/30">
+                    <Pipette className="h-3 w-3 text-[#6e6e73]" />
+                    <span className="pointer-events-none text-[10px] font-medium text-[#6e6e73]">Custom</span>
                     <input className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" type="color" value={currentColor}
                       onChange={(e) => update({ color: e.target.value })} />
                   </label>

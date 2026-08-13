@@ -776,6 +776,8 @@ export function ObjectRenderer({ obj, commonProps, shadowProps, editingId, handl
                   : `M 0,0 A ${r},${r} 0 0,0 ${obj.width},0`;
               })()}
               visible={editingId !== obj.id}
+              stroke={obj.textStroke?.color}
+              strokeWidth={obj.textStroke?.width ?? 0}
               {...shadowProps}
               {...fillProps}
               shadowColor={obj.textShadow?.color}

@@ -4,7 +4,6 @@
 
 @layer base {
   :root {
-    /* Minimal light editor theme. Keep the editor monochrome by default. */
     --background: 60 12% 97%;
     --foreground: 0 0% 7%;
     --card: 0 0% 100%;
@@ -27,34 +26,11 @@
     --radius: 0.5rem;
   }
 
-  /* Light mode */
-  .light {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 0 0% 7%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 7%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 43%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 7%;
-    --destructive: 0 72% 44%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 88%;
-    --input: 0 0% 88%;
-    --ring: 0 0% 7%;
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
+
+  html,
   body {
     @apply bg-background text-foreground;
   }
@@ -78,9 +54,7 @@
 
 @layer components {
   .publish-surface {
-    background:
-      radial-gradient(circle at 18% 0%, rgba(120, 90, 255, 0.055), transparent 30%),
-      #111318;
+    background: #111318;
   }
 
   .publish-separator {
@@ -99,8 +73,6 @@
     border-radius: 14px;
   }
 
-  /* Keep wheel, touch and keyboard scrolling, but do not show a scrollbar
-     inside the publish workspace. */
   .publish-scroll {
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -108,428 +80,95 @@
 
   .publish-scroll::-webkit-scrollbar {
     display: none;
-    width: 0;
-    height: 0;
   }
 
   .sidebar-shell {
-    background: #f7f7f5;
-    color: #171717;
+    background: #ffffff;
+    color: #111111;
     border-color: rgba(0, 0, 0, 0.10);
-    box-shadow: -18px 0 50px rgba(0, 0, 0, 0.12);
-    backdrop-filter: blur(24px);
-  }
-
-  .sidebar-section {
-    @apply px-5 py-4 border-b border-black/[0.08];
-  }
-
-  .sidebar-section-title {
-    @apply text-[11px] font-black uppercase tracking-[0.18em] text-black/65;
-  }
-
-  .sidebar-panel {
-    @apply rounded-2xl border border-black/[0.08] bg-white/70 ring-1 ring-black/[0.03];
-  }
-
-  .sidebar-panel-soft {
-    @apply rounded-2xl border border-black/[0.06] bg-black/[0.02];
-  }
-
-  .layer-item {
-    @apply flex items-center gap-2 rounded-xl border border-black/[0.08] bg-white/75 px-3 py-2 text-black/70 transition-all;
-  }
-
-  .layer-item:hover {
-    @apply border-black/15 bg-black/[0.05] text-black;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-  }
-
-  .layer-item.active {
-    @apply border-black/20 bg-black/[0.08] text-black;
-    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.10);
-  }
-
-  /* Existing editor panels use slate utility classes. Normalize them inside
-     the new monochrome inspector without changing the canvas theme. */
-  .sidebar-shell [class*="bg-slate-900"] { background-color: #f7f7f5 !important; }
-  .sidebar-shell [class*="bg-slate-950"] { background-color: rgba(255,255,255,.72) !important; }
-  .sidebar-shell [class*="border-slate"] { border-color: rgba(0,0,0,.09) !important; }
-  .sidebar-shell [class*="text-slate-100"],
-  .sidebar-shell [class*="text-slate-200"],
-  .sidebar-shell [class*="text-slate-300"] { color: rgba(23,23,23,.78) !important; }
-  .sidebar-shell [class*="text-slate-400"],
-  .sidebar-shell [class*="text-slate-500"] { color: rgba(23,23,23,.48) !important; }
-
-  /* Monochrome Apple-like inspector. Keep the canvas independent while
-     removing the legacy neon/tech styling from the properties controls. */
-  .properties-panel {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, ui-sans-serif, system-ui, sans-serif;
-    background: #ffffff !important;
-    color: #111111 !important;
-  }
-  .properties-panel .text-slate-100,
-  .properties-panel .text-slate-200,
-  .properties-panel .text-slate-300,
-  .properties-panel .text-slate-400,
-  .properties-panel .text-slate-500,
-  .properties-panel .text-sky-200,
-  .properties-panel .text-sky-300,
-  .properties-panel .text-violet-200,
-  .properties-panel .text-violet-300,
-  .properties-panel .text-violet-400,
-  .properties-panel .text-fuchsia-300,
-  .properties-panel .text-rose-300 { color: #111111 !important; }
-  .properties-panel [class*="bg-white/"] { background-color: #ffffff !important; }
-  .properties-panel [class*="bg-slate-"] { background-color: #f7f7f5 !important; }
-  .properties-panel [class*="bg-rose-"] { background-color: #ffffff !important; }
-  .properties-panel [class*="bg-gradient-"] { background: #111111 !important; }
-  .properties-panel [class*="ring-"] { --tw-ring-color: rgba(0,0,0,.14) !important; }
-  .properties-panel [class*="border-white"] { border-color: rgba(0,0,0,.12) !important; }
-  .properties-panel [class*="border-rose"] { border-color: rgba(0,0,0,.18) !important; }
-  .properties-panel [class*="hover:bg-"]:hover { background-color: #f2f2f0 !important; }
-  .properties-panel input,
-  .properties-panel button,
-  .properties-panel select { font-family: inherit; }
-  .properties-panel input[type="number"],
-  .properties-panel input[type="text"] { color: #111111 !important; }
-  .properties-panel input[type="number"]:focus,
-  .properties-panel input[type="text"]:focus,
-  .properties-panel button:focus-visible,
-  .properties-panel select:focus-visible {
-    outline: 2px solid rgba(0,0,0,.16) !important;
-    outline-offset: 1px;
-  }
-  .properties-panel input[type="range"] { accent-color: #111111; }
-  .properties-panel .group .bg-gradient-to-r { background: #111111 !important; }
-  .properties-panel .group .ring-violet-400,
-  .properties-panel .group .border-sky-400 { border-color: #111111 !important; }
-  .properties-panel .shadow-lg,
-  .properties-panel .shadow-md,
-  .properties-panel .shadow-inner { box-shadow: none !important; }
-  .properties-select {
-    background: #ffffff !important;
-    color: #111111 !important;
-    border: 1px solid rgba(0,0,0,.16) !important;
-    border-radius: 8px !important;
-    box-shadow: none !important;
-  }
-  .properties-select-menu {
-    background: #ffffff !important;
-    color: #111111 !important;
-    border: 1px solid rgba(0,0,0,.14) !important;
-    box-shadow: 0 14px 35px rgba(0,0,0,.14) !important;
-  }
-  .properties-select-menu [data-highlighted] {
-    background: #f0f0ee !important;
-    color: #111111 !important;
-  }
-  .properties-panel [class*="border-sky-400"][class*="rounded-full"] {
-    background: #111111 !important;
-    border-color: #111111 !important;
-    box-shadow: none !important;
-  }
-
-  /* Refined light surface: airy like Apple settings, with enough hierarchy
-     to avoid the flat white-on-white appearance. */
-  .properties-panel {
-    background: #fbfbfd !important;
-    letter-spacing: -0.01em;
-  }
-  .properties-panel > .sidebar-section {
-    background: #ffffff !important;
-    border-bottom: 1px solid #e5e5ea !important;
-    padding: 18px 20px !important;
-  }
-  .properties-panel > .sidebar-section .rounded-lg {
-    background: #f2f2f7 !important;
-    border: 1px solid #e5e5ea !important;
-    box-shadow: none !important;
-  }
-  .properties-panel .sidebar-section-title {
-    color: #1d1d1f !important;
-    font-size: 12px !important;
-    letter-spacing: .12em !important;
-  }
-  .properties-panel > .flex-1 {
-    padding: 20px !important;
-    scrollbar-color: #c7c7cc transparent;
-  }
-  .properties-panel > .flex-1 > div {
-    padding: 14px 0 16px;
-    border-bottom: 1px solid #e5e5ea;
-  }
-  .properties-panel > .flex-1 > div:first-child { padding-top: 0; }
-  .properties-panel > .flex-1 > div:last-child { border-bottom: 0; }
-  .properties-panel .border-b {
-    border-color: #e5e5ea !important;
-  }
-  .properties-panel label,
-  .properties-panel .text-slate-500 {
-    color: #6e6e73 !important;
-    font-weight: 600 !important;
-  }
-  .properties-panel input[type="number"],
-  .properties-panel input[type="text"],
-  .properties-panel .properties-select {
-    background: #ffffff !important;
-    border: 1px solid #d2d2d7 !important;
-    border-radius: 9px !important;
-    min-height: 34px;
-    padding: 7px 9px !important;
-    transition: border-color .15s ease, box-shadow .15s ease;
-  }
-  .properties-panel input[type="number"]:focus,
-  .properties-panel input[type="text"]:focus,
-  .properties-panel .properties-select:focus {
-    border-color: #1d1d1f !important;
-    box-shadow: 0 0 0 3px rgba(0,0,0,.08) !important;
-    outline: none !important;
-  }
-  .properties-panel .properties-select {
-    padding-left: 12px !important;
-  }
-  .properties-panel [class*="rounded-2xl"] {
-    border-radius: 12px !important;
-  }
-  .properties-panel [class*="bg-white/"] {
-    background: #ffffff !important;
-    border: 1px solid #e5e5ea !important;
-  }
-  .properties-panel [class*="bg-slate-"] {
-    background: #f2f2f7 !important;
-  }
-  .properties-panel .group .bg-gradient-to-r {
-    background: #1d1d1f !important;
-  }
-  .properties-panel .group .bg-white {
-    background: #1d1d1f !important;
-  }
-  .properties-panel input[type="range"] + div,
-  .properties-panel input[type="range"] ~ div {
-    transition: none;
-  }
-  .properties-panel button:not(.properties-select) {
-    transition: background-color .15s ease, transform .15s ease, border-color .15s ease;
-  }
-  .properties-panel button:not(.properties-select):hover {
-    transform: translateY(-1px);
-  }
-  .properties-panel > .px-5 {
-    background: #ffffff !important;
-    border-top: 1px solid #e5e5ea !important;
-    padding: 16px 20px !important;
-  }
-  .properties-panel > .px-5 button {
-    min-height: 42px;
-    background: #1d1d1f !important;
-    color: #ffffff !important;
-    border: 0 !important;
-    box-shadow: 0 5px 12px rgba(0,0,0,.12) !important;
-  }
-  .properties-panel > .px-5 button:hover {
-    background: #000000 !important;
+    box-shadow: -10px 0 28px rgba(0, 0, 0, 0.08);
   }
 }
 
-/* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
-  border-radius: 4px;
+  background: #f0f0ee;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: rgba(0, 0, 0, 0.30);
 }
 
-/* Final light editor override. Keep the layout and behavior untouched while
-   making every visible workspace surface monochrome and low-contrast. */
 html,
-body,
-#root {
-  background: #f7f7f5 !important;
-  color: #111111 !important;
+body {
+  background: #f7f7f5;
+  color: #111111;
 }
 
 .editor-app,
 .editor-workspace,
 .canvas-workspace,
 .main-workspace {
-  background: #f7f7f5 !important;
+  background: #f7f7f5;
 }
 
-.editor-canvas,
-.canvas-container,
-.artboard,
-.canvas-wrapper,
-.canvas-container canvas,
-canvas {
-  background: #ffffff !important;
+html.dark,
+html.dark body {
+  background: #111318;
+  color: #f4f4f5;
 }
 
-.editor-canvas {
-  border: 1px solid rgba(0, 0, 0, 0.10) !important;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.055) !important;
+html.dark .editor-app,
+html.dark .editor-workspace,
+html.dark .canvas-workspace,
+html.dark .main-workspace {
+  background: #111318;
+  color: #f4f4f5;
 }
 
-.editor-toolbar {
-  background: rgba(255, 255, 255, 0.96) !important;
-  border: 1px solid rgba(0, 0, 0, 0.07) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+html.dark .editor-sidebar-surface {
+  background: #17191f;
+  color: #f4f4f5;
+  border-color: rgba(255, 255, 255, 0.10);
 }
 
-.editor-toolbar .tool-button {
-  background: transparent !important;
-  border: 0 !important;
-  color: #555558 !important;
-  border-radius: 10px !important;
+html.dark .editor-sidebar-surface > div:first-child {
+  background: #17191f;
+  border-color: rgba(255, 255, 255, 0.10);
 }
 
-.editor-toolbar .tool-button:hover {
-  background: #f2f2f2 !important;
-  color: #111111 !important;
+html.dark .editor-sidebar-surface button:not(.bg-black) {
+  color: rgba(255, 255, 255, 0.68);
 }
 
-.editor-toolbar .tool-button.active {
-  background: #111111 !important;
-  color: #ffffff !important;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.16) !important;
+html.dark .editor-sidebar-surface button:not(.bg-black):hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
-.editor-toolbar .tool-button:disabled {
-  color: #777777 !important;
-  opacity: 0.36 !important;
+html.dark .editor-sidebar-surface input,
+html.dark .editor-sidebar-surface textarea,
+html.dark .editor-sidebar-surface select {
+  background: #20242c;
+  color: #f4f4f5;
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
-.editor-toolbar svg {
-  stroke: currentColor !important;
+html.dark .editor-sidebar-surface h4,
+html.dark .editor-sidebar-surface label,
+html.dark .editor-sidebar-surface p {
+  color: rgba(255, 255, 255, 0.65);
 }
 
-.editor-toolbar > div > div:not(.tool-button) {
-  background: #ffffff !important;
-}
-
-.editor-header {
-  background: rgba(255, 255, 255, 0.95) !important;
-  color: #111111 !important;
-  border: 1px solid rgba(0, 0, 0, 0.06) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.045) !important;
-}
-
-.editor-header * {
-  color: #111111 !important;
-}
-
-.editor-toolbar > div[class*="h-7"],
-.editor-toolbar .toolbar-divider,
-.editor-toolbar .divider,
-.editor-toolbar .separator {
-  background: rgba(0, 0, 0, 0.08) !important;
-}
-
-/* Inspector and layers are legacy components with dark utility classes in
-   their markup. Normalize all of those utilities at the boundary so every
-   tool panel follows the same white / graphite design system. */
-.sidebar-shell {
-  background: #ffffff !important;
-  color: #111111 !important;
-  box-shadow: -12px 0 30px rgba(0, 0, 0, 0.06) !important;
-}
-
-.sidebar-shell [class*="bg-slate-"],
-.sidebar-shell [class*="bg-black/"],
-.sidebar-shell [class*="bg-white/"] {
-  background: #ffffff !important;
-}
-
-.sidebar-shell [class*="bg-black/[0.0"],
-.sidebar-shell [class*="bg-black/5"],
-.sidebar-shell [class*="bg-black/10"] {
-  background: #f7f7f5 !important;
-}
-
-.sidebar-shell [class*="border-slate"],
-.sidebar-shell [class*="border-white"],
-.sidebar-shell [class*="border-black/"] {
-  border-color: rgba(0, 0, 0, 0.08) !important;
-}
-
-.sidebar-shell [class*="text-slate-"],
-.sidebar-shell [class*="text-sky-"],
-.sidebar-shell [class*="text-violet-"],
-.sidebar-shell [class*="text-fuchsia-"],
-.sidebar-shell [class*="text-cyan-"] {
-  color: #555558 !important;
-}
-
-.properties-panel,
-.properties-panel > *,
-.properties-panel input,
-.properties-panel textarea,
-.properties-panel select,
-.properties-panel button:not(.bg-black) {
-  color: #111111 !important;
-}
-
-.properties-panel [class*="bg-slate-"],
-.properties-panel [class*="bg-white/"],
-.properties-panel [class*="bg-black/"],
-.properties-panel [class*="bg-sky-"],
-.properties-panel [class*="bg-rose-"],
-.properties-panel [class*="bg-violet-"],
-.properties-panel [class*="bg-fuchsia-"] {
-  background: #ffffff !important;
-}
-
-.properties-panel [class*="bg-black/[0.0"],
-.properties-panel [class*="bg-black/5"],
-.properties-panel [class*="bg-black/10"] {
-  background: #f7f7f5 !important;
-}
-
-.properties-panel [class*="bg-gradient-"] {
-  background: #111111 !important;
-}
-
-.properties-panel [class*="border-white"],
-.properties-panel [class*="border-slate"],
-.properties-panel [class*="border-rose"],
-.properties-panel [class*="ring-white"],
-.properties-panel [class*="ring-slate"],
-.properties-panel [class*="ring-violet"],
-.properties-panel [class*="ring-sky"] {
-  border-color: rgba(0, 0, 0, 0.10) !important;
-  --tw-ring-color: rgba(0, 0, 0, 0.10) !important;
-}
-
-.properties-panel [class*="text-slate-"],
-.properties-panel [class*="text-sky-"],
-.properties-panel [class*="text-violet-"],
-.properties-panel [class*="text-fuchsia-"],
-.properties-panel [class*="text-rose-"] {
-  color: #6e6e73 !important;
-}
-
-.properties-panel [class*="shadow-"] {
-  box-shadow: none !important;
-}
-
-.properties-panel input[type="range"] {
-  accent-color: #111111;
-}
-
-.properties-panel > .px-5 button {
-  background: #111111 !important;
-  color: #ffffff !important;
+html.dark .editor-sidebar-surface [class*="border-black"] {
+  border-color: rgba(255, 255, 255, 0.10);
 }

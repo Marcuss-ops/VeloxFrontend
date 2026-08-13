@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Sun } from 'lucide-react';
+import { Moon, Sun } from 'lucide-react';
 import { Button } from './Button';
 
 type Theme = 'dark' | 'light';
@@ -13,7 +13,7 @@ interface ThemeContextType {
 }
 
 const defaultContext: ThemeContextType = {
-  theme: 'dark',
+  theme: 'light',
   toggleTheme: () => {},
   setTheme: () => {},
 };
@@ -21,29 +21,44 @@ const defaultContext: ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType>(defaultContext);
 
 const THEME_KEY = 'dark-editor-theme';
-const FORCED_THEME: Theme = 'dark';
+const DEFAULT_THEME: Theme = 'light';
+
+function readTheme(): Theme {
+  if (typeof window === 'undefined') return DEFAULT_THEME;
+  try {
+    return window.localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : DEFAULT_THEME;
+  } catch {
+    return DEFAULT_THEME;
+  }
+}
+
+function applyTheme(theme: Theme) {
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  document.documentElement.classList.toggle('light', theme === 'light');
+  document.documentElement.style.colorScheme = theme;
+}
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(FORCED_THEME);
+  const [theme, setThemeState] = useState<Theme>(DEFAULT_THEME);
 
-  // Keep the editor locked in dark mode so the cover workspace never flips back to light.
   useEffect(() => {
-    localStorage.setItem(THEME_KEY, FORCED_THEME);
-    document.documentElement.classList.remove('light');
-    document.documentElement.classList.add('dark');
-    setThemeState(FORCED_THEME);
+    const initialTheme = readTheme();
+    setThemeState(initialTheme);
+    applyTheme(initialTheme);
   }, []);
 
   const setTheme = (newTheme: Theme) => {
-    const nextTheme = FORCED_THEME;
-    setThemeState(nextTheme);
-    localStorage.setItem(THEME_KEY, nextTheme);
-    document.documentElement.classList.remove('light');
-    document.documentElement.classList.add('dark');
+    setThemeState(newTheme);
+    try {
+      localStorage.setItem(THEME_KEY, newTheme);
+    } catch {
+      // Theme still works for the current tab when storage is unavailable.
+    }
+    applyTheme(newTheme);
   };
 
   const toggleTheme = () => {
-    setTheme(FORCED_THEME);
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   const contextValue: ThemeContextType = {
@@ -74,21 +89,22 @@ export function ThemeToggle() {
   }, []);
 
   if (!mounted) {
-    return <Button variant="ghost" size="icon" className="rounded-full"><Sun className="w-5 h-5" /></Button>;
+    return <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" aria-label="Cambia tema"><Sun className="h-4 w-4" /></Button>;
   }
 
   return (
     <Button
       type="button"
       variant="ghost"
-      size="sm"
+      size="icon"
       onClick={toggleTheme}
-      disabled={theme === 'dark'}
-      className="rounded-full border border-white/10 bg-white/5 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200 opacity-100 hover:bg-white/5 disabled:opacity-100 disabled:cursor-default"
-      title="Dark mode attivo"
+      className={theme === 'dark'
+        ? 'h-9 w-9 rounded-full border border-white/15 bg-white/10 p-0 text-white hover:bg-white/15'
+        : 'h-9 w-9 rounded-full border border-black/10 bg-white p-0 text-[#111111] hover:bg-[#f2f2ef]'}
+      title={theme === 'dark' ? 'Passa al tema giorno' : 'Passa al tema notte'}
+      aria-label={theme === 'dark' ? 'Passa al tema giorno' : 'Passa al tema notte'}
     >
-      <Sun className="mr-2 h-4 w-4" />
-      Dark
+      {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>
   );
 }

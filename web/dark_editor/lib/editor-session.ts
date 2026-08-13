@@ -73,11 +73,17 @@ async function mintLaunchToken(projectId: string): Promise<string> {
 }
 
 /** Exchange the one-time fragment token for an in-memory editor session token. */
-export function ensureEditorSessionToken(): Promise<string> {
-  const projectId = projectIdFromPath();
+export function ensureEditorSessionToken(projectIdOverride?: string): Promise<string> {
+  const pathProjectId = projectIdFromPath();
+  const projectId = pathProjectId || projectIdOverride || '';
   if (!projectId) {
     return Promise.reject(new Error('Editor project non disponibile.'));
   }
+  // API helpers and unit-level consumers may provide an explicit project
+  // id outside the editor route. The real editor always has a project id in
+  // its pathname, so this branch avoids trying to mint a second launch token
+  // for a non-editor page while preserving the request's cookie auth.
+  if (!pathProjectId && projectIdOverride) return Promise.resolve('');
   if (sessionToken && sessionProjectId === projectId) return Promise.resolve(sessionToken);
   if (sessionToken && sessionProjectId !== projectId) {
     sessionToken = null;
@@ -120,8 +126,9 @@ export function ensureEditorSessionToken(): Promise<string> {
 }
 
 /** Return the in-memory session bearer, exchanging the launch fragment if needed. */
-export async function editorAuthorizationHeaders(): Promise<Record<string, string>> {
-  return { Authorization: `Bearer ${await ensureEditorSessionToken()}` };
+export async function editorAuthorizationHeaders(projectIdOverride?: string): Promise<Record<string, string>> {
+  const token = await ensureEditorSessionToken(projectIdOverride);
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /** Test/reset seam; the token is never persisted to storage. */

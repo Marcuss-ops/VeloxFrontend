@@ -1,70 +1,7 @@
-'use client';
-
-import React from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/Select';
-import { Slider } from '@/components/ui/Slider';
-
-const FORMATS = [
-  { value: 'png', label: 'PNG - Lossless', description: 'Best for graphics with transparency' },
-  { value: 'jpeg', label: 'JPEG - Compressed', description: 'Best for photos, smaller file size' },
-  { value: 'webp', label: 'WebP - Compressed', description: 'Smallest file size for local export' },
-];
-
-export interface FormatQualitySectionProps {
-  format: string;
-  setFormat: (format: string) => void;
-  quality: number;
-  setQuality: (quality: number) => void;
-}
-
-export function FormatQualitySection({
-  format,
-  setFormat,
-  quality,
-  setQuality,
-}: FormatQualitySectionProps) {
+export function FormatQualitySection() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <div className="space-y-2">
-        <label htmlFor="export-format" className="text-sm font-medium">
-          Format
-        </label>
-        <Select value={format} onValueChange={setFormat}>
-          <SelectTrigger id="export-format" className="w-full">
-            <SelectValue placeholder="Select format" />
-          </SelectTrigger>
-          <SelectContent>
-            {FORMATS.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">
-          {FORMATS.find((item) => item.value === format)?.description}
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="export-quality" className="text-sm font-medium">
-          Quality: {quality}%
-        </label>
-        <Slider
-          id="export-quality"
-          value={[quality]}
-          onValueChange={(value) => setQuality(value[0])}
-          min={10}
-          max={100}
-          step={1}
-        />
-      </div>
+    <div className="rounded-lg border border-black/[0.08] bg-[#f7f7f5] px-3 py-2 text-xs text-[#6e6e73]">
+      Export fisso: <span className="font-semibold text-[#111111]">PNG senza perdita</span>
     </div>
   );
 }

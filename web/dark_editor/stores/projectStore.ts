@@ -40,7 +40,7 @@ export interface ProjectState {
   updateProjectName: (name: string) => void;
 
   // Export operations
-  exportProject: (format: string, quality: number) => Promise<Blob | null>;
+  exportProject: () => Promise<Blob | null>;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => {
@@ -154,10 +154,10 @@ export const useProjectStore = create<ProjectState>((set, get) => {
     });
   },
 
-  exportProject: async (format, quality) => {
+  exportProject: async () => {
     // This will be implemented with actual export logic
     // For now, return null
-    console.log('Export project:', format, quality);
+    console.log('Export project: PNG');
     return null;
   },
   });

@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`dark ${fontVariables}`} suppressHydrationWarning>
+    <html lang="en" className={`light ${fontVariables}`} suppressHydrationWarning>
       <head>
         <script
           suppressHydrationWarning

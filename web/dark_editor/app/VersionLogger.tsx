@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-const VERSION_LABEL = "InstaEditor";
+const VERSION_LABEL = "InstaEditor 1.0";
 
 export default function VersionLogger() {
   useEffect(() => {

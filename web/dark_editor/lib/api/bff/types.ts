@@ -240,8 +240,16 @@ export async function bffFetch<T>(
     }
   }
 
-  const url = editorRuntimePath(`${BFF_BASE}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`);
-  const authorization = await editorAuthorizationHeaders();
+  const rawEndpoint = `${BFF_BASE}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+  // Node-side callers (tests and server utilities) exercise the public API
+  // contract without the reverse-proxy compatibility prefix. Browser calls
+  // retain the deployed /instaeditor boundary.
+  const url = typeof window === 'undefined' ? rawEndpoint : editorRuntimePath(rawEndpoint);
+  const projectMatch = endpoint.match(/\/by-project\/([^/?]+)/);
+  const projectId = projectMatch ? decodeURIComponent(projectMatch[1]) : undefined;
+  const authorization = typeof window === 'undefined'
+    ? {}
+    : await editorAuthorizationHeaders(projectId);
   const response = await fetch(url, {
     ...options,
     method,

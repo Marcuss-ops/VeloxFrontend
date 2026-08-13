@@ -23,11 +23,28 @@ async function handle(request: Request, params: Params): Promise<Response> {
   if (authorization) headers.authorization = authorization;
   if (body) headers['content-type'] = request.headers.get('content-type') ?? 'application/json';
 
-  return proxyToGo(upstreamPath, {
+  const proxied = await proxyToGo(upstreamPath, {
     method: request.method,
     body,
     headers,
   });
+
+  // A document is optional for a newly-created YouTube editor session. The
+  // InstaEdit session endpoint remains the source of truth until the first
+  // canvas save. Normalize the upstream Velox 404 to an explicit empty
+  // document so the browser does not report a noisy failed resource before
+  // the client falls back to the session thumbnail.
+  if (
+    request.method === 'GET' &&
+    proxied.status === 404 &&
+    path.length === 3 &&
+    path[0] === 'projects' &&
+    path[2] === 'document'
+  ) {
+    return Response.json({ document_exists: false }, { status: 200, headers: { 'cache-control': 'no-store' } });
+  }
+
+  return proxied;
 }
 
 export const GET = (request: Request, context: { params: Params }) => handle(request, context.params);

@@ -7,13 +7,11 @@ const FORMAT_SECTION_PATH = path.resolve(
   '../components/editor/export/FormatQualitySection.tsx',
 );
 
-describe('FormatQualitySection local-export formats', () => {
-  it('offers WebP for local export while publish handoff remains PNG/JPG', () => {
+describe('FormatQualitySection export policy', () => {
+  it('keeps PNG fixed without format or quality controls', () => {
     const source = fs.readFileSync(FORMAT_SECTION_PATH, 'utf8');
 
-    // WebP is valid for local downloads. The direct InstaEdit handoff still
-    // normalizes variants to PNG before calling /media/presign.
-    expect(source).toMatch(/value:\s*[\'"]webp[\'"]/);
-    expect(source).toMatch(/WebP - Compressed/);
+    expect(source).toMatch(/PNG senza perdita/);
+    expect(source).not.toMatch(/WebP|JPEG|quality|Qualità|<Select|<Slider/);
   });
 });

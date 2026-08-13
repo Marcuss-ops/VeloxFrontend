@@ -90,10 +90,10 @@ export function useYouTubeSessionGate(projectId: string): SessionGateState {
 
         async function validate() {
             try {
-                const token = await ensureEditorSessionToken();
+                const token = await ensureEditorSessionToken(projectId);
                 const res = await fetch(GATE_ENDPOINT(projectId), {
                     credentials: 'include',
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
 
                 if (cancelled) return;

@@ -1,7 +1,7 @@
 // API client for InstaEditor.
 // The current deployment uses a compatibility namespace, isolated here so
 // callers do not treat it as a product route or launcher.
-import { editorRuntimePath } from './editor-runtime';
+import { editorBffPath, editorRuntimePath } from './editor-runtime';
 import { editorAuthorizationHeaders } from './editor-session';
 
 const API_BASE = editorRuntimePath('');
@@ -28,7 +28,8 @@ export function getCSRFHeaders(): Record<string, string> {
 /** Resolve URLs returned by the editor API to browser-loadable asset URLs. */
 export function resolveEditorAssetUrl(value: string | undefined): string {
   if (!value) return '';
-  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  if (/^https?:/i.test(value)) return editorImageProxyUrl(value);
+  if (/^(data:|blob:)/i.test(value)) return value;
   if (value.startsWith(`${API_BASE}/`)) return value;
   if (value.startsWith('/')) return value;
   // The editor upload APIs return temp/<filename>; the runtime helper resolves
@@ -163,11 +164,75 @@ export interface Project {
   folder_id?: string | null;
 }
 
+export interface DriveAsset {
+  id: string;
+  name: string;
+  mime_type: string;
+  size?: string;
+  modified_time?: string;
+  thumbnail_url?: string;
+  content_url: string;
+}
+
+export async function listDriveAssets(folderId: string, driveAccountId?: number, pageToken?: string): Promise<{ items: DriveAsset[]; next_page_token?: string; drive_account_id: number }> {
+  const params = new URLSearchParams({ folder_id: folderId });
+  if (driveAccountId) params.set('drive_account_id', String(driveAccountId));
+  if (pageToken) params.set('page_token', pageToken);
+  const response = await editorFetch(`${API_BASE}/api/v1/drive/assets?${params.toString()}`, { cache: 'no-store' });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error || 'Impossibile leggere gli asset Drive');
+  return body as { items: DriveAsset[]; next_page_token?: string; drive_account_id: number };
+}
+
+export function driveAssetContentUrl(asset: DriveAsset): string {
+  if (/^(https?:|data:|blob:)/i.test(asset.content_url)) return asset.content_url;
+  return editorRuntimePath(asset.content_url);
+}
+
 function safeAssetUrl(value: string | undefined, videoId?: string): string {
   if (value && (/^https?:\/\//i.test(value) || value.startsWith('data:') || value.startsWith('/'))) {
     return value;
   }
   return videoId ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg` : '';
+}
+
+/**
+ * YouTube's thumbnail CDN does not expose CORS headers. Route those images
+ * through the editor origin before Konva draws them, otherwise the canvas is
+ * tainted and both preview/export and filters fail.
+ */
+function editorImageProxyUrl(value: string): string {
+  try {
+    const parsed = new URL(value);
+    const hostname = parsed.hostname.toLowerCase();
+    if (!hostname.endsWith('ytimg.com') && hostname !== 'youtube.com' && !hostname.endsWith('.youtube.com')) {
+      return value;
+    }
+    return editorRuntimePath(`api/image-proxy?url=${encodeURIComponent(parsed.toString())}`);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeCanvasImages(canvasJson: Record<string, unknown>): Record<string, unknown> {
+  const objects = Array.isArray(canvasJson.objects) ? canvasJson.objects : [];
+  return {
+    ...canvasJson,
+    objects: objects.map((value) => {
+      if (!value || typeof value !== 'object') return value;
+      const object = value as Record<string, unknown>;
+      return typeof object.src === 'string' ? { ...object, src: editorImageProxyUrl(object.src) } : object;
+    }),
+  };
+}
+
+async function editorProjectFetch(projectId: string, path: string, init: RequestInit = {}): Promise<Response> {
+  const authorization = await editorAuthorizationHeaders(projectId);
+  return fetch(editorBffPath(path), {
+    ...init,
+    credentials: 'include',
+    headers: { ...authorization, ...getCSRFHeaders(), ...init.headers },
+  });
 }
 
 // Upload an image
@@ -335,16 +400,26 @@ export async function listProjects(type?: string): Promise<Project[]> {
 // Get a project
 export async function getProject(id: string): Promise<Project> {
   if (id.startsWith('ve_')) {
-    // YouTube editor sessions provide the initial thumbnail metadata, while
-    // the editor project endpoint stores the actual canvas snapshot.
-    // Prefer the persisted canvas on reload; otherwise every refresh would
-    // rebuild the editor from the original thumbnail and discard edits.
-    const persistedResponse = await editorFetch(`${API_BASE}/api/projects/${encodeURIComponent(id)}`, {
+    // The old local /api/projects catalog does not own ve_* projects. Read the
+    // persisted document through the project-scoped InstaEdit BFF instead.
+    const persistedResponse = await editorProjectFetch(id, `projects/${encodeURIComponent(id)}/document`, {
       credentials: 'include',
       cache: 'no-store',
     });
     if (persistedResponse.ok) {
-      return persistedResponse.json();
+      const document = await persistedResponse.json() as Record<string, unknown>;
+      if (document.document_exists !== false) {
+        const now = new Date().toISOString();
+        return {
+          id,
+          name: `YouTube thumbnail ${id}`,
+          type: 'youtube_thumbnail',
+          canvas_json: normalizeCanvasImages(document),
+          preview_url: '',
+          created_at: now,
+          updated_at: now,
+        };
+      }
     }
 
     const response = await editorFetch(`${API_BASE}/api/v1/youtube/editor-sessions/by-project/${encodeURIComponent(id)}`, {
@@ -363,7 +438,7 @@ export async function getProject(id: string): Promise<Project> {
       created_at: string;
       updated_at: string;
     };
-    const thumbnail = safeAssetUrl(session.source_thumbnail_url, session.youtube_video_id);
+    const thumbnail = editorImageProxyUrl(safeAssetUrl(session.source_thumbnail_url, session.youtube_video_id));
     return {
       id: session.velox_project_id || id,
       name: session.draft_title || `YouTube thumbnail ${session.youtube_video_id}`,
@@ -414,6 +489,19 @@ export async function saveProject(project: {
   canvas_json: Record<string, unknown>;
   preview_filename?: string;
 }): Promise<{ id: string; message: string }> {
+  if (project.id.startsWith('ve_')) {
+    const response = await editorProjectFetch(project.id, `projects/${encodeURIComponent(project.id)}/document`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(normalizeCanvasImages(project.canvas_json)),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to save editor document');
+    }
+    return { id: project.id, message: 'Project saved' };
+  }
+
   const response = await editorFetch(`${API_BASE}/api/projects/${encodeURIComponent(project.id)}`, {
     method: 'POST',
     credentials: 'include',

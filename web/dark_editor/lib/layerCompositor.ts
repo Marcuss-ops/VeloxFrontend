@@ -1,7 +1,7 @@
 // Layer Compositor
 // Handles layer blending and compositing using WASM
 
-import initWasm, { wasm_blend_layers } from './wasm/wasm_filters.js';
+import initWasm, { wasm_blend_layers } from './wasm/pkg/wasm_filters.js';
 
 export type BlendMode = 
   | 'normal'

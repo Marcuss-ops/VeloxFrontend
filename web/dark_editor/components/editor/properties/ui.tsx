@@ -2,22 +2,25 @@
 
 import React from 'react';
 
+const labelClass = 'text-[10px] font-bold uppercase tracking-[0.14em] text-[#6e6e73]';
+const controlClass = 'rounded-lg border border-black/[0.12] bg-white text-[#111111] outline-none transition focus:border-black/40 focus:ring-2 focus:ring-black/[0.08]';
+
 export function Section({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 pb-1.5 border-b border-white/[0.06]">
-        <div className="text-violet-300/90">{icon}</div>
-        <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">{title}</span>
+    <section className="space-y-3 border-b border-black/[0.08] pb-5 last:border-b-0">
+      <div className="flex items-center gap-2">
+        <div className="text-[#111111]">{icon}</div>
+        <h4 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#111111]">{title}</h4>
       </div>
       <div className="space-y-3">{children}</div>
-    </div>
+    </section>
   );
 }
 
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">{label}</label>
+      <label className={labelClass}>{label}</label>
       {children}
     </div>
   );
@@ -46,43 +49,38 @@ export function NumberField({
 }) {
   return (
     <div className="space-y-1.5">
-      {label && <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">{label}</label>}
-      <div className="flex items-center gap-1.5 h-9 px-2.5 rounded-xl bg-white/[0.04] ring-1 ring-white/10 focus-within:ring-violet-500/50 focus-within:bg-white/[0.06] transition-all">
-        {icon && <span className="text-[10px] font-black text-violet-300/80 select-none w-3.5 text-center">{icon}</span>}
+      {label && <label className={labelClass}>{label}</label>}
+      <div className={`flex h-9 items-center gap-1.5 px-2.5 ${controlClass}`}>
+        {icon && <span className="w-3.5 text-center text-[10px] font-black text-[#6e6e73] select-none">{icon}</span>}
         <input
-          className="bg-transparent border-none p-0 text-sm focus:ring-0 w-full text-slate-100 placeholder-slate-600 outline-none tabular-nums"
+          className="w-full bg-transparent p-0 text-sm tabular-nums text-[#111111] outline-none placeholder:text-[#9a9a9f]"
           type="number"
           step={step}
           value={Number.isFinite(value) ? value : 0}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
           onBlur={onBlur}
         />
-        {suffix && <span className="text-[10px] font-bold text-slate-500 select-none">{suffix}</span>}
+        {suffix && <span className="select-none text-[10px] font-bold text-[#6e6e73]">{suffix}</span>}
       </div>
     </div>
   );
 }
 
 export function ColorSwatch({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
-  const containerHeight = compact ? 'h-9' : 'h-[38px]';
   const [inputValue, setInputValue] = React.useState(value);
 
   React.useEffect(() => {
     setInputValue(value);
   }, [value]);
 
-  const handleTextChange = (val: string) => {
-    setInputValue(val);
-    if (/^#[0-9A-F]{6}$/i.test(val) || /^#[0-9A-F]{3}$/i.test(val)) {
-      onChange(val);
-    }
+  const handleTextChange = (nextValue: string) => {
+    setInputValue(nextValue);
+    if (/^#[0-9A-F]{6}$/i.test(nextValue) || /^#[0-9A-F]{3}$/i.test(nextValue)) onChange(nextValue);
   };
 
   const handleTextBlur = () => {
     let formatted = inputValue.trim();
-    if (!formatted.startsWith('#')) {
-      formatted = '#' + formatted;
-    }
+    if (!formatted.startsWith('#')) formatted = `#${formatted}`;
     if (/^#[0-9A-F]{6}$/i.test(formatted) || /^#[0-9A-F]{3}$/i.test(formatted)) {
       onChange(formatted);
       setInputValue(formatted);
@@ -92,14 +90,11 @@ export function ColorSwatch({ value, onChange, compact }: { value: string; onCha
   };
 
   return (
-    <div className={`flex items-center gap-2 ${containerHeight} w-full rounded-xl bg-white/[0.04] ring-1 ring-white/10 focus-within:ring-violet-500/50 transition-all`}>
-      <label className="relative flex items-center justify-center size-6 rounded-md overflow-hidden ml-1.5 cursor-pointer shrink-0 shadow-md transition-transform hover:scale-105 active:scale-95">
-        <div
-          className="size-full"
-          style={{ backgroundColor: value, boxShadow: `0 0 10px ${value}50` }}
-        />
+    <div className={`flex w-full items-center gap-2 ${compact ? 'h-9' : 'h-[38px]'} rounded-lg border border-black/[0.12] bg-white px-1.5 transition focus-within:border-black/40 focus-within:ring-2 focus-within:ring-black/[0.08]`}>
+      <label className="relative size-6 shrink-0 cursor-pointer overflow-hidden rounded-md border border-black/10">
+        <div className="size-full" style={{ backgroundColor: value }} />
         <input
-          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+          className="absolute inset-0 size-full cursor-pointer opacity-0"
           type="color"
           value={value}
           onChange={(e) => {
@@ -114,7 +109,7 @@ export function ColorSwatch({ value, onChange, compact }: { value: string; onCha
         onChange={(e) => handleTextChange(e.target.value)}
         onBlur={handleTextBlur}
         placeholder="#ffffff"
-        className="bg-transparent border-none p-0 text-xs font-bold text-slate-200 uppercase w-full outline-none focus:ring-0 select-all tabular-nums"
+        className="w-full bg-transparent p-0 text-xs font-bold uppercase tabular-nums text-[#111111] outline-none placeholder:text-[#9a9a9f]"
       />
     </div>
   );
@@ -143,9 +138,9 @@ export function PropertySlider({
   const percentage = Math.min(100, Math.max(0, ((displayValue - min) / (max - min)) * 100));
 
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between items-center">
-        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">{label}</label>
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className={labelClass}>{label}</label>
         <div className="flex items-center gap-0.5">
           <input
             type="number"
@@ -153,28 +148,16 @@ export function PropertySlider({
             step={step}
             onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
             onBlur={onBlur}
-            className="w-12 bg-transparent border-none p-0 text-right text-xs font-bold text-sky-200 focus:ring-0 outline-none tabular-nums [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            className="w-12 bg-transparent p-0 text-right text-xs font-bold tabular-nums text-[#111111] outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           />
-          {suffix && <span className="text-[10px] font-bold text-slate-500">{suffix}</span>}
+          {suffix && <span className="text-[10px] font-bold text-[#6e6e73]">{suffix}</span>}
         </div>
       </div>
-      
-      <div className="relative flex items-center h-5 group cursor-pointer">
-        {/* Track Background */}
-        <div className="w-full h-1 rounded-full bg-white/[0.08] ring-1 ring-white/5 relative">
-          {/* Highlight Fill */}
-          <div 
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-400 to-cyan-300 rounded-full" 
-            style={{ width: `${percentage}%` }}
-          />
-          {/* Visible Slider Circle Knob */}
-          <div 
-            className="absolute top-1/2 size-3.5 rounded-full bg-white border-2 border-sky-400 shadow-md shadow-sky-500/30 -translate-y-1/2 -translate-x-1/2 transition-transform group-hover:scale-110 active:scale-95" 
-            style={{ left: `${percentage}%` }}
-          />
+      <div className="group relative flex h-5 cursor-pointer items-center">
+        <div className="relative h-1 w-full rounded-full bg-black/[0.10]">
+          <div className="absolute inset-y-0 left-0 rounded-full bg-[#111111]" style={{ width: `${percentage}%` }} />
+          <div className="absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#111111] bg-white transition-transform group-hover:scale-110" style={{ left: `${percentage}%` }} />
         </div>
-        
-        {/* Invisible Input Range for native dragging interaction */}
         <input
           type="range"
           min={min}
@@ -184,99 +167,65 @@ export function PropertySlider({
           onChange={(e) => onChange(parseFloat(e.target.value))}
           onMouseUp={onBlur}
           onTouchEnd={onBlur}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
         />
       </div>
     </div>
   );
 }
 
-export function RotationDial({
-  value,
-  onChange,
-  onBlur,
-}: {
-  value: number;
-  onChange: (val: number) => void;
-  onBlur?: () => void;
-}) {
+export function RotationDial({ value, onChange, onBlur }: { value: number; onChange: (val: number) => void; onBlur?: () => void }) {
   const dialRef = React.useRef<HTMLDivElement>(null);
   const normalizedValue = ((value % 360) + 360) % 360;
 
   const handlePointer = (clientX: number, clientY: number) => {
     if (!dialRef.current) return;
     const rect = dialRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const dy = clientY - centerY;
-    const dx = clientX - centerX;
-    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    angle = (angle + 90 + 360) % 360;
-    onChange(Math.round(angle));
+    const angle = Math.atan2(clientY - (rect.top + rect.height / 2), clientX - (rect.left + rect.width / 2)) * (180 / Math.PI);
+    onChange(Math.round((angle + 90 + 360) % 360));
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    handlePointer(e.clientX, e.clientY);
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      handlePointer(moveEvent.clientX, moveEvent.clientY);
-    };
+  const handleMouseDown = (event: React.MouseEvent) => {
+    event.preventDefault();
+    handlePointer(event.clientX, event.clientY);
+    const handleMouseMove = (moveEvent: MouseEvent) => handlePointer(moveEvent.clientX, moveEvent.clientY);
     const handleMouseUp = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
-      if (onBlur) onBlur();
+      onBlur?.();
     };
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 0) return;
-    handlePointer(e.touches[0].clientX, e.touches[0].clientY);
+  const handleTouchStart = (event: React.TouchEvent) => {
+    if (!event.touches.length) return;
+    handlePointer(event.touches[0].clientX, event.touches[0].clientY);
     const handleTouchMove = (moveEvent: TouchEvent) => {
-      if (moveEvent.touches.length === 0) return;
-      handlePointer(moveEvent.touches[0].clientX, moveEvent.touches[0].clientY);
+      if (moveEvent.touches.length) handlePointer(moveEvent.touches[0].clientX, moveEvent.touches[0].clientY);
     };
     const handleTouchEnd = () => {
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
-      if (onBlur) onBlur();
+      onBlur?.();
     };
     window.addEventListener('touchmove', handleTouchMove);
     window.addEventListener('touchend', handleTouchEnd);
   };
 
   return (
-    <div className="flex items-center justify-between bg-white/[0.02] p-3 rounded-2xl ring-1 ring-white/[0.06]">
-      <div className="space-y-1.5 flex-1">
-        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">Rotation</label>
+    <div className="flex items-center justify-between rounded-xl border border-black/[0.08] bg-[#f7f7f5] p-3">
+      <div className="space-y-1.5">
+        <label className={labelClass}>Rotation</label>
         <div className="flex items-center gap-0.5">
-          <input
-            type="number"
-            value={Math.round(value)}
-            onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-            onBlur={onBlur}
-            className="w-12 bg-transparent border-none p-0 text-sm font-bold text-sky-200 focus:ring-0 outline-none tabular-nums"
-          />
-          <span className="text-[10px] font-bold text-slate-500">deg</span>
+          <input type="number" value={Math.round(value)} onChange={(e) => onChange(parseFloat(e.target.value) || 0)} onBlur={onBlur} className="w-12 bg-transparent p-0 text-sm font-bold tabular-nums text-[#111111] outline-none" />
+          <span className="text-[10px] font-bold text-[#6e6e73]">deg</span>
         </div>
       </div>
-      
-      <div
-        ref={dialRef}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-        className="relative size-10 rounded-full border border-white/10 bg-slate-950 flex items-center justify-center cursor-pointer shadow-inner group hover:border-violet-500/50 transition-all select-none shrink-0"
-        style={{
-          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
-        }}
-      >
-        <div className="size-1 rounded-full bg-slate-500 group-hover:bg-violet-300" />
-        <div
-          className="absolute inset-0 flex justify-center origin-center transition-transform duration-75 ease-out"
-          style={{ transform: `rotate(${normalizedValue}deg)` }}
-        >
-          <div className="w-0.5 h-3 bg-gradient-to-b from-sky-400 to-cyan-300 rounded-full mt-0.5 group-hover:from-violet-400 group-hover:to-fuchsia-300 shadow-lg shadow-violet-500/50" />
+      <div ref={dialRef} onMouseDown={handleMouseDown} onTouchStart={handleTouchStart} className="relative flex size-10 shrink-0 cursor-pointer select-none items-center justify-center rounded-full border border-black/15 bg-white transition hover:border-black/40">
+        <div className="size-1 rounded-full bg-[#6e6e73]" />
+        <div className="absolute inset-0 flex origin-center justify-center" style={{ transform: `rotate(${normalizedValue}deg)` }}>
+          <div className="mt-1 h-3 w-0.5 rounded-full bg-[#111111]" />
         </div>
       </div>
     </div>
@@ -285,18 +234,8 @@ export function RotationDial({
 
 export function Toggle({ on, onChange }: { on: boolean; onChange: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onChange}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ${
-        on ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/40' : 'bg-white/[0.08] ring-1 ring-white/10'
-      }`}
-    >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform mt-1 ${
-          on ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
+    <button type="button" onClick={onChange} aria-pressed={on} className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border transition-colors ${on ? 'border-[#111111] bg-[#111111]' : 'border-black/15 bg-[#e5e5e5]'}`}>
+      <span className={`mt-0.5 inline-block size-4 rounded-full bg-white shadow-sm transition-transform ${on ? 'translate-x-6' : 'translate-x-1'}`} />
     </button>
   );
 }

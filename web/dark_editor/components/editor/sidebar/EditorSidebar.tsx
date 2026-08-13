@@ -255,7 +255,7 @@ export default function EditorSidebar() {
   const renderDesignTab = () => (
     <div className="flex-1 flex flex-col min-h-0">
       <PropertiesPanel />
-      <div className="border-t border-slate-800 flex-1 overflow-hidden flex flex-col min-h-0">
+      <div className="flex flex-1 flex-col min-h-0 overflow-hidden border-t border-black/[0.08]">
         <LayersPanel />
       </div>
     </div>
@@ -264,7 +264,7 @@ export default function EditorSidebar() {
   const renderTemplatesTab = () => (
     <div className="p-4 space-y-4 flex flex-col h-full overflow-y-auto">
       <div className="space-y-2">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Salva come Template</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#6e6e73]">Salva come Template</h4>
         <div className="flex items-center gap-2">
           <Input
             value={newTemplateName}
@@ -278,21 +278,21 @@ export default function EditorSidebar() {
         </div>
       </div>
 
-      <div className="border-t border-slate-800 pt-3 space-y-3">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+      <div className="space-y-3 border-t border-black/[0.08] pt-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#6e6e73]">
           Libreria Template ({templates.length})
         </h4>
         {templates.length === 0 ? (
-          <div className="text-xs text-slate-500 italic p-2">
+          <div className="p-2 text-xs italic text-[#6e6e73]">
             Nessun template salvato. Crea uno stile e salvalo per riutilizzarlo in altre nicchie!
           </div>
         ) : (
           <div className="space-y-2">
             {templates.map((t) => (
-              <div key={t.id} className="flex flex-col gap-2 border border-slate-800 rounded-lg p-2.5 bg-slate-950/40">
+              <div key={t.id} className="flex flex-col gap-2 rounded-xl border border-black/[0.08] bg-white p-2.5">
                 <div className="min-w-0">
-                  <div className="text-xs font-bold text-slate-200 truncate">{t.name}</div>
-                  <div className="text-[10px] text-slate-500">{new Date(t.createdAt).toLocaleDateString()}</div>
+                  <div className="truncate text-xs font-bold text-[#111111]">{t.name}</div>
+                  <div className="text-[10px] text-[#6e6e73]">{new Date(t.createdAt).toLocaleDateString()}</div>
                 </div>
                 <div className="flex items-center gap-1.5 justify-end">
                   <Button size="xs" variant="outline" onClick={() => handleApplyTemplate(t)}>
@@ -313,23 +313,23 @@ export default function EditorSidebar() {
   const renderAssetsTab = () => (
     <div className="p-4 space-y-4 flex flex-col h-full overflow-y-auto">
       <div className="space-y-2">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Asset di Brand Precaricati</h4>
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#6e6e73]">Asset di Brand Precaricati</h4>
         <div className="grid grid-cols-2 gap-2">
           {PRELOADED_ASSETS.map((asset) => (
             <button
               key={asset.id}
               onClick={() => handleAddPreloadedAsset(asset.id)}
-              className="flex flex-col items-center gap-1 p-2 rounded-lg border border-slate-800 hover:border-primary hover:bg-primary/5 transition-all text-left bg-slate-950/20"
+              className="flex flex-col items-center gap-1 rounded-xl border border-black/[0.08] bg-white p-2 text-left transition-all hover:border-black/30 hover:bg-[#f7f7f5]"
             >
               <img src={asset.src} alt={asset.name} className="w-full h-16 object-cover rounded-md" />
-              <span className="text-[10px] font-semibold text-slate-300 truncate w-full text-center">{asset.name}</span>
+              <span className="w-full truncate text-center text-[10px] font-semibold text-[#4c4c50]">{asset.name}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="border-t border-slate-800 pt-3 space-y-2">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Carica Asset Locale</h4>
+      <div className="space-y-2 border-t border-black/[0.08] pt-3">
+        <h4 className="text-xs font-bold uppercase tracking-wider text-[#6e6e73]">Carica Asset Locale</h4>
         <input
           ref={customAssetInputRef}
           type="file"
@@ -352,15 +352,15 @@ export default function EditorSidebar() {
       </div>
 
       {customAssets.length > 0 && (
-        <div className="space-y-2 border-t border-slate-800 pt-3">
-          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+        <div className="space-y-2 border-t border-black/[0.08] pt-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-[#6e6e73]">
             Asset Condivisi ({customAssets.length})
           </h4>
           <div className="grid grid-cols-2 gap-2">
             {customAssets.map((asset) => (
               <div
                 key={asset.id}
-                className="relative group flex flex-col items-center gap-1 p-2 rounded-lg border border-slate-800 bg-slate-950/20"
+                className="group relative flex flex-col items-center gap-1 rounded-xl border border-black/[0.08] bg-white p-2"
               >
                 <button
                   onClick={() => {
@@ -385,7 +385,7 @@ export default function EditorSidebar() {
                   className="w-full flex flex-col items-center gap-1"
                 >
                   <img src={asset.src} alt={asset.name} className="w-full h-16 object-cover rounded-md" />
-                  <span className="text-[10px] font-semibold text-slate-300 truncate w-full text-center">
+                  <span className="w-full truncate text-center text-[10px] font-semibold text-[#4c4c50]">
                     {asset.name}
                   </span>
                 </button>
@@ -408,26 +408,26 @@ export default function EditorSidebar() {
     <aside
       onMouseEnter={handleSidebarEnter}
       onMouseLeave={handleSidebarLeave}
-      className={`sidebar-shell fixed right-0 top-0 bottom-0 w-[400px] transition-transform duration-300 ease-out flex flex-col z-30 ${
+      className={`sidebar-shell fixed bottom-0 right-0 top-0 z-30 flex w-[400px] flex-col transition-transform duration-300 ease-out ${
         sidebarPinned ? 'translate-x-0' : 'translate-x-[370px] hover:translate-x-0'
       }`}
     >
-      <div className="absolute left-0 top-0 bottom-0 w-[30px] flex items-center justify-center bg-white/[0.03] border-r border-white/[0.06] cursor-pointer">
-        <div className="w-1.5 h-16 rounded-full bg-sky-400/55 opacity-70 shadow-[0_0_18px_rgba(56,189,248,0.2)]"></div>
+      <div className="absolute bottom-0 left-0 top-0 flex w-[30px] cursor-pointer items-center justify-center border-r border-black/[0.08] bg-black/[0.03]">
+        <div className="h-16 w-1.5 rounded-full bg-black/20"></div>
       </div>
       <div
-        className="pl-[30px] flex flex-col h-full bg-slate-900 border-l border-slate-800"
+        className="flex h-full flex-col border-l border-black/[0.08] bg-[#f7f7f5] pl-[30px] text-[#111111]"
         onClick={handleSidebarEnter}
       >
-        <div className="flex border-b border-slate-850 bg-slate-950 text-xs font-semibold select-none">
+        <div className="flex select-none border-b border-black/[0.08] bg-white text-xs font-semibold">
           {(['design', 'templates', 'assets'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setSidebarTab(tab)}
               className={`flex-1 py-3 text-center border-b-2 transition-all ${
                 sidebarTab === tab
-                  ? 'border-primary text-primary bg-slate-900/50'
-                  : 'border-transparent text-slate-400 hover:text-slate-200'
+                  ? 'border-[#111111] bg-black/[0.04] text-[#111111]'
+                  : 'border-transparent text-[#6e6e73] hover:bg-black/[0.03] hover:text-[#111111]'
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}

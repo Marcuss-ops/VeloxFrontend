@@ -19,7 +19,7 @@ import {
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
 import { Input } from '@/components/ui/Input';
 
-export default function LayersPanel() {
+export default function LayersPanel({ onLayerHover }: { onLayerHover?: (id: string | null) => void }) {
   const {
     objects,
     selectedIds,
@@ -53,24 +53,24 @@ export default function LayersPanel() {
   const reversedObjects = [...objects].reverse();
   
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col bg-white text-[#111111] shadow-[inset_1px_0_0_rgba(0,0,0,0.025)]">
       {/* Header */}
-      <div className="sidebar-section flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-black/[0.08] px-5 py-3">
         <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-slate-400" />
-          <h3 className="sidebar-section-title">Layers</h3>
+          <Layers className="h-4 w-4 text-[#111111]" />
+          <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-[#111111]">Layers</h3>
         </div>
-        <span className="text-xs text-slate-500">{objects.length}</span>
+        <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[10px] font-bold tabular-nums text-[#6e6e73]">{objects.length}</span>
       </div>
       
       {/* Layer List */}
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className="flex-1 overflow-y-auto px-4 py-3">
         {reversedObjects.length === 0 ? (
-          <div className="p-4 text-sm text-slate-500 dark:text-slate-400 text-center">
+          <div className="rounded-xl border border-dashed border-black/15 bg-white px-4 py-6 text-center text-xs leading-relaxed text-[#6e6e73]">
             No layers yet. Add an image or shape to get started.
           </div>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             {reversedObjects.map((obj, index) => {
               const isSelected = selectedIds.includes(obj.id);
               const realIndex = objects.length - 1 - index;
@@ -78,13 +78,13 @@ export default function LayersPanel() {
               return (
                 <div
                   key={obj.id}
-                  className={`layer-item group cursor-pointer ${
-                    isSelected ? 'active' : ''
-                  }`}
+                  className={`group flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 transition ${isSelected ? 'border-black/20 bg-black/[0.07] text-[#111111]' : 'border-black/[0.08] bg-white text-[#6e6e73] hover:border-black/15 hover:bg-black/[0.03] hover:text-[#111111]'}`}
                   onClick={() => selectObject(obj.id)}
+                  onMouseEnter={() => onLayerHover?.(obj.id)}
+                  onMouseLeave={() => onLayerHover?.(null)}
                 >
                   {/* Icon */}
-                  <div className={isSelected ? 'text-primary' : 'text-slate-400'}>
+                  <div className={isSelected ? 'text-[#111111]' : 'text-[#9a9a9f]'}>
                     {getObjectIcon(obj.type)}
                   </div>
                   
@@ -107,12 +107,12 @@ export default function LayersPanel() {
                             setEditingId(null);
                           }
                         }}
-                        className="h-7 text-sm"
+                        className="h-7 rounded-md border-black/15 bg-white text-xs"
                         autoFocus
                       />
                     ) : (
                       <p
-                        className={`text-sm truncate ${isSelected ? 'font-semibold text-primary' : 'text-slate-600 dark:text-slate-300'}`}
+                        className={`truncate text-sm ${isSelected ? 'font-semibold text-[#111111]' : 'text-[#4c4c50]'}`}
                         onDoubleClick={(e) => {
                           e.stopPropagation();
                           setEditingId(obj.id);
@@ -127,7 +127,7 @@ export default function LayersPanel() {
                   
                   {/* Visibility toggle */}
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                    className="rounded-md p-1 opacity-0 transition hover:bg-black/[0.07] group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       updateObject(obj.id, { visible: !obj.visible });
@@ -135,14 +135,14 @@ export default function LayersPanel() {
                     title={obj.visible ? 'Hide' : 'Show'}
                   >
                     {obj.visible ? (
-                      <Eye className="w-3.5 h-3.5 text-slate-400" />
+                      <Eye className="h-3.5 w-3.5 text-[#6e6e73]" />
                     ) : (
-                      <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                      <EyeOff className="h-3.5 w-3.5 text-[#6e6e73]" />
                     )}
                   </button>
 
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                    className="rounded-md p-1 opacity-0 transition hover:bg-black/[0.07] group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       updateObject(obj.id, { locked: !obj.locked });
@@ -150,14 +150,14 @@ export default function LayersPanel() {
                     title={obj.locked ? 'Unlock' : 'Lock'}
                   >
                     {obj.locked ? (
-                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      <Lock className="h-3.5 w-3.5 text-[#6e6e73]" />
                     ) : (
-                      <Unlock className="w-3.5 h-3.5 text-slate-400" />
+                      <Unlock className="h-3.5 w-3.5 text-[#6e6e73]" />
                     )}
                   </button>
 
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                    className="rounded-md p-1 opacity-0 transition hover:bg-black/[0.07] group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       selectObject(obj.id);
@@ -165,40 +165,40 @@ export default function LayersPanel() {
                     }}
                     title="Duplicate"
                   >
-                    <Copy className="w-3.5 h-3.5 text-slate-400" />
+                    <Copy className="h-3.5 w-3.5 text-[#6e6e73]" />
                   </button>
 
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                    className="rounded-md p-1 opacity-0 transition hover:bg-black/[0.07] group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       moveLayerUp(obj.id);
                     }}
                     title="Move up"
                   >
-                    <ChevronUp className="w-3.5 h-3.5 text-slate-400" />
+                    <ChevronUp className="h-3.5 w-3.5 text-[#6e6e73]" />
                   </button>
 
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded"
+                    className="rounded-md p-1 opacity-0 transition hover:bg-black/[0.07] group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       moveLayerDown(obj.id);
                     }}
                     title="Move down"
                   >
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                    <ChevronDown className="h-3.5 w-3.5 text-[#6e6e73]" />
                   </button>
 
                   <button
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/20 rounded"
+                    className="rounded-md p-1 opacity-0 transition hover:bg-red-50 group-hover:opacity-100"
                     onClick={(e) => {
                       e.stopPropagation();
                       deleteObject(obj.id);
                     }}
                     title="Delete"
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
                   </button>
                 </div>
               );

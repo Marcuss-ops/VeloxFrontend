@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { produceWithPatches, applyPatches, Patch, enablePatches } from 'immer';
+import { readEditorClipboard, writeEditorClipboard } from '@/lib/editorClipboard';
 
 enablePatches();
 
@@ -318,10 +319,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       .map((obj) => JSON.parse(JSON.stringify(obj)));
       
     set({ clipboard: copiedObjects });
+    writeEditorClipboard(copiedObjects);
   },
 
   pasteClipboard: () => {
-    const { clipboard } = get();
+    const storedClipboard = readEditorClipboard();
+    const clipboard = storedClipboard.length > 0 ? storedClipboard : get().clipboard;
     if (clipboard.length === 0) return;
     
     const newIds: string[] = [];
@@ -633,3 +636,13 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }
   },
 }));
+
+/** Ordered projection kept here for callers of the legacy array store. */
+export function getObjectsArrayFromState(
+  objects: Record<string, CanvasObject>,
+  objectIds: string[],
+): CanvasObject[] {
+  return objectIds
+    .map((id) => objects[id])
+    .filter((object): object is CanvasObject => Boolean(object));
+}

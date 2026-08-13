@@ -68,15 +68,11 @@ export function useProjectSave(canvasRef: React.RefObject<any>) {
       try {
         const stage = canvasRef.current?.getStage();
         if (stage) {
-          const dataURL = stage.toDataURL({
-            pixelRatio: 0.5,
-            mimeType: 'image/jpeg',
-            quality: 0.7,
-          });
+          const dataURL = stage.toDataURL({ pixelRatio: 0.5, mimeType: 'image/png' });
 
           const res = await fetch(dataURL);
           const blob = await res.blob();
-          const file = new File([blob], `preview_${currentProject.id}.jpg`, { type: 'image/jpeg' });
+          const file = new File([blob], `preview_${currentProject.id}.png`, { type: 'image/png' });
 
           const { uploadImage: uploadImageFn } = await import('@/lib/api');
           const uploadResult = await uploadImageFn(file);

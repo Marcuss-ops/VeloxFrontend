@@ -10,24 +10,14 @@ import initWasm, {
   wasm_apply_vignette,
   wasm_apply_noise,
   wasm_apply_curves,
-  wasm_blend_layers,
-  GpuFilterContext 
-} from '../wasm/wasm_filters.js';
+} from '../wasm/pkg/wasm_filters.js';
 import type { FilterOptions } from '../imageFilters';
 
 let wasmInitialized: Promise<void> | null = null;
-let gpuContext: GpuFilterContext | null = null;
 
 async function ensureWasm() {
   if (!wasmInitialized) {
-    wasmInitialized = initWasm().then(async () => {
-      try {
-        gpuContext = await GpuFilterContext.create();
-        console.log("WebGPU Filter Context initialized successfully.");
-      } catch (err) {
-        console.warn("WebGPU not available, falling back to CPU Wasm filters.", err);
-      }
-    });
+    wasmInitialized = initWasm().then(() => undefined);
   }
   return wasmInitialized;
 }
@@ -53,19 +43,7 @@ self.onmessage = async (e: MessageEvent) => {
     }
     
     if (options.blur && options.blur > 0) {
-      if (gpuContext) {
-        // Run on GPU
-        try {
-          const blurredData = await gpuContext.apply_blur(data as any, width, height, options.blur);
-          data = new Uint8Array(blurredData.buffer as ArrayBuffer);
-        } catch (e) {
-          console.warn("GPU Blur failed, falling back to CPU.", e);
-          wasm_apply_blur(data as any, width, height, options.blur);
-        }
-      } else {
-        // Run on CPU
-        wasm_apply_blur(data as any, width, height, options.blur);
-      }
+      wasm_apply_blur(data, width, height, options.blur);
     }
     
     if (options.sharpen && options.sharpen > 0) {
