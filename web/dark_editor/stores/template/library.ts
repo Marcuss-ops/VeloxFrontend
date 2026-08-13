@@ -1,5 +1,6 @@
 import type { StateCreator } from 'zustand';
-import type { Template, TemplateVariable, CanvasObject } from '../types';
+import type { Template, TemplateVariable } from '../types';
+import type { CanvasObject } from '@/stores/editorStore';
 
 /**
  * TemplateLibrarySlice owns the canonical templates list + every CRUD /
@@ -303,7 +304,7 @@ export const createTemplateLibrarySlice: StateCreator<
     return template.objects.map((obj) => {
       const cloned: CanvasObject = JSON.parse(JSON.stringify(obj));
 
-      if (typeof cloned.text === 'string') {
+      if (cloned.type === 'text' && typeof cloned.text === 'string') {
         cloned.text = substituteVariables(cloned.text, variables);
       }
       if (typeof cloned.fill === 'string') {

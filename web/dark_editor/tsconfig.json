@@ -24,8 +24,6 @@
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],    "exclude": [
     "node_modules",
-    "stores/editor/**/*",
-    "stores/types.ts",
     "vitest.config.ts",
     "__tests__/**/*"
   ]
