@@ -1,5 +1,5 @@
 // Media client — upload / filter / transform / export / generate /
-// upscale / YouTube-grab / background-removal for the InstaEditor.
+// upscale / background-removal for the InstaEditor.
 //
 // Talks to the InstaEditor runtime via the primitives in
 // lib/api/httpClient (apiPost / apiGet / apiUpload + the
@@ -17,8 +17,6 @@ import type {
   GenerateResponse,
   UpscaleRequest,
   UpscaleResponse,
-  YouTubeGrabRequest,
-  YouTubeGrabResponse,
   RemoveBgRequest,
   RemoveBgResponse,
   RemoveBgStatusResponse,
@@ -53,11 +51,6 @@ export async function generateImage(request: GenerateRequest): Promise<GenerateR
 
 export async function upscaleImage(request: UpscaleRequest): Promise<UpscaleResponse> {
   return apiPost<UpscaleResponse>('/api/upscale', request);
-}
-
-// Grab YouTube thumbnail
-export async function grabYouTubeThumbnail(request: YouTubeGrabRequest): Promise<YouTubeGrabResponse> {
-  return apiPost<YouTubeGrabResponse>('/api/tools/youtube_grab', request);
 }
 
 // Remove background

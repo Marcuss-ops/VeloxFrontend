@@ -69,16 +69,6 @@ export interface UpscaleResponse {
   saved_at?: string;
 }
 
-export interface YouTubeGrabRequest {
-  url: string;
-}
-
-export interface YouTubeGrabResponse {
-  filename: string;
-  video_id: string;
-  url: string;
-}
-
 export interface RemoveBgRequest {
   filename: string;
   model?: string;

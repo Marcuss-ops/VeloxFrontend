@@ -10,7 +10,7 @@
 // Layout:
 //   lib/api/httpClient.ts        — base URL, auth/CSRF fetch, RequestManager
 //   lib/api/mediaClient.ts       — upload / filter / transform / export /
-//                                  generate / upscale / youtube-grab / remove-bg
+//                                  generate / upscale / remove-bg
 //   lib/api/projectClient.ts     — project CRUD (+ ve_* session documents)
 //   lib/api/driveClient.ts       — Google Drive PNG asset library
 //   lib/api/folderClient.ts      — folder tree + project→folder binding

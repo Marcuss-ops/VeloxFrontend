@@ -8,12 +8,10 @@ import {
   exportImage as apiExport,
   generateImage as apiGenerate,
   upscaleImage as apiUpscale,
-  grabYouTubeThumbnail as apiGrabYouTube,
   UploadResponse,
   FilterResponse,
   GenerateResponse,
   UpscaleResponse,
-  YouTubeGrabResponse,
 } from '@/lib/api';
 
 export interface FilterOptions {
@@ -163,32 +161,11 @@ export function useImageProcessor() {
     [setUploading, addToast]
   );
 
-  const grabYouTube = useCallback(
-    async (url: string): Promise<YouTubeGrabResponse> => {
-      setUploading(true);
-      try {
-        const result = await apiGrabYouTube({ url });
-        addToast({ type: 'success', message: 'YouTube thumbnail grabbed' });
-        return result;
-      } catch (error) {
-        addToast({
-          type: 'error',
-          message: error instanceof Error ? error.message : 'YouTube grab failed',
-        });
-        throw error;
-      } finally {
-        setUploading(false);
-      }
-    },
-    [setUploading, addToast]
-  );
-
   return {
     applyFilter,
     transform,
     export: export_,
     generate,
     upscale,
-    grabYouTube,
   };
 }
