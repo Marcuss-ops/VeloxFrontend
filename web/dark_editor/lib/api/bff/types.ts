@@ -1,9 +1,10 @@
-// Shared BFF interface types + helpers for the InstaEditor.
+// Shared BFF wire-type contract for the InstaEditor.
 //
-// LEAF module of the lib/api/bff/ subtree. ZERO outbound imports.
-// Every other bff/<X>.ts module (auth, youtube, projects, upload,
-// socialDestinations, broadcast) imports from here, so the DAG is
-// strictly bottom-up acyclic:
+// PURE TYPE module — zero imports, zero runtime code. The shared HTTP
+// infrastructure (bffFetch / bffPost / getCookie / BFF_BASE / sha256Hex /
+// POLL_* constants) lives in lib/api/bff/client.ts. Every other bff/<X>.ts
+// module (auth, youtube, projects, upload, socialDestinations, broadcast)
+// imports the wire types from here, so the DAG is strictly bottom-up:
 //
 //                          bff.ts (barrel)
 //                                |
@@ -12,13 +13,13 @@
 //    auth    youtube  projects  upload  socialD  broadcast
 //     |          |     |         |         |         |
 //     +----------+-----+---------+---------+---------+---------+
-//                                |
-//                             types.ts   (this file)
+//                     |                    |
+//                  types.ts            client.ts
+//                 (this file)       (HTTP helpers)
 //
-// Originally a single 578-LOC monolith at lib/api/bff.ts; extracted
-// here first because type-only consumers (the components/ folder
-// + the main Vite SPA's useJobDeliveries hook) need just the shape
-// contract without dragging the CSRF fetch helper in.
+// Originally a single 578-LOC monolith at lib/api/bff.ts; the type-only
+// surface was extracted here so consumers can import the shape contract
+// without dragging in the CSRF fetch helper.
 
 // ------------------------------------------------------------------
 // Auth
@@ -193,111 +194,5 @@ export interface PollResult {
 
 // ------------------------------------------------------------------
 // Cross-SPA BroadcastChannel payload lives in lib/api/bff/broadcast.ts
-// (PUBLISH_CHANNEL_NAME + PublishBroadcastPayload + publishBroadcast
-// — extracted in commit 7 of the api-bff refactor series).
+// (PUBLISH_CHANNEL_NAME + PublishBroadcastPayload + publishBroadcast).
 // ------------------------------------------------------------------
-
-// ------------------------------------------------------------------
-import { editorAuthorizationHeaders } from '../../editor-session';
-import { editorRuntimePath } from '../../editor-runtime';
-
-// Shared HTTP infrastructure (BFF base + CSRF-aware fetch)
-// ------------------------------------------------------------------
-
-/** Same-origin; production deployments should host the editor under the BFF domain. */
-export const BFF_BASE = '';
-
-/** Read a cookie by name. Returns '' outside the DOM (Node / Vitest). */
-export function getCookie(name: string): string {
-  if (typeof document === 'undefined') return '';
-  const prefix = name + '=';
-  const entries = document.cookie.split(';');
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length));
-    }
-  }
-  return '';
-}
-
-/** CSRF-aware JSON fetch. Honours same-origin session cookie + CSRF double-submit. */
-export async function bffFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const method = (options.method ?? 'GET').toUpperCase();
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...(options.headers as Record<string, string> || {}),
-  };
-
-  if (method !== 'GET' && method !== 'HEAD') {
-    const csrf = getCookie('csrf_token');
-    if (csrf) headers['X-CSRF-Token'] = csrf;
-    if (!headers['Content-Type'] && options.body) {
-      headers['Content-Type'] = 'application/json';
-    }
-  }
-
-  const rawEndpoint = `${BFF_BASE}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
-  // Node-side callers (tests and server utilities) exercise the public API
-  // contract without the reverse-proxy compatibility prefix. Browser calls
-  // retain the deployed /instaeditor boundary.
-  const url = typeof window === 'undefined' ? rawEndpoint : editorRuntimePath(rawEndpoint);
-  const projectMatch = endpoint.match(/\/by-project\/([^/?]+)/);
-  const projectId = projectMatch ? decodeURIComponent(projectMatch[1]) : undefined;
-  const authorization = typeof window === 'undefined'
-    ? {}
-    : await editorAuthorizationHeaders(projectId);
-  const response = await fetch(url, {
-    ...options,
-    method,
-    headers: { ...headers, ...authorization },
-    credentials: 'include',
-  });
-
-  if (!response.ok) {
-    let message: string | undefined;
-    try {
-      const body = (await response.json()) as { error?: string; reason?: string };
-      if (body?.error && typeof body.error === 'string') message = body.error;
-      else if (body?.reason && typeof body.reason === 'string') message = body.reason;
-    } catch {
-      // ignore
-    }
-    throw new Error(message ?? response.statusText ?? `HTTP ${response.status}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return response.json() as Promise<T>;
-}
-
-/** POST helper. Thin wrapper that picks up CSRF + Content-Type from bffFetch. */
-export function bffPost<T>(endpoint: string, body?: unknown): Promise<T> {
-  return bffFetch<T>(endpoint, {
-    method: 'POST',
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-}
-
-/** SHA-256 hash of a Blob as lowercase hex (used by upload-presign). */
-export async function sha256Hex(blob: Blob): Promise<string> {
-  const buffer = await blob.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
-// ------------------------------------------------------------------
-// Poll timing constants (used by pollEditorSessionUntilConfirmed)
-// ------------------------------------------------------------------
-
-/** 5-second cadence for the post-publish short-poll loop. */
-export const POLL_INTERVAL_MS = 5_000;
-
-/** 6 × 5s = 30-second total cap on the drift-reconciler wait. */
-export const POLL_MAX_ATTEMPTS = 6;

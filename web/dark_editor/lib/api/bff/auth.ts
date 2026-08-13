@@ -7,7 +7,7 @@
 // `import { getMe, BffUser } from '@/lib/api/bff/auth'` becomes the
 // canonical import path for future auth-only callers.
 
-import { bffFetch } from './types';
+import { bffFetch } from './client';
 
 // ------------------------------------------------------------------
 // Wire types

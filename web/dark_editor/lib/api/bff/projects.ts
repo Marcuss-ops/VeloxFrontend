@@ -12,7 +12,7 @@
 //   - function createVeloxProject(body): Promise<VeloxProject>
 //   - function createVeloxJob(body): Promise<VeloxJob>
 
-import { bffPost } from './types';
+import { bffPost } from './client';
 
 export interface VeloxProject {
   id: string;

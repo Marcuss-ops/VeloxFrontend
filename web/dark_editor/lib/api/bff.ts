@@ -39,18 +39,11 @@
 
 // All shared HTTP infrastructure (bffFetch CSRF-aware JSON fetch +
 // BFF_BASE + getCookie + bffPost + sha256Hex + POLL_INTERVAL_MS +
-// POLL_MAX_ATTEMPTS) lives in lib/api/bff/types.ts. All domain
+// POLL_MAX_ATTEMPTS) lives in lib/api/bff/client.ts. All domain
 // functions have been extracted to per-domain modules — re-exported
 // below for back-compat with legacy `@/lib/api/bff` callers. No
 // inline domain functions remain in this barrel after all 7 commits
 // of the api-bff refactor series have landed.
-import {
-  BFF_BASE,
-  bffFetch,
-  getCookie,
-  sha256Hex,
-} from './bff/types';
-
 // ------------------------------------------------------------------
 // Auth section lives in lib/api/bff/auth.ts (commit 2). The legacy
 // `@/lib/api/bff` import surface keeps working through the wildcard
@@ -89,9 +82,8 @@ import {
 // ------------------------------------------------------------------
 
 // ------------------------------------------------------------------
-// Helpers (re-exports from lib/api/bff/types.ts for back-compat with
-// legacy `@/lib/api/bff` callers — the helpers themselves live next
-// to the wire-level type contract they ultimately serve).
+// Helpers (re-exports from lib/api/bff/client.ts for back-compat with
+// legacy `@/lib/api/bff` callers).
 // ------------------------------------------------------------------
 
 export {
@@ -100,7 +92,7 @@ export {
   bffFetch,
   bffPost,
   sha256Hex,
-} from './bff/types';
+} from './bff/client';
 
 // ------------------------------------------------------------------
 // Back-compat forwarders \u2014 commit-N re-exports of the per-domain

@@ -14,7 +14,7 @@
 // ------------------------------------------------------------------
 
 import type { PresignMediaResponse } from './types';
-import { bffFetch, sha256Hex } from './types';
+import { bffFetch, sha256Hex } from './client';
 
 export async function uploadMediaAsset(blob: Blob, filename: string): Promise<string> {
   if (!['image/jpeg', 'image/png'].includes(blob.type)) {

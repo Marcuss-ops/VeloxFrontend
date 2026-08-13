@@ -23,7 +23,7 @@
 // Back-compat: bff.ts re-exports the entire surface verbatim so any
 // legacy `@/lib/api/bff` (YouTube-side) caller keeps resolving.
 
-import { bffFetch, POLL_INTERVAL_MS, POLL_MAX_ATTEMPTS } from './types';
+import { bffFetch, POLL_INTERVAL_MS, POLL_MAX_ATTEMPTS } from './client';
 import type { PollResult } from './types';
 
 // ------------------------------------------------------------------
