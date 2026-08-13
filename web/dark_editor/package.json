@@ -6,6 +6,7 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "wasm:build": "wasm-pack build wasm/filters --target web --out-dir ../../lib/wasm/pkg --out-name wasm_filters",
+    "bench:wasm": "node scripts/wasm-pipeline-bench.mjs",
     "start": "next start",
     "lint": "next lint --dir app components hooks lib stores __tests__ --max-warnings=0",
     "validate": "tsc --noEmit && vitest run && npm run lint"
