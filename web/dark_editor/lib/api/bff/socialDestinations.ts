@@ -9,13 +9,9 @@
 // callers (useSocialDestinations hook) keep working without
 // import-path churn.
 //
-// `SocialDestination` is also declared in lib/api/bff/types.ts as
-// the canonical wire-level contract; this file's local copy mirrors
-// the same shape per the established auth.ts pattern (BffUser is
-// defined in both types.ts and bff/auth.ts). TypeScript structural
-// typing keeps them compatible at every call site. A future cleanup
-// commit can collapse the duplicate when the wider type consolidation
-// lands.
+// `SocialDestination` is the canonical wire-level contract for this
+// domain and is re-exported by the barrel bff.ts; the duplicate copy
+// that used to live in lib/api/bff/types.ts has been removed.
 // ------------------------------------------------------------------
 
 import { bffFetch } from './client';
