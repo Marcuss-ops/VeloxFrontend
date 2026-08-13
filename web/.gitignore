@@ -3,6 +3,10 @@ node_modules/
 dark_editor/node_modules
 dist/
 
+# Playwright test artifacts (web/playwright.config.ts emits here)
+playwright-report/
+test-results/
+
 # Local env files (never commit — may carry dev overrides)
 .env
 .env.local

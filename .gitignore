@@ -22,6 +22,10 @@ build/
 # Test coverage
 coverage/
 
+# Playwright test artifacts
+playwright-report/
+test-results/
+
 # Environment files (operator-side deterministic; universal)
 .env
 .env.development.local
