@@ -11,6 +11,7 @@
 
 import { editorAuthorizationHeaders } from '@/lib/editor-session';
 import { editorBffPath, editorRuntimePath } from '@/lib/editor-runtime';
+import { isImageProxyHost } from '@/lib/image-proxy-allowlist';
 
 // ------------------------------------------------------------------
 // Base URLs
@@ -118,7 +119,10 @@ export function editorImageProxyUrl(value: string): string {
   try {
     const parsed = new URL(value);
     const hostname = parsed.hostname.toLowerCase();
-    if (!hostname.endsWith('ytimg.com') && hostname !== 'youtube.com' && !hostname.endsWith('.youtube.com')) {
+    // Mirrors the server-side allowlist (lib/image-proxy-allowlist.ts):
+    // only hosts the proxy route accepts are wrapped, so a proxy-wrapped
+    // URL can never be 403'd by the server.
+    if (!isImageProxyHost(hostname)) {
       return value;
     }
     return editorRuntimePath(`api/image-proxy?url=${encodeURIComponent(parsed.toString())}`);

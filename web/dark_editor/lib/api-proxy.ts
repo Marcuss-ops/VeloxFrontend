@@ -15,13 +15,16 @@ export async function proxyToGo(path: string, init: RequestInit = {}): Promise<N
       ...init,
       headers: requestHeaders,
     });
-    const body = await response.text();
+    // Pass the upstream body through UNCHANGED (stream, not text): reading
+    // .text() and re-serializing corrupts binary payloads (PNG/JPEG/WebP/
+    // ZIP/video) that the generic proxy carries — most notably Drive asset
+    // content_url responses.
     const responseHeaders: Record<string, string> = { 'cache-control': 'no-store', pragma: 'no-cache' };
     response.headers.forEach((value, key) => {
       if (HOP_BY_HOP.has(key.toLowerCase())) return;
       responseHeaders[key.toLowerCase()] = value;
     });
-    return new NextResponse(body, { status: response.status, headers: responseHeaders });
+    return new NextResponse(response.body, { status: response.status, headers: responseHeaders });
   } catch (err) {
     console.warn(`[proxy] backend unreachable for ${path}:`, err instanceof Error ? err.message : err);
     return NextResponse.json(

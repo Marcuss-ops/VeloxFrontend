@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const ALLOWED_HOST = /(^|\.)ytimg\.com$/i;
+import { isImageProxyHost } from '@/lib/image-proxy-allowlist';
 
 export async function GET(request: NextRequest) {
   const rawUrl = request.nextUrl.searchParams.get('url')?.trim();
@@ -15,7 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'invalid image url' }, { status: 400 });
   }
 
-  if (target.protocol !== 'https:' || !ALLOWED_HOST.test(target.hostname)) {
+  if (target.protocol !== 'https:' || !isImageProxyHost(target.hostname)) {
     return NextResponse.json({ error: 'image host is not allowed' }, { status: 403 });
   }
 
