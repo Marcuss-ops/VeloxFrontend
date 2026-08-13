@@ -60,6 +60,10 @@ export default tseslint.config(
       '*.config.js',
       '*.config.ts',
       'e2e/**',
+      // dark_editor is a separate Next.js app (own package.json, own ESLint
+      // 8 + eslintrc config) nested inside web/. Never lint it with the SPA's
+      // ESLint 9 flat config.
+      'dark_editor/**',
     ],
   }
 );
