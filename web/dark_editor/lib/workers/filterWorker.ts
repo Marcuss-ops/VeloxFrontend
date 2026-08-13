@@ -2,7 +2,7 @@
 // Offloads heavy WASM calculations from the main thread
 
 import initWasm, {
-  wasm_apply_pipeline,
+  apply_pipeline,
   PipelineConfig,
 } from '../wasm/pkg/wasm_filters.js';
 import type { FilterOptions } from '../imageFilters';
@@ -57,7 +57,7 @@ self.onmessage = async (e: MessageEvent) => {
       config.noise_seed = options.noiseSeed || Date.now();
     }
 
-    wasm_apply_pipeline(
+    apply_pipeline(
       data,
       width,
       height,

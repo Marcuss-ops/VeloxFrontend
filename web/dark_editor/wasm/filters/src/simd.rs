@@ -9,17 +9,23 @@
 // f64 math to f32, so they may differ from the scalar reference by a fraction
 // of an LSB on a small number of pixels — the Node benchmark reports the
 // actual deviation.
+//
+// These are evaluation-only helpers kept internal to the crate: the public
+// WASM surface is limited to apply_pipeline / blend_layers / process_mask,
+// and the SIMD variants will be wired into the pipeline (and re-exported
+// only if needed for benchmarking) by the dedicated SIMD-adoption step.
+#![allow(dead_code, unused_imports)]
 
 #[cfg(not(target_arch = "wasm32"))]
 mod imp {
     pub(crate) fn blur(data: &mut [u8], width: u32, height: u32, radius: u32) {
-        crate::wasm_apply_blur(data, width, height, radius);
+        crate::blur::apply(data, width, height, radius);
     }
     pub(crate) fn sharpen(data: &mut [u8], width: u32, height: u32, amount: f64) {
-        crate::wasm_apply_sharpen(data, width, height, amount);
+        crate::sharpen::apply(data, width, height, amount);
     }
     pub(crate) fn noise(data: &mut [u8], intensity: f64, seed: f64) {
-        crate::wasm_apply_noise(data, intensity, seed);
+        crate::noise::apply(data, intensity, seed);
     }
 }
 
@@ -153,7 +159,7 @@ mod imp {
         let factor = intensity / 100.0 * 255.0;
         if factor == 0.0 { return; }
         // Same PRNG sequence as the scalar reference (one draw per pixel).
-        let mut rng = crate::Xorshift32::new(crate::noise_seed_state(seed));
+        let mut rng = crate::noise::Xorshift32::new(crate::noise::noise_seed_state(seed));
         for px in data.chunks_exact_mut(4) {
             let noise = (rng.next_unit() - 0.5) * factor;
             let v = unsafe { load_u8x4_f32(px.as_ptr()) };

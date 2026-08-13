@@ -131,7 +131,7 @@ mod tests {
         // round the count down to whole pixels instead of reading past the end.
         let mut base = vec![10, 10, 10, 255, 10, 10];
         let overlay = vec![20, 20, 20, 255, 20, 20];
-        crate::wasm_blend_layers(&mut base, &overlay, 2, 1, 1);
+        crate::blend_layers(&mut base, &overlay, 2, 1, 1);
         assert_eq!(base, vec![0, 0, 0, 255, 10, 10]);
     }
 }

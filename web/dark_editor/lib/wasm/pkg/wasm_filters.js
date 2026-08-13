@@ -194,76 +194,12 @@ if (Symbol.dispose) PipelineConfig.prototype[Symbol.dispose] = PipelineConfig.pr
  * @param {Uint8Array} data
  * @param {number} width
  * @param {number} height
- * @param {number} radius
- */
-export function wasm_apply_blur(data, width, height, radius) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_blur(ptr0, len0, data, width, height, radius);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} brightness
- * @param {number} contrast
- */
-export function wasm_apply_brightness_contrast(data, brightness, contrast) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_brightness_contrast(ptr0, len0, data, brightness, contrast);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {Uint8Array} curve_r
- * @param {Uint8Array} curve_g
- * @param {Uint8Array} curve_b
- */
-export function wasm_apply_curves(data, curve_r, curve_g, curve_b) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    const ptr1 = passArray8ToWasm0(curve_r, wasm.__wbindgen_malloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passArray8ToWasm0(curve_g, wasm.__wbindgen_malloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ptr3 = passArray8ToWasm0(curve_b, wasm.__wbindgen_malloc);
-    const len3 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_curves(ptr0, len0, data, ptr1, len1, ptr2, len2, ptr3, len3);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} hue
- * @param {number} saturation
- * @param {number} lightness
- */
-export function wasm_apply_hsl(data, hue, saturation, lightness) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_hsl(ptr0, len0, data, hue, saturation, lightness);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} intensity
- * @param {number} seed
- */
-export function wasm_apply_noise(data, intensity, seed) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_noise(ptr0, len0, data, intensity, seed);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} width
- * @param {number} height
  * @param {PipelineConfig} config
  * @param {Uint8Array} curve_r
  * @param {Uint8Array} curve_g
  * @param {Uint8Array} curve_b
  */
-export function wasm_apply_pipeline(data, width, height, config, curve_r, curve_g, curve_b) {
+export function apply_pipeline(data, width, height, config, curve_r, curve_g, curve_b) {
     var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
     _assertClass(config, PipelineConfig);
@@ -274,44 +210,7 @@ export function wasm_apply_pipeline(data, width, height, config, curve_r, curve_
     const len3 = WASM_VECTOR_LEN;
     const ptr4 = passArray8ToWasm0(curve_b, wasm.__wbindgen_malloc);
     const len4 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_pipeline(ptr0, len0, data, width, height, ptr1, ptr2, len2, ptr3, len3, ptr4, len4);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} width
- * @param {number} height
- * @param {number} size
- */
-export function wasm_apply_pixelation(data, width, height, size) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_pixelation(ptr0, len0, data, width, height, size);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} width
- * @param {number} height
- * @param {number} amount
- */
-export function wasm_apply_sharpen(data, width, height, amount) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_sharpen(ptr0, len0, data, width, height, amount);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} width
- * @param {number} height
- * @param {number} radius
- * @param {number} softness
- */
-export function wasm_apply_vignette(data, width, height, radius, softness) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_apply_vignette(ptr0, len0, data, width, height, radius, softness);
+    wasm.apply_pipeline(ptr0, len0, data, width, height, ptr1, ptr2, len2, ptr3, len3, ptr4, len4);
 }
 
 /**
@@ -321,47 +220,27 @@ export function wasm_apply_vignette(data, width, height, radius, softness) {
  * @param {number} height
  * @param {number} mode
  */
-export function wasm_blend_layers(base, overlay, width, height, mode) {
+export function blend_layers(base, overlay, width, height, mode) {
     var ptr0 = passArray8ToWasm0(base, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
     const ptr1 = passArray8ToWasm0(overlay, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
-    wasm.wasm_blend_layers(ptr0, len0, base, ptr1, len1, width, height, mode);
+    wasm.blend_layers(ptr0, len0, base, ptr1, len1, width, height, mode);
 }
 
 /**
  * @param {Uint8Array} data
+ * @param {Uint8Array} mask
  * @param {number} width
  * @param {number} height
- * @param {number} radius
+ * @param {number} feather
  */
-export function wasm_blur_simd(data, width, height, radius) {
+export function process_mask(data, mask, width, height, feather) {
     var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
     var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_blur_simd(ptr0, len0, data, width, height, radius);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} intensity
- * @param {number} seed
- */
-export function wasm_noise_simd(data, intensity, seed) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_noise_simd(ptr0, len0, data, intensity, seed);
-}
-
-/**
- * @param {Uint8Array} data
- * @param {number} width
- * @param {number} height
- * @param {number} amount
- */
-export function wasm_sharpen_simd(data, width, height, amount) {
-    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
-    var len0 = WASM_VECTOR_LEN;
-    wasm.wasm_sharpen_simd(ptr0, len0, data, width, height, amount);
+    const ptr1 = passArray8ToWasm0(mask, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.process_mask(ptr0, len0, data, ptr1, len1, width, height, feather);
 }
 function __wbg_get_imports() {
     const import0 = {
