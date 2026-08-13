@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Dispatch, RefObject, SetStateAction } from 'react';
 import Konva from 'konva';
 import { useEditorStore, type ImageObject } from '@/stores/editorStore';
@@ -46,7 +46,7 @@ export interface CanvasCropApi {
 export function useCanvasCrop(opts: CanvasCropOptions): CanvasCropApi {
   const { stageRef, displayScale, displayOffsetX, displayOffsetY, isPanning } = opts;
 
-  const { objects, updateObject, selectObject } = useEditorStore();
+  const { updateObject, selectObject } = useEditorStore();
   const {
     cropEditingId,
     cropEditingMode,
@@ -58,11 +58,11 @@ export function useCanvasCrop(opts: CanvasCropOptions): CanvasCropApi {
   const [lassoPoints, setLassoPoints] = useState<{ x: number; y: number }[]>([]);
   const [isDrawingLasso, setIsDrawingLasso] = useState(false);
 
-  const cropTarget = useMemo<ImageObject | null>(() => {
+  const cropTarget = useEditorStore((state): ImageObject | null => {
     if (!cropEditingId) return null;
-    const found = objects.find((obj) => obj.id === cropEditingId);
-    return found && found.type === 'image' ? found : null;
-  }, [cropEditingId, objects]);
+    const obj = state.objects[cropEditingId];
+    return obj && obj.type === 'image' ? obj : null;
+  });
 
   useEffect(() => {
     setLassoPoints([]);

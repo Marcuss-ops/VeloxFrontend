@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { useEditorProjectSession } from '@/hooks/useEditorProjectSession';
 import { useEditorStore } from '@/stores/editorStore';
+import { selectOrderedObjects } from '@/lib/editorSelectors';
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorTabsStore } from '@/stores/editorTabsStore';
 import { getProject } from '@/lib/api';
@@ -154,7 +155,7 @@ describe('useEditorProjectSession', () => {
         expect(useEditorStore.getState().canvasWidth).toBe(1920);
         expect(useEditorStore.getState().canvasHeight).toBe(1080);
 
-        const objects = useEditorStore.getState().objects;
+        const objects = selectOrderedObjects(useEditorStore.getState());
         expect(objects.map((o) => o.name)).toEqual(['Source Thumbnail', 'Title']); // Layer 0 purged
 
         const thumbnail = objects[0];
@@ -200,7 +201,7 @@ describe('useEditorProjectSession', () => {
 
         await waitFor(() => expect(result.current.loading).toBe(false));
 
-        const objects = useEditorStore.getState().objects;
+        const objects = selectOrderedObjects(useEditorStore.getState());
         expect(objects.map((o) => o.name)).toEqual(['Title']);
 
         const title = objects[0];
@@ -247,7 +248,7 @@ describe('useEditorProjectSession', () => {
         await waitFor(() => expect(result.current.loading).toBe(false));
         expect(result.current.error).toBeNull();
 
-        const thumbnail = useEditorStore.getState().objects[0];
+        const thumbnail = selectOrderedObjects(useEditorStore.getState())[0];
         expect(thumbnail.type).toBe('image');
         if (thumbnail.type === 'image') {
             expect(thumbnail.src).toBe('https://cdn/old-thumb.jpg');

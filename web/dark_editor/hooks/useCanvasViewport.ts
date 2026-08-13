@@ -20,8 +20,8 @@ export interface CanvasViewport {
  * document is fit into the actual editor container and the user's zoom is a
  * multiplier over that fit scale. This hook owns the container sizing
  * (ResizeObserver) and the resulting fit/display geometry; the pan/zoom
- * interactions live in Canvas.tsx (spacebar + stage drag + wheel), reading
- * and writing the zoom/offset store fields directly.
+ * interactions (spacebar + stage drag + wheel) live in useCanvasPanZoom,
+ * which reads and writes the zoom/offset store fields directly.
  */
 export function useCanvasViewport(containerRef: React.RefObject<HTMLDivElement>): CanvasViewport {
   const { canvasWidth, canvasHeight, zoom, offsetX, offsetY } = useEditorStore();

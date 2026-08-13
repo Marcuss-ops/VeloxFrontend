@@ -25,11 +25,11 @@ const makeImage = (overrides: Partial<CanvasObject> = {}): CanvasObject => ({
 describe('ContextualInspector shadow expansion', () => {
   beforeEach(() => {
     cleanup();
-    useEditorStore.setState({ objects: [], selectedIds: [] });
+    useEditorStore.setState({ objects: {}, objectIds: [], selectedIds: [] });
   });
 
   it('keeps the shadow controls collapsed until Ombra is pressed, then expands them', () => {
-    useEditorStore.setState({ objects: [makeImage()], selectedIds: ['img-1'] });
+    useEditorStore.setState({ objects: { 'img-1': makeImage() }, objectIds: ['img-1'], selectedIds: ['img-1'] });
     const { getByLabelText, container } = render(
       <ContextualInspector hoveredObjectId={null} dark={false} placement="toolbar" />,
     );
@@ -59,7 +59,7 @@ describe('ContextualInspector shadow expansion', () => {
   });
 
   it('card shows only the controls (no header icon, name or close button)', () => {
-    useEditorStore.setState({ objects: [makeImage()], selectedIds: ['img-1'] });
+    useEditorStore.setState({ objects: { 'img-1': makeImage() }, objectIds: ['img-1'], selectedIds: ['img-1'] });
     const { container } = render(
       <ContextualInspector hoveredObjectId={null} dark={false} placement="toolbar" />,
     );
@@ -74,7 +74,7 @@ describe('ContextualInspector shadow expansion', () => {
   it('dismisses itself shortly after the pointer leaves the card', () => {
     vi.useFakeTimers();
     try {
-      useEditorStore.setState({ objects: [makeImage()], selectedIds: ['img-1'] });
+      useEditorStore.setState({ objects: { 'img-1': makeImage() }, objectIds: ['img-1'], selectedIds: ['img-1'] });
       const { container } = render(
         <ContextualInspector hoveredObjectId={null} dark={false} placement="toolbar" />,
       );

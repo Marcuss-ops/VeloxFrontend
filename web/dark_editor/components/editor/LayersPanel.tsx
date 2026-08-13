@@ -17,11 +17,11 @@ import {
   Layers,
 } from 'lucide-react';
 import { useEditorStore, CanvasObject } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { Input } from '@/components/ui/Input';
 
 export default function LayersPanel({ onLayerHover }: { onLayerHover?: (id: string | null) => void }) {
   const {
-    objects,
     selectedIds,
     selectObject,
     updateObject,
@@ -30,6 +30,7 @@ export default function LayersPanel({ onLayerHover }: { onLayerHover?: (id: stri
     moveLayerDown,
     duplicateSelected,
   } = useEditorStore();
+  const objects = useObjectsArray();
 
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editingName, setEditingName] = React.useState('');

@@ -64,7 +64,7 @@ describe('useCanvasCrop', () => {
       result.current.commitCrop();
     });
 
-    const obj = useEditorStore.getState().objects.find((o) => o.id === 'img-1');
+    const obj = useEditorStore.getState().objects['img-1'];
     expect(obj).toMatchObject({
       x: 150, // 100 + 50 * scaleX(1)
       y: 150,
@@ -94,7 +94,7 @@ describe('useCanvasCrop', () => {
       result.current.commitCrop();
     });
 
-    const obj = useEditorStore.getState().objects.find((o) => o.id === 'img-1');
+    const obj = useEditorStore.getState().objects['img-1'];
     expect(obj).toMatchObject({
       x: 200, // 100 + 100 * scaleX(1)
       y: 100,
@@ -123,7 +123,7 @@ describe('useCanvasCrop', () => {
       result.current.commitCrop();
     });
 
-    const obj = useEditorStore.getState().objects.find((o) => o.id === 'img-1');
+    const obj = useEditorStore.getState().objects['img-1'];
     expect(obj?.cropRect).toEqual({
       x: 0.1 + (100 / 400) * 0.5,
       y: 0.2 + (50 / 200) * 0.5,

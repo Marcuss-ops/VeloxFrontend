@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { selectOrderedObjects } from '@/lib/editorSelectors';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { onEditorFlushRequest, onEditorSaveRequest } from '@/lib/editorEvents';
 import { uploadImage } from '@/lib/api';
@@ -40,7 +41,7 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
     if (sessionGate.state === 'readonly_publishing' || sessionGate.state === 'readonly_published' || sessionGate.state === 'readonly_unknown') return;
     if (sessionGate.state !== 'editable_editing' && sessionGate.state !== 'editable_failed') return;
     const latestEditorState = useEditorStore.getState();
-    const latestObjects = latestEditorState.objects;
+    const latestObjects = selectOrderedObjects(latestEditorState);
     const latestCanvasWidth = latestEditorState.canvasWidth;
     const latestCanvasHeight = latestEditorState.canvasHeight;
 

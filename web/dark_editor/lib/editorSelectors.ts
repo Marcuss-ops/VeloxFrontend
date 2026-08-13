@@ -2,7 +2,19 @@ import type { CanvasObject } from '@/stores/editorStore';
 
 export interface EditorStateLike {
   objects: Record<string, CanvasObject>;
+  objectIds: string[];
   selectedIds: string[];
+}
+
+/**
+ * Derive the ordered canvas array (index 0 = back, last = front) from the
+ * normalized store state. Used by rendering, export and any consumer that
+ * needs layer order without linear lookups.
+ */
+export function selectOrderedObjects(state: EditorStateLike): CanvasObject[] {
+  return state.objectIds
+    .map((id) => state.objects[id])
+    .filter((obj): obj is CanvasObject => Boolean(obj));
 }
 
 export function selectCropTarget(

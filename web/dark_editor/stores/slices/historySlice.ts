@@ -9,12 +9,22 @@
 // them. Cross-slice calls like `get().commitMutation(...)` inside
 // objectSlice's addObject resolve at invocation time against the
 // fully-composed store, which is the idiomatic Zustand pattern.
+//
+// Mutations operate on the normalized canvas state — a single draft
+// `{ objects, objectIds }` — so that object data (Record, O(1) by id) and
+// layer order (objectIds) are patched atomically and undo/redo together.
 
 import type { StoreApi } from 'zustand';
 import { produceWithPatches, applyPatches } from 'immer';
 import type { Patch } from 'immer';
 import type { EditorState } from '../editorStore';
 import type { CanvasObject } from '../canvasObjectTypes';
+
+/** The normalized canvas state handed to mutation recipes and undo/redo. */
+export interface CanvasDraftState {
+  objects: Record<string, CanvasObject>;
+  objectIds: string[];
+}
 
 export interface HistorySlice {
   // History patches (capped at 50 entries — pastPatches[0] is dropped on overflow)
@@ -27,8 +37,8 @@ export interface HistorySlice {
   pendingInversePatches: Patch[];
 
   // Mutation commit hooks consumed by objectSlice + effectsSlice
-  commitMutation: (recipe: (draft: CanvasObject[]) => void) => void;
-  commitLiveMutation: (recipe: (draft: CanvasObject[]) => void) => void;
+  commitMutation: (recipe: (draft: CanvasDraftState) => void) => void;
+  commitLiveMutation: (recipe: (draft: CanvasDraftState) => void) => void;
 
   // Standard undo/redo + the manual commit point for live-mutation cycles
   undo: () => void;
@@ -53,8 +63,8 @@ export const createHistorySlice = (
   pendingInversePatches: [],
 
   commitMutation: (recipe) => {
-    const { objects, pastPatches, pendingPatches, pendingInversePatches } = get();
-    const [nextObjects, patches, inversePatches] = produceWithPatches(objects, recipe);
+    const { objects, objectIds, pastPatches, pendingPatches, pendingInversePatches } = get();
+    const [nextState, patches, inversePatches] = produceWithPatches({ objects, objectIds }, recipe);
 
     if (patches.length === 0 && pendingPatches.length === 0) return;
 
@@ -65,7 +75,8 @@ export const createHistorySlice = (
     if (newPast.length > HISTORY_LIMIT) newPast.shift();
 
     set({
-      objects: nextObjects,
+      objects: nextState.objects,
+      objectIds: nextState.objectIds,
       pastPatches: newPast,
       futurePatches: [],
       pendingPatches: [],
@@ -74,35 +85,42 @@ export const createHistorySlice = (
   },
 
   commitLiveMutation: (recipe) => {
-    const { objects, pendingPatches, pendingInversePatches } = get();
-    const [nextObjects, patches, inversePatches] = produceWithPatches(objects, recipe);
+    const { objects, objectIds, pendingPatches, pendingInversePatches } = get();
+    const [nextState, patches, inversePatches] = produceWithPatches({ objects, objectIds }, recipe);
 
     if (patches.length === 0) return;
 
     set({
-      objects: nextObjects,
+      objects: nextState.objects,
+      objectIds: nextState.objectIds,
       pendingPatches: [...pendingPatches, ...patches],
       pendingInversePatches: [...inversePatches, ...pendingInversePatches],
     });
   },
 
   undo: () => {
-    const { pastPatches, futurePatches, objects, pendingPatches, pendingInversePatches } = get();
-    let currentObjects = objects;
+    const { pastPatches, futurePatches, objects, objectIds, pendingPatches, pendingInversePatches } = get();
+    const currentState = { objects, objectIds };
 
     if (pendingPatches.length > 0) {
-      currentObjects = applyPatches(currentObjects, pendingInversePatches);
-      set({ objects: currentObjects, pendingPatches: [], pendingInversePatches: [] });
+      const nextState = applyPatches(currentState, pendingInversePatches);
+      set({
+        objects: nextState.objects,
+        objectIds: nextState.objectIds,
+        pendingPatches: [],
+        pendingInversePatches: [],
+      });
       return;
     }
 
     if (pastPatches.length === 0) return;
 
     const lastEntry = pastPatches[pastPatches.length - 1];
-    const prevObjects = applyPatches(currentObjects, lastEntry.inversePatches);
+    const prevState = applyPatches(currentState, lastEntry.inversePatches);
 
     set({
-      objects: prevObjects,
+      objects: prevState.objects,
+      objectIds: prevState.objectIds,
       pastPatches: pastPatches.slice(0, -1),
       futurePatches: [lastEntry, ...futurePatches],
       selectedIds: [],
@@ -110,14 +128,16 @@ export const createHistorySlice = (
   },
 
   redo: () => {
-    const { futurePatches, pastPatches, objects, pendingPatches } = get();
+    const { futurePatches, pastPatches, objects, objectIds, pendingPatches } = get();
     if (futurePatches.length === 0 || pendingPatches.length > 0) return;
 
     const nextEntry = futurePatches[0];
-    const nextObjects = applyPatches(objects, nextEntry.patches);
+    const currentState = { objects, objectIds };
+    const nextState = applyPatches(currentState, nextEntry.patches);
 
     set({
-      objects: nextObjects,
+      objects: nextState.objects,
+      objectIds: nextState.objectIds,
       pastPatches: [...pastPatches, nextEntry],
       futurePatches: futurePatches.slice(1),
     });

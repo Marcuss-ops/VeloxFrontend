@@ -41,7 +41,7 @@ export const createEffectsSlice = (
 ): EffectsSlice => ({
   applyBlur: (id, intensity) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.blur = Math.max(0, Math.min(20, intensity));
         obj.sharpen = 0;
@@ -52,7 +52,7 @@ export const createEffectsSlice = (
 
   applySharpen: (id, intensity) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.sharpen = Math.max(0, Math.min(20, intensity));
         obj.blur = 0;
@@ -63,7 +63,7 @@ export const createEffectsSlice = (
 
   applyPixelation: (id, pixelSize) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.pixelation = Math.max(0, Math.min(50, pixelSize));
         obj.blur = 0;
@@ -79,7 +79,7 @@ export const createEffectsSlice = (
 
   clearFilters: (id) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.blur = 0;
         obj.sharpen = 0;
@@ -90,35 +90,35 @@ export const createEffectsSlice = (
 
   applyTextShadow: (id, shadow) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj && obj.type === 'text') obj.textShadow = shadow;
     });
   },
 
   applyTextStroke: (id, stroke) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj && obj.type === 'text') obj.textStroke = stroke;
     });
   },
 
   applyTextGradient: (id, gradient) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj && obj.type === 'text') obj.textGradient = gradient;
     });
   },
 
   applyTextCurve: (id, curve) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj && obj.type === 'text') obj.textCurve = curve;
     });
   },
 
   clearTextEffects: (id) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj && obj.type === 'text') {
         obj.textShadow = undefined;
         obj.textStroke = undefined;
@@ -130,35 +130,35 @@ export const createEffectsSlice = (
 
   applyDropShadow: (id, shadow) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.dropShadow = shadow;
     });
   },
 
   applyBorderRadius: (id, radius) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.borderRadius = Math.max(0, radius);
     });
   },
 
   applyShapeGradient: (id, gradient) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.shapeGradient = gradient;
     });
   },
 
   applyTexture: (id, texture) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) obj.texture = texture;
     });
   },
 
   clearShapeEffects: (id) => {
     get().commitMutation((draft) => {
-      const obj = draft.find((o) => o.id === id);
+      const obj = draft.objects[id];
       if (obj) {
         obj.dropShadow = undefined;
         obj.borderRadius = undefined;

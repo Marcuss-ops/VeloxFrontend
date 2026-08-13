@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore, type ImageObject, type TextObject } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
+import { selectOrderedObjects } from '@/lib/editorSelectors';
 import { useProjectStore } from '@/stores/projectStore';
 import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
 import { isScopedProjectId } from '@/lib/project-scope';
@@ -100,7 +102,8 @@ export interface UseExportDialogReturn {
  */
 export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProps): UseExportDialogReturn {
   const { showExportDialog, setExportDialog, isExporting, addToast } = useUIStore();
-  const { objects, selectedIds, updateObject } = useEditorStore();
+  const { selectedIds, updateObject } = useEditorStore();
+  const objects = useObjectsArray();
   const { currentProject } = useProjectStore();
 
   const [selectedOnly, setSelectedOnly] = useState(false);
@@ -210,7 +213,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     // the dialog: a text edit/transform can land between that render and the
     // click on Export.
     const liveState = useEditorStore.getState();
-    const liveSignature = canvasStateSignature(liveState.objects, EXPORT_WIDTH, EXPORT_HEIGHT);
+    const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
     const blob = await captureEditorCanvasBlob(canvasRef?.current?.getStage?.(), EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png');
     if (!blob) return null;
     const sha256 = await sha256Hex(blob);
@@ -334,7 +337,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     setIsGeneratingPreviews(true);
     try {
       const liveState = useEditorStore.getState();
-      const liveSignature = canvasStateSignature(liveState.objects, EXPORT_WIDTH, EXPORT_HEIGHT);
+      const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
       const currentSnapshot = !snapshotStale
         && snapshotRef.current?.signature === liveSignature
         ? snapshotRef.current
@@ -443,7 +446,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
   useEffect(() => {
     if (!open || !snapshotRef.current) return;
     const liveState = useEditorStore.getState();
-    const liveSignature = canvasStateSignature(liveState.objects, EXPORT_WIDTH, EXPORT_HEIGHT);
+    const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
     if (snapshotRef.current.signature !== liveSignature) {
       setSnapshotStale(true);
       setVariantPreviews({});
@@ -491,7 +494,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
 
   const handleExport = useCallback(async () => {
     const liveState = useEditorStore.getState();
-    const liveSignature = canvasStateSignature(liveState.objects, EXPORT_WIDTH, EXPORT_HEIGHT);
+    const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
     let currentSnapshot = snapshotRef.current;
     if (!currentSnapshot || currentSnapshot.signature !== liveSignature) {
       currentSnapshot = await captureSnapshot();

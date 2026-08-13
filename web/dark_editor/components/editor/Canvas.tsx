@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import { Stage, Layer, Rect, Transformer, Circle, Line, Group } from 'react-konva';
 import { useEditorStore, type CanvasObject } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import Konva from 'konva';
@@ -16,6 +17,7 @@ import { requestEditorSave } from '@/lib/editorEvents';
 import { useCanvasViewport } from '@/hooks/useCanvasViewport';
 import { useCanvasSelection } from '@/hooks/useCanvasSelection';
 import { useCanvasCrop } from '@/hooks/useCanvasCrop';
+import { useCanvasPanZoom } from '@/hooks/useCanvasPanZoom';
 
 interface CanvasProps {
   containerRef?: React.RefObject<HTMLDivElement>;
@@ -36,19 +38,14 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
   const transformerRef = useRef<Konva.Transformer>(null);
 
   const {
-    objects,
     selectedIds,
     canvasWidth,
     canvasHeight,
-    zoom,
-    offsetX,
-    offsetY,
     selectObject,
     updateObject,
     addObject,
-    setZoom,
-    setOffset,
   } = useEditorStore();
+  const objects = useObjectsArray();
 
   const {
     activeTool,
@@ -63,18 +60,17 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
   } = useUIStore();
 
   const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
-  const [isPanning, setIsPanning] = useState(false);
-  const panStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+
+  const viewport = useCanvasViewport(containerRef);
+  const { viewportSize, displayScale, displayOffsetX, displayOffsetY } = viewport;
 
   const {
-    viewportSize,
-    fitScale,
-    displayScale,
-    fitOffsetX,
-    fitOffsetY,
-    displayOffsetX,
-    displayOffsetY,
-  } = useCanvasViewport(containerRef);
+    isPanning,
+    handleStageDragStart,
+    handleStageDragMove,
+    handleStageDragEnd,
+    handleWheel,
+  } = useCanvasPanZoom({ stageRef, viewport });
 
   const { handleDragEnd, handleTransformEnd } = useCanvasSelection(stageRef, transformerRef);
 
@@ -103,78 +99,6 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     },
     [gridSize, snapToGrid]
   );
-
-  // Spacebar panning
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !editingId && e.target === document.body) {
-        e.preventDefault();
-        setIsPanning(true);
-      }
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        setIsPanning(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [editingId]);
-
-  const handleStageDragStart = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    if (!isPanning) return;
-    const stage = stageRef.current;
-    if (!stage) return;
-    panStartRef.current = {
-      x: e.evt.clientX,
-      y: e.evt.clientY,
-      ox: offsetX,
-      oy: offsetY,
-    };
-  }, [isPanning, offsetX, offsetY]);
-
-  const handleStageDragMove = useCallback((e: Konva.KonvaEventObject<DragEvent>) => {
-    if (!isPanning || !panStartRef.current) return;
-    const dx = e.evt.clientX - panStartRef.current.x;
-    const dy = e.evt.clientY - panStartRef.current.y;
-    setOffset(panStartRef.current.ox + dx, panStartRef.current.oy + dy);
-  }, [isPanning, setOffset]);
-
-  const handleStageDragEnd = useCallback(() => {
-    panStartRef.current = null;
-  }, []);
-
-  // Handle wheel zoom
-  const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
-    e.evt.preventDefault();
-
-    const stage = stageRef.current;
-    if (!stage) return;
-
-    const oldScale = displayScale;
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
-
-    const mousePointTo = {
-      x: (pointer.x - displayOffsetX) / oldScale,
-      y: (pointer.y - displayOffsetY) / oldScale,
-    };
-
-    const speed = 1.05;
-    const nextZoom = e.evt.deltaY < 0 ? zoom * speed : zoom / speed;
-    const clampedZoom = Math.max(0.1, Math.min(5, nextZoom));
-
-    setZoom(clampedZoom);
-    const nextDisplayScale = fitScale * clampedZoom;
-    setOffset(
-      pointer.x - mousePointTo.x * nextDisplayScale - fitOffsetX,
-      pointer.y - mousePointTo.y * nextDisplayScale - fitOffsetY,
-    );
-  }, [displayScale, displayOffsetX, displayOffsetY, fitOffsetX, fitOffsetY, fitScale, setOffset, setZoom, zoom]);
 
   const handleStageClick = useCallback((e: Konva.KonvaEventObject<any>) => {
     if (isPanning) return;

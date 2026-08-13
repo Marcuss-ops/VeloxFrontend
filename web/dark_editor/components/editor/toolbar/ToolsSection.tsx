@@ -4,6 +4,7 @@ import React, { useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore, type ImageObject } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { resolveEditorAssetUrl } from '@/lib/api';
 import {
@@ -45,9 +46,9 @@ export function ToolsSection() {
     addObject,
     selectObject,
     updateObject,
-    objects,
     selectedIds,
   } = useEditorStore();
+  const objects = useObjectsArray();
   const { upscale } = useImageProcessor();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

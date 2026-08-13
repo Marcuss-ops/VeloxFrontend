@@ -27,8 +27,10 @@ describe('editorStore composition (slices registry)', () => {
   it('exposes the state and actions merged from every slice', () => {
     const state = useEditorStore.getState();
 
-    // objectSlice
-    expect(Array.isArray(state.objects)).toBe(true);
+    // objectSlice — normalized: objects is a Record (O(1) by id) and
+    // objectIds holds the layer order.
+    expect(state.objects).toEqual({});
+    expect(Array.isArray(state.objectIds)).toBe(true);
     expect(Array.isArray(state.selectedIds)).toBe(true);
     expect(Array.isArray(state.clipboard)).toBe(true);
     expect(typeof state.addObject).toBe('function');
@@ -82,14 +84,16 @@ describe('editorStore composition (slices registry)', () => {
   it('addObject is undoable and redoable', () => {
     const store = useEditorStore;
     store.getState().addObject(makeObject('a'));
-    expect(store.getState().objects).toHaveLength(1);
+    expect(store.getState().objectIds).toEqual(['a']);
+    expect(store.getState().objects['a'].id).toBe('a');
 
     store.getState().undo();
-    expect(store.getState().objects).toHaveLength(0);
+    expect(store.getState().objectIds).toHaveLength(0);
+    expect(store.getState().objects).toEqual({});
 
     store.getState().redo();
-    expect(store.getState().objects).toHaveLength(1);
-    expect(store.getState().objects[0].id).toBe('a');
+    expect(store.getState().objectIds).toEqual(['a']);
+    expect(store.getState().objects['a'].id).toBe('a');
   });
 
   it('live mutations buffer into history and commit via saveToHistory', () => {
@@ -97,7 +101,7 @@ describe('editorStore composition (slices registry)', () => {
     store.getState().addObject(makeObject('a', { x: 10 }));
     store.getState().updateObjectLive('a', { x: 50 });
 
-    expect(store.getState().objects[0].x).toBe(50);
+    expect(store.getState().objects['a'].x).toBe(50);
     expect(store.getState().pendingPatches.length).toBeGreaterThan(0);
 
     store.getState().saveToHistory();
@@ -112,7 +116,7 @@ describe('editorStore composition (slices registry)', () => {
     store.getState().applyTextShadow('a', { offsetX: 2, offsetY: 2, blur: 4, color: '#000' });
     store.getState().applyDropShadow('a', { offsetX: 1, offsetY: 1, blur: 2, spread: 0, color: '#000' });
 
-    const object = store.getState().objects[0];
+    const object = store.getState().objects['a'];
     expect(object.blur).toBe(10);
     expect(object.textShadow?.blur).toBe(4);
     expect(object.dropShadow?.offsetX).toBe(1);
@@ -125,12 +129,13 @@ describe('editorStore composition (slices registry)', () => {
     store.getState().selectObject('a');
 
     store.getState().loadObjects([makeObject('b')]);
-    expect(store.getState().objects.map((o) => o.id)).toEqual(['b']);
+    expect(store.getState().objectIds).toEqual(['b']);
+    expect(store.getState().objects['b'].id).toBe('b');
     expect(store.getState().selectedIds).toHaveLength(0);
     expect(store.getState().pastPatches).toHaveLength(0);
   });
 
-  it('copySelected copies only the selected objects (O(1) Set membership)', () => {
+  it('copySelected copies only the selected objects (O(1) Record lookup)', () => {
     const store = useEditorStore;
     store.getState().addObject(makeObject('a'));
     store.getState().addObject(makeObject('b'));
@@ -142,8 +147,9 @@ describe('editorStore composition (slices registry)', () => {
 
     expect(store.getState().clipboard.map((o) => o.id).sort()).toEqual(['a', 'c']);
     // The copied objects are decoupled from live state.
-    expect(store.getState().clipboard[0]).not.toBe(store.getState().objects[0]);
+    expect(store.getState().clipboard[0]).not.toBe(store.getState().objects['a']);
+    expect(store.getState().clipboard[1]).not.toBe(store.getState().objects['c']);
     // The canvas is untouched by a copy.
-    expect(store.getState().objects.map((o) => o.id)).toEqual(['a', 'b', 'c']);
+    expect(store.getState().objectIds).toEqual(['a', 'b', 'c']);
   });
 });

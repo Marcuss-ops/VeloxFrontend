@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Check, Gauge, Image as ImageIcon, Palette, Sparkles, Type } from 'lucide-react';
 import { useEditorStore, type CanvasObject, type CanvasObjectField } from '@/stores/editorStore';
+import { useObjectsArray } from '@/hooks/useObjectsArray';
 
 type ContextualInspectorProps = {
   hoveredObjectId: string | null;
@@ -187,7 +188,8 @@ function getObjectLabel(object: CanvasObject) {
 const DISMISS_AFTER_LEAVE_MS = 250;
 
 export default function ContextualInspector({ hoveredObjectId, dark = false, placement = 'toolbar' }: ContextualInspectorProps) {
-  const { objects, selectedIds, updateObjectLive, updateObject, saveToHistory, clearSelection } = useEditorStore();
+  const { selectedIds, updateObjectLive, updateObject, saveToHistory, clearSelection } = useEditorStore();
+  const objects = useObjectsArray();
   // Dismiss-on-leave: there is no close button anymore — the card hides
   // itself shortly after the pointer leaves it (re-entering cancels the
   // pending dismiss).

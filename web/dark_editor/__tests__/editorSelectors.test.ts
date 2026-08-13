@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { selectCropTarget, selectSingleSelectedObject } from '@/lib/editorSelectors';
+import { selectCropTarget, selectOrderedObjects, selectSingleSelectedObject } from '@/lib/editorSelectors';
 import type { CanvasObject } from '@/stores/editorStore';
 
 const makeObject = (id: string, type: CanvasObject['type'] = 'text'): CanvasObject => ({
@@ -20,7 +20,25 @@ const makeObject = (id: string, type: CanvasObject['type'] = 'text'): CanvasObje
 
 const makeState = (objects: CanvasObject[], selectedIds: string[]) => ({
   objects: Object.fromEntries(objects.map((o) => [o.id, o])),
+  objectIds: objects.map((o) => o.id),
   selectedIds,
+});
+
+describe('selectOrderedObjects', () => {
+  it('returns the objects in the order defined by objectIds', () => {
+    const a = makeObject('a');
+    const b = makeObject('b');
+    const c = makeObject('c');
+    // Order comes from objectIds, not from insertion order in the Record.
+    const state = makeState([c, a, b], []);
+    expect(selectOrderedObjects(state).map((o) => o.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('skips ids that no longer exist in the Record', () => {
+    const a = makeObject('a');
+    const state = { objects: { a }, objectIds: ['a', 'ghost'], selectedIds: [] };
+    expect(selectOrderedObjects(state).map((o) => o.id)).toEqual(['a']);
+  });
 });
 
 describe('selectCropTarget', () => {
