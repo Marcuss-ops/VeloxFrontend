@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use wasm_bindgen::prelude::*;
 
 #[inline]
@@ -121,30 +123,50 @@ pub fn wasm_apply_pixelation(data: &mut [u8], width: u32, height: u32, size: u32
     }
 }
 
+// Reusable scratch buffer shared by the blur and sharpen passes so the
+// per-image temporary allocation happens only when the buffer needs to grow.
+// The module is single-threaded WASM, so a thread_local is a plain global.
+thread_local! {
+    static SCRATCH: RefCell<Vec<u8>> = RefCell::new(Vec::new());
+}
+
+#[inline]
+fn with_scratch(len: usize, f: impl FnOnce(&mut [u8])) {
+    SCRATCH.with(|cell| {
+        let mut buf = cell.borrow_mut();
+        buf.resize(len, 0);
+        f(buf.as_mut_slice());
+    });
+}
+
 #[wasm_bindgen]
 pub fn wasm_apply_blur(data: &mut [u8], width: u32, height: u32, radius: u32) {
     let w = width as usize; let h = height as usize; let r = radius as usize;
     if r == 0 || w == 0 || h == 0 { return; }
-    let mut temp = vec![0u8; data.len()];
-    for y in 0..h { for x in 0..w {
-        let mut sums = [0u32; 4]; let mut count = 0u32;
-        for dx in x.saturating_sub(r)..=(x + r).min(w - 1) { let i = (y * w + dx) * 4; if i + 3 < data.len() { for c in 0..4 { sums[c] += data[i+c] as u32; } count += 1; } }
-        let i = (y * w + x) * 4; if i + 3 < temp.len() { for c in 0..4 { temp[i+c] = (sums[c] / count) as u8; } }
-    }}
-    for x in 0..w { for y in 0..h {
-        let mut sums = [0u32; 4]; let mut count = 0u32;
-        for dy in y.saturating_sub(r)..=(y + r).min(h - 1) { let i = (dy * w + x) * 4; if i + 3 < temp.len() { for c in 0..4 { sums[c] += temp[i+c] as u32; } count += 1; } }
-        let i = (y * w + x) * 4; if i + 3 < data.len() { for c in 0..4 { data[i+c] = (sums[c] / count) as u8; } }
-    }}
+    with_scratch(data.len(), |temp| {
+        for y in 0..h { for x in 0..w {
+            let mut sums = [0u32; 4]; let mut count = 0u32;
+            for dx in x.saturating_sub(r)..=(x + r).min(w - 1) { let i = (y * w + dx) * 4; if i + 3 < data.len() { for c in 0..4 { sums[c] += data[i+c] as u32; } count += 1; } }
+            let i = (y * w + x) * 4; if i + 3 < temp.len() { for c in 0..4 { temp[i+c] = (sums[c] / count) as u8; } }
+        }}
+        for x in 0..w { for y in 0..h {
+            let mut sums = [0u32; 4]; let mut count = 0u32;
+            for dy in y.saturating_sub(r)..=(y + r).min(h - 1) { let i = (dy * w + x) * 4; if i + 3 < temp.len() { for c in 0..4 { sums[c] += temp[i+c] as u32; } count += 1; } }
+            let i = (y * w + x) * 4; if i + 3 < data.len() { for c in 0..4 { data[i+c] = (sums[c] / count) as u8; } }
+        }}
+    });
 }
 
 #[wasm_bindgen]
 pub fn wasm_apply_sharpen(data: &mut [u8], width: u32, height: u32, amount: f64) {
-    let w = width as usize; let h = height as usize; let temp = data.to_vec();
+    let w = width as usize; let h = height as usize;
     if w < 3 || h < 3 { return; }
-    for y in 1..h-1 { for x in 1..w-1 { let i = (y*w+x)*4;
-        for c in 0..3 { let val=temp[i+c] as f64; let up=temp[((y-1)*w+x)*4+c] as f64; let down=temp[((y+1)*w+x)*4+c] as f64; let left=temp[(y*w+x-1)*4+c] as f64; let right=temp[(y*w+x+1)*4+c] as f64; let lap=val*5.0-(up+down+left+right); data[i+c]=clamp(val+(lap-val)*amount); }
-    }}
+    with_scratch(data.len(), |temp| {
+        temp.copy_from_slice(data);
+        for y in 1..h-1 { for x in 1..w-1 { let i = (y*w+x)*4;
+            for c in 0..3 { let val=temp[i+c] as f64; let up=temp[((y-1)*w+x)*4+c] as f64; let down=temp[((y+1)*w+x)*4+c] as f64; let left=temp[(y*w+x-1)*4+c] as f64; let right=temp[(y*w+x+1)*4+c] as f64; let lap=val*5.0-(up+down+left+right); data[i+c]=clamp(val+(lap-val)*amount); }
+        }}
+    });
 }
 
 #[wasm_bindgen]
@@ -153,10 +175,56 @@ pub fn wasm_apply_vignette(data: &mut [u8], width: u32, height: u32, radius: f64
     for y in 0..h { for x in 0..w { let dx=x as f64-cx; let dy=y as f64-cy; let dist=(dx*dx+dy*dy).sqrt(); if dist > limit*(1.0-soft) { let factor=1.0-((dist-limit*(1.0-soft))/(limit*soft).max(1.0)).min(1.0); let i=(y*w+x)*4; if i+2<data.len() { for c in 0..3 { data[i+c]=clamp(data[i+c] as f64*factor); } } } }}
 }
 
+// Deterministic hash of the f64 seed into a nonzero u32 PRNG state. The
+// splitmix32 finalizer decorrelates seeds that differ by small amounts (e.g.
+// Date.now() values one millisecond apart) so nearby seeds still produce
+// unrelated noise streams.
+#[inline]
+fn noise_seed_state(seed: f64) -> u32 {
+    let bits = seed.to_bits();
+    let mut z = (bits ^ (bits >> 32)) as u32;
+    z = z.wrapping_mul(0x9E37_79B9);
+    z ^= z >> 16;
+    z = z.wrapping_mul(0x85EB_CA6B);
+    z ^= z >> 13;
+    z = z.wrapping_mul(0xC2B2_AE35);
+    z ^= z >> 16;
+    if z == 0 { 0x9E37_79B9 } else { z }
+}
+
+// xorshift32: cheap deterministic PRNG, far cheaper than sin() per pixel.
+struct Xorshift32 { state: u32 }
+
+impl Xorshift32 {
+    #[inline]
+    fn new(seed: u32) -> Self { Xorshift32 { state: seed } }
+
+    #[inline]
+    fn next_u32(&mut self) -> u32 {
+        let mut x = self.state;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        self.state = x;
+        x
+    }
+
+    /// Uniform in [0, 1) using the top 24 bits.
+    #[inline]
+    fn next_unit(&mut self) -> f64 {
+        (self.next_u32() >> 8) as f64 / 16_777_216.0
+    }
+}
+
 #[wasm_bindgen]
 pub fn wasm_apply_noise(data: &mut [u8], intensity: f64, seed: f64) {
-    let mut s=if seed == 0.0 { 1.0 } else { seed }; let factor=intensity/100.0*255.0;
-    for px in data.chunks_exact_mut(4) { s += 1.0; let x=s.sin()*10000.0; let random=x-x.floor(); let noise=(random-0.5)*factor; for c in px.iter_mut().take(3) { *c=clamp(*c as f64+noise); } }
+    let factor = intensity / 100.0 * 255.0;
+    if factor == 0.0 { return; }
+    let mut rng = Xorshift32::new(noise_seed_state(seed));
+    for px in data.chunks_exact_mut(4) {
+        let noise = (rng.next_unit() - 0.5) * factor;
+        for c in px.iter_mut().take(3) { *c = clamp(*c as f64 + noise); }
+    }
 }
 
 #[wasm_bindgen]
@@ -295,5 +363,36 @@ mod tests {
         };
         wasm_apply_pipeline(&mut data, 3, 3, config, &c, &c, &c);
         assert_eq!(data, expected);
+    }
+    #[test] fn noise_is_deterministic_per_seed() {
+        let mut a = vec![10,20,30,255, 40,50,60,255, 70,80,90,255];
+        let mut b = a.clone();
+        wasm_apply_noise(&mut a, 10.0, 42.0);
+        wasm_apply_noise(&mut b, 10.0, 42.0);
+        assert_eq!(a, b);
+        let mut c = vec![10,20,30,255, 40,50,60,255, 70,80,90,255];
+        wasm_apply_noise(&mut c, 10.0, 43.0);
+        assert_ne!(a, c);
+    }
+    #[test] fn noise_changes_pixels() {
+        let mut data = vec![100u8; 8 * 4];
+        for px in data.chunks_exact_mut(4) { px[3] = 255; }
+        let original = data.clone();
+        wasm_apply_noise(&mut data, 40.0, 7.0);
+        assert_ne!(data, original);
+    }
+    #[test] fn blur_constant_image_is_unchanged() {
+        let mut data = vec![100u8; 9 * 4];
+        for px in data.chunks_exact_mut(4) { px[3] = 255; }
+        let original = data.clone();
+        wasm_apply_blur(&mut data, 3, 3, 1);
+        assert_eq!(data, original);
+    }
+    #[test] fn sharpen_constant_image_is_unchanged() {
+        let mut data = vec![100u8; 9 * 4];
+        for px in data.chunks_exact_mut(4) { px[3] = 255; }
+        let original = data.clone();
+        wasm_apply_sharpen(&mut data, 3, 3, 0.8);
+        assert_eq!(data, original);
     }
 }
