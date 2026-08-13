@@ -2,15 +2,11 @@
 // targets (e.g. the host running `cargo test`) they delegate to the scalar
 // implementations, since the simd128 intrinsics only exist on wasm32.
 //
-// `blur`, `sharpen` and `noise` are wired into apply_pipeline. Byte-identity
-// vs the scalar reference: blur is integer-only (i32x4 channel sums) so it is
-// exactly byte-identical; sharpen and noise convert the scalar f64 math to
-// f32, so they may differ by a fraction of an LSB on a small number of
-// pixels.
-//
-// `hsl` is kept internal and is not yet wired into apply_pipeline; it stays
-// behind until HSL SIMD is adopted, at which point apply_pipeline routes
-// through it instead of color::apply_hsl.
+// `blur`, `sharpen`, `noise` and `hsl` are wired into apply_pipeline.
+// Byte-identity vs the scalar reference: blur is integer-only (i32x4 channel
+// sums) so it is exactly byte-identical; sharpen, noise and hsl convert the
+// scalar f64 math to f32, so they may differ by a fraction of an LSB on a
+// small number of pixels.
 #![allow(dead_code, unused_imports)]
 
 #[cfg(not(target_arch = "wasm32"))]

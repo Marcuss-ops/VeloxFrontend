@@ -23,7 +23,10 @@ pub(crate) fn apply_pipeline(
         crate::simd::sharpen(data, width, height, config.sharpen);
     }
     if config.hue != 0.0 || config.saturation != 0.0 || config.lightness != 0.0 {
-        color::apply_hsl(data, config.hue, config.saturation, config.lightness);
+        // HSL routes through the simd128 variant (branchless, 4 px/lane). On
+        // non-wasm targets simd::hsl delegates to the scalar reference, so
+        // the host tests stay byte-identical.
+        crate::simd::hsl(data, config.hue, config.saturation, config.lightness);
     }
     if config.brightness != 0.0 || config.contrast != 0.0 {
         color::apply_brightness_contrast(data, config.brightness, config.contrast);

@@ -34,7 +34,7 @@ src/
 ├── pixelate.rs  # block pixelation
 ├── blend.rs     # blend modes + source-over alpha
 ├── mask.rs      # alpha mask + feathering
-└── simd.rs      # simd128 blur/sharpen/noise (pipeline) + hsl (not yet wired)
+└── simd.rs      # simd128 blur/sharpen/noise/hsl (pipeline)
 ```
 
 ## Profiling notes
@@ -52,16 +52,23 @@ single exception is HSL.
 `d != 0`, and the four-way `hue_to_rgb` switch. On white noise those branches
 mispredict, so the HSL-dominated "light" workload runs ~30% slower on noise
 than on photo-like content, and the hsl stage alone is ~50% slower on noise.
-A measured SIMD variant (4 pixels per f32x4 lane, branchless mask-select)
-removes that misprediction — ~2.3–2.8x on noise but only ~1.6x on photos,
-where the scalar branch predictor already does well and the remaining cost is
-dominated by f32 divisions. HSL is still on the scalar path.
+A SIMD variant (4 pixels per f32x4 lane, branchless mask-select) removes
+that misprediction — measured ~3x on noise and ~1.6x on photos, where the
+scalar branch predictor already does well and the remaining cost is dominated
+by f32 divisions. HSL SIMD is now wired into apply_pipeline.
 
-**SIMD adoption.** blur, sharpen and noise are wired to their simd128
-variants. End-to-end the heavy pipeline gains ~8–10% (the light ~4–8%) — well
-below the isolated per-filter gains (blur ~1.14x, sharpen ~1.96x, noise
-~1.2x) because the multi-pass pipeline is substantially memory-bound, so the
-compute speedup doesn't fully translate.
+**SIMD adoption.** blur, sharpen, noise and hsl are wired to their simd128
+variants. Measured at 1920×1080 (median of 7 runs, real wasm-bindgen package
+in Node):
+
+- hsl alone: 174.2 ms → ~57 ms on noise, 100.2 ms → ~58 ms on photo.
+- light pipeline (hsl+brightness/contrast+noise+curves): 223.8 → ~136 ms on
+  noise (~40% faster), 172.4 → ~137 ms on photo (~20% faster). At 4K the
+  same workload drops 908.6 → ~562 ms on noise (~38% faster).
+- heavy pipeline (blur 32 + all): 325.1 → ~297 ms on noise (~9% faster) —
+  the multi-pass path is substantially memory-bound, so the compute speedup
+doesn't fully translate there, matching the blur/sharpen/noise adoption
+experience (isolated gains ~1.14x/1.96x/1.2x, end-to-end ~8–10%).
 
 From `web/dark_editor`:
 
