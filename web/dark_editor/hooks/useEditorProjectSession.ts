@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getProject } from '@/lib/api';
 import { getEditorSessionByProject } from '@/lib/api/bff';
+import { isScopedProjectId } from '@/lib/project-scope';
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -60,7 +61,7 @@ export function useEditorProjectSession(projectId: string): UseEditorProjectSess
       // Refresh the source for older sessions that persisted a dead CDN URL.
       // This keeps the editor image identical to the channel-card thumbnail.
       let sessionSourceThumbnail = '';
-      if (projectId.startsWith('ve_')) {
+      if (isScopedProjectId(projectId)) {
         try {
           // Use the authenticated BFF client: the raw fetch previously used
           // here carried no editor bearer, so the backend rejected it with
@@ -96,11 +97,12 @@ export function useEditorProjectSession(projectId: string): UseEditorProjectSess
         canvasHeight?: number;
       };
       const sourceObjects = Array.isArray(canvas.objects) ? canvas.objects : [];
-      // Editor sessions created by InstaEdit use the `ve_*` id and may have
-      // an arbitrary E2E/draft title (for example `InstaEdit E2E ...`). Do
-      // not use the display title as the document-type discriminator: those
-      // sessions still need the canonical 1920x1080 migration.
-      const isYouTubeThumbnail = projectId.startsWith('ve_')
+      // Editor sessions created by InstaEdit use a scoped (`ve_*`/`vx_*`)
+      // id and may have an arbitrary E2E/draft title (for example
+      // `InstaEdit E2E ...`). Do not use the display title as the
+      // document-type discriminator: those sessions still need the
+      // canonical 1920x1080 migration.
+      const isYouTubeThumbnail = isScopedProjectId(projectId)
         || data.type === 'youtube_thumbnail'
         || /^YouTube thumbnail\b/i.test(data.name)
         || sourceObjects.some((value) => {

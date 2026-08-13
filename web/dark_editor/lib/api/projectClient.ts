@@ -15,6 +15,7 @@
 // grouped semantically with the folder management surface).
 
 import { apiDelete, apiGet, API_BASE, editorFetch, editorImageProxyUrl, editorProjectFetch, getCSRFHeaders } from './httpClient';
+import { isScopedProjectId } from '../project-scope';
 import type { Project } from './types';
 
 function safeAssetUrl(value: string | undefined, videoId?: string): string {
@@ -46,7 +47,7 @@ export async function listProjects(type?: string): Promise<Project[]> {
 
 // Get a project
 export async function getProject(id: string): Promise<Project> {
-  if (id.startsWith('ve_')) {
+  if (isScopedProjectId(id)) {
     // The old local /api/projects catalog does not own ve_* projects. Read the
     // persisted document through the project-scoped InstaEdit BFF instead.
     const persistedResponse = await editorProjectFetch(id, `projects/${encodeURIComponent(id)}/document`, {
@@ -136,7 +137,7 @@ export async function saveProject(project: {
   canvas_json: Record<string, unknown>;
   preview_filename?: string;
 }): Promise<{ id: string; message: string }> {
-  if (project.id.startsWith('ve_')) {
+  if (isScopedProjectId(project.id)) {
     const response = await editorProjectFetch(project.id, `projects/${encodeURIComponent(project.id)}/document`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

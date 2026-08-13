@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { saveEditorSessionDraft } from '@/lib/api/bff';
+import { isScopedProjectId } from '@/lib/project-scope';
 
 export interface SyncDraftTitleOptions {
   /** Debounce window in ms before the title PUT fires. Defaults to 800. */
@@ -34,7 +35,7 @@ export function useSyncDraftTitle(
   const lastSyncedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!projectId.startsWith('ve_')) return;
+    if (!isScopedProjectId(projectId)) return;
     const trimmed = name.trim();
     // Skip empty pill values (the blur handler replaces them with a
     // random name before any meaningful pause) and skip re-PUTing a

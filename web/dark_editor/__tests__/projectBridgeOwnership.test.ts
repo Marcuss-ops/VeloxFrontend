@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isRetiredYouTubeCatalogPath, isScopedEditorProjectId } from '@/lib/editor-ownership';
+import { isScopedProjectId } from '@/lib/project-scope';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -10,10 +11,20 @@ function read(relativePath: string): string {
 }
 
 describe('InstaEdit/Velox project bridge boundary', () => {
-  it('accepts only opaque ve_ project handles', () => {
+  it('accepts only opaque ve_/vx_ project handles (single canonical resolver)', () => {
     expect(isScopedEditorProjectId('ve_project_123')).toBe(true);
-    expect(isScopedEditorProjectId('project_123')).toBe(false);
-    expect(isScopedEditorProjectId('ve_')).toBe(false);
+    expect(isScopedEditorProjectId('vx_project_123')).toBe(true);
+    expect(isScopedProjectId('ve_project_123')).toBe(true);
+    expect(isScopedProjectId('vx_project_123')).toBe(true);
+    // Non-scoped ids must NEVER be treated as InstaEdit-backed projects:
+    // a vx_/ve_ check here is the exact contract mismatch that used to let
+    // a vx_ handle through authorization into the legacy persistence.
+    expect(isScopedProjectId('project_123')).toBe(false);
+    expect(isScopedProjectId('ve_')).toBe(false);
+    expect(isScopedProjectId('vx_')).toBe(false);
+    expect(isScopedProjectId('')).toBe(false);
+    // The ownership helper delegates to the canonical resolver.
+    expect(isScopedEditorProjectId('vx_project_123')).toBe(isScopedProjectId('vx_project_123'));
   });
 
   it('retires every global YouTube catalog path', () => {

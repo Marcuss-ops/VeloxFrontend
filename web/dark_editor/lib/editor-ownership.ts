@@ -1,6 +1,4 @@
-// Keep this in lockstep with the InstaEdit BFF parser: 128 characters
-// total, including the mandatory `ve_` prefix.
-const PROJECT_ID_PATTERN = /^(?:ve_|vx_)[A-Za-z0-9_-]{1,125}$/;
+import { isScopedProjectId } from './project-scope';
 
 const RETIRED_YOUTUBE_CATALOG_PREFIXES = [
   '/groups',
@@ -11,8 +9,12 @@ const RETIRED_YOUTUBE_CATALOG_PREFIXES = [
   '/videos',
 ] as const;
 
+/**
+ * Canonical scoped-project check (ve_/vx_ prefixes) — see project-scope.ts.
+ * Kept as a named export here so existing callers keep working.
+ */
 export function isScopedEditorProjectId(value: string): boolean {
-  return PROJECT_ID_PATTERN.test(value.trim());
+  return isScopedProjectId(value);
 }
 
 export function isRetiredYouTubeCatalogPath(path: string): boolean {

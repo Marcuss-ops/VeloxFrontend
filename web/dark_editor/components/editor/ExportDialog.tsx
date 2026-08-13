@@ -15,6 +15,7 @@ import { BatchVideoGrid } from '@/components/editor/export/BatchVideoGrid';
 import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
 import { requestEditorFlush } from '@/lib/editorEvents';
 import { uploadMediaAsset, updateEditorSessionThumbnail } from '@/lib/api/bff';
+import { isScopedProjectId } from '@/lib/project-scope';
 
 type BatchVideo = GroupVideo;
 
@@ -141,7 +142,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
     || (selectedObject?.type === 'text' ? selectedObject : undefined)
     || textLayers[0];
   const hasSelection = selectedIds.length > 0;
-  const isEditorSession = Boolean(currentProject?.id?.startsWith('ve_'));
+  const isEditorSession = Boolean(currentProject?.id && isScopedProjectId(currentProject.id));
   const {
     videos: privateVideos,
     visibleVideos: visiblePrivateVideos,
