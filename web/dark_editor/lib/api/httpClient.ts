@@ -35,7 +35,7 @@ export const FOLDERS_API_BASE = `${API_BASE}/api/folders`;
 export function buildUrl(path: string): string {
   if (/^(https?:|data:|blob:)/i.test(path)) return path;
   if (path.startsWith(API_BASE)) return path;
-  return `${API_BASE}${path.replace(/^\/+/, '')}`;
+  return `${API_BASE}/${path.replace(/^\/+/, '')}`;
 }
 
 // ------------------------------------------------------------------
