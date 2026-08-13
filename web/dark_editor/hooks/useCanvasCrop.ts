@@ -30,6 +30,8 @@ export interface CanvasCropApi {
   handleStageMouseMove: (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => void;
   handleStageMouseUp: () => void;
   commitLassoCrop: () => void;
+  commitCrop: () => void;
+  discardCrop: () => void;
 }
 
 /**
@@ -279,5 +281,7 @@ export function useCanvasCrop(opts: CanvasCropOptions): CanvasCropApi {
     handleStageMouseMove,
     handleStageMouseUp,
     commitLassoCrop,
+    commitCrop,
+    discardCrop,
   };
 }
