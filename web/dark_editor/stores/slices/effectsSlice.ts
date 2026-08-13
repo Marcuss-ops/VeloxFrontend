@@ -9,7 +9,8 @@
 // updateObjectLive (no history entry per slider tick).
 
 import type { StoreApi } from 'zustand';
-import type { EditorState, CanvasObject, TextObject } from '../editorStore';
+import type { EditorState } from '../editorStore';
+import type { CanvasObject, TextObject } from '../canvasObjectTypes';
 
 export interface EffectsSlice {
   // Filter actions

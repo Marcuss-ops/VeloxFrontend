@@ -13,7 +13,8 @@
 import type { StoreApi } from 'zustand';
 import { produceWithPatches, applyPatches } from 'immer';
 import type { Patch } from 'immer';
-import type { EditorState, CanvasObject } from '../editorStore';
+import type { EditorState } from '../editorStore';
+import type { CanvasObject } from '../canvasObjectTypes';
 
 export interface HistorySlice {
   // History patches (capped at 50 entries — pastPatches[0] is dropped on overflow)

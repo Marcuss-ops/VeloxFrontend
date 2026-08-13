@@ -9,7 +9,8 @@
 import type { StoreApi } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { readEditorClipboard, writeEditorClipboard } from '@/lib/editorClipboard';
-import type { EditorState, CanvasObject } from '../editorStore';
+import type { EditorState } from '../editorStore';
+import type { CanvasObject } from '../canvasObjectTypes';
 
 export interface ObjectSlice {
   objects: CanvasObject[];
