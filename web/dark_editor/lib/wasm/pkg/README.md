@@ -52,10 +52,16 @@ single exception is HSL.
 `d != 0`, and the four-way `hue_to_rgb` switch. On white noise those branches
 mispredict, so the HSL-dominated "light" workload runs ~30% slower on noise
 than on photo-like content, and the hsl stage alone is ~50% slower on noise.
-The SIMD evaluation (4 pixels per f32x4 lane, branchless mask-select) removes
-that misprediction: its speedup over the scalar reference is ~2.3–2.8x on
-noise but only ~1.6x on photos, where the scalar branch predictor already
-does well and the remaining cost is dominated by f32 divisions.
+A measured SIMD variant (4 pixels per f32x4 lane, branchless mask-select)
+removes that misprediction — ~2.3–2.8x on noise but only ~1.6x on photos,
+where the scalar branch predictor already does well and the remaining cost is
+dominated by f32 divisions. HSL is still on the scalar path.
+
+**SIMD adoption.** blur, sharpen and noise are wired to their simd128
+variants. End-to-end the heavy pipeline gains ~8–10% (the light ~4–8%) — well
+below the isolated per-filter gains (blur ~1.14x, sharpen ~1.96x, noise
+~1.2x) because the multi-pass pipeline is substantially memory-bound, so the
+compute speedup doesn't fully translate.
 
 From `web/dark_editor`:
 
