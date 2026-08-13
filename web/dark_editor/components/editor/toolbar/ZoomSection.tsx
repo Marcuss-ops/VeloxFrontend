@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import {

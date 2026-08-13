@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore, type ImageObject } from '@/stores/editorStore';
 import { useObjectsArray } from '@/hooks/useObjectsArray';

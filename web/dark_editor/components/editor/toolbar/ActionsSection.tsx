@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { Share2 } from 'lucide-react';
 import { DockItem } from './DockItem';
