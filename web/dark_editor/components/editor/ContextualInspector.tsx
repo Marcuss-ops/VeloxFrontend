@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Check, Circle, Gauge, Image as ImageIcon, Palette, Sparkles, Type, X } from 'lucide-react';
+import { Check, Gauge, Image as ImageIcon, Palette, Sparkles, Type, X } from 'lucide-react';
 import { useEditorStore, type CanvasObject } from '@/stores/editorStore';
 
 type ContextualInspectorProps = {
@@ -211,8 +211,6 @@ export default function ContextualInspector({ hoveredObjectId, dark = false, pla
     update('textStroke', enabled ? { width: 4, color: '#000000' } : undefined);
   };
 
-  const typeIcon = selectedObject.type === 'text' ? <Type className="h-4 w-4" /> : selectedObject.type === 'image' ? <ImageIcon className="h-4 w-4" /> : selectedObject.type === 'circle' ? <Circle className="h-4 w-4" /> : <Palette className="h-4 w-4" />;
-
   const surface = dark
     ? 'border-white/15 bg-[#17191f]/95 text-white'
     : 'border-black/10 bg-white/[0.97] text-[#111111]';
@@ -228,23 +226,20 @@ export default function ContextualInspector({ hoveredObjectId, dark = false, pla
       role="toolbar"
       aria-label={`Controlli ${getObjectLabel(selectedObject)}`}
     >
-      <div className={`overflow-hidden rounded-[18px] border shadow-[0_10px_30px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.03)] backdrop-blur-xl ${surface}`}>
-        {/* Header: object identity + close */}
-        <div className={`flex items-center justify-between gap-3 border-b px-3.5 py-2 ${dark ? 'border-white/10' : 'border-black/[0.07]'}`}>
-          <div className="flex shrink-0 items-center text-black/55 dark:text-white/65" title={getObjectLabel(selectedObject)}>{typeIcon}</div>
-          <button
-            type="button"
-            onClick={clearSelection}
-            title="Chiudi controlli"
-            aria-label="Chiudi controlli"
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors ${dark ? 'text-white/50 hover:bg-white/10 hover:text-white' : 'text-black/45 hover:bg-black/[0.06] hover:text-black'}`}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
+      <div className={`relative overflow-hidden rounded-[18px] border shadow-[0_10px_30px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.03)] backdrop-blur-xl ${surface}`}>
+        {/* Floating close button — the card itself shows only the controls */}
+        <button
+          type="button"
+          onClick={clearSelection}
+          title="Chiudi controlli"
+          aria-label="Chiudi controlli"
+          className={`absolute right-2.5 top-2.5 z-10 flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${dark ? 'text-white/50 hover:bg-white/10 hover:text-white' : 'text-black/45 hover:bg-black/[0.06] hover:text-black'}`}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
 
         {/* Controls strip: single horizontally scrollable row, never wraps */}
-        <div className="scrollbar-none flex items-center gap-2 overflow-x-auto px-3.5 py-2.5">
+        <div className="scrollbar-none flex items-center gap-2 overflow-x-auto px-3.5 py-2.5 pr-11">
           <Group icon={<Gauge className="h-3.5 w-3.5" />} label="Opacità">
             <Slider label="Opacità" compact className="w-24 shrink-0" min={0} max={100} value={(selectedObject.opacity ?? 1) * 100} suffix="%" onChange={(value) => updateLive('opacity', value / 100)} onCommit={saveToHistory} />
           </Group>

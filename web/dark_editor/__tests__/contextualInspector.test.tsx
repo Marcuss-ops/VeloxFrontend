@@ -58,14 +58,16 @@ describe('ContextualInspector shadow expansion', () => {
     expect(expand.style.maxWidth).toBe('0px');
   });
 
-  it('header shows only the object icon and the close button (no label or name text)', () => {
+  it('card shows only the controls and the floating close button (no header icon or name)', () => {
     useEditorStore.setState({ objects: [makeImage()], selectedIds: ['img-1'] });
     const { container } = render(
       <ContextualInspector hoveredObjectId={null} dark={false} placement="toolbar" />,
     );
     // The object name must not be rendered as visible text.
     expect(container.textContent).not.toContain('source thumbnail');
-    // Close button present.
+    // Close button present (floating, no header row).
     expect(container.querySelector('button[aria-label="Chiudi controlli"]')).toBeTruthy();
+    // The core controls are the visible content.
+    expect(container.querySelector('input[aria-label="Opacità"]')).toBeTruthy();
   });
 });
