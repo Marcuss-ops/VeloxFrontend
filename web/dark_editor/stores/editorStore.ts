@@ -173,7 +173,7 @@ export function isMarkerObject(obj: CanvasObject): obj is RectObject | CircleObj
  * and how the slices are merged into the single store the UI subscribes to.
  *
  * Note: `removeBackground` no longer lives here — the network I/O belongs
- * to the application layer, see lib/backgroundRemoval.ts.
+ * to the application layer (lib/api/mediaClient).
  */
 export interface EditorState extends ObjectSlice, HistorySlice, EffectsSlice {
   // Canvas view state

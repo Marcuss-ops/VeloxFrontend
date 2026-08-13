@@ -76,7 +76,6 @@ describe('editorStore composition (slices registry)', () => {
     expect(typeof state.setOffset).toBe('function');
 
     // domain purity: the network-coupled AI action moved out of the store
-    // (see lib/backgroundRemoval.ts)
     expect('removeBackground' in state).toBe(false);
   });
 

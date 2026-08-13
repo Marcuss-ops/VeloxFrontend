@@ -13,16 +13,37 @@ export class EditorUnauthorizedError extends Error {
   }
 }
 
-let sessionToken: string | null = null;
-let sessionProjectId: string | null = null;
-let exchangePromise: Promise<string> | null = null;
+// In-memory session cache, keyed by project id. Unlike the module-global
+// singletons this replaces, the cache (a) keeps the token's expiry so a
+// bearer is never reused after it dies, and (b) allows concurrent editor
+// opens for DIFFERENT projects without one exchange clobbering the other.
+//
+// Note: the token IS persisted to sessionStorage (storeSession) so a refresh
+// of the editor tab can resume without re-minting; the in-memory cache is
+// only a faster path on top of that storage.
+const sessionCache = new Map<string, StoredSession>();
+
+// In-flight launch/exchange promises, keyed by project id. Two concurrent
+// requests for the SAME project share one exchange; requests for different
+// projects run independently instead of one hijacking the other's promise.
+const inFlightExchanges = new Map<string, Promise<string>>();
 
 const SESSION_STORAGE_PREFIX = 'instaeditor:session:';
+
+// Grace window (30s) applied before the declared expiry: a token closer to
+// its deadline than this is treated as stale so the next request re-mints
+// instead of racing an expiring bearer through the wire.
+const EXPIRY_GRACE_MS = 30_000;
 
 type StoredSession = {
   token: string;
   expiresAt?: number;
 };
+
+/** True when the session is still usable for the next request. */
+function isSessionFresh(session: StoredSession): boolean {
+  return Boolean(session.token) && (!session.expiresAt || session.expiresAt > Date.now() + EXPIRY_GRACE_MS);
+}
 
 function launchTokenFromFragment(): string {
   if (typeof window === 'undefined') return '';
@@ -46,7 +67,7 @@ function readStoredSession(projectId: string): StoredSession | null {
     const raw = window.sessionStorage.getItem(`${SESSION_STORAGE_PREFIX}${projectId}`);
     if (!raw) return null;
     const stored = JSON.parse(raw) as StoredSession;
-    if (!stored.token || (stored.expiresAt && stored.expiresAt <= Date.now() + 30_000)) {
+    if (!isSessionFresh(stored)) {
       window.sessionStorage.removeItem(`${SESSION_STORAGE_PREFIX}${projectId}`);
       return null;
     }
@@ -98,24 +119,28 @@ export function ensureEditorSessionToken(projectIdOverride?: string): Promise<st
   // its pathname, so this branch avoids trying to mint a second launch token
   // for a non-editor page while preserving the request's cookie auth.
   if (!pathProjectId && projectIdOverride) return Promise.resolve('');
-  if (sessionToken && sessionProjectId === projectId) return Promise.resolve(sessionToken);
-  if (sessionToken && sessionProjectId !== projectId) {
-    sessionToken = null;
-    sessionProjectId = null;
-  }
-  if (exchangePromise) return exchangePromise;
+
+  // Fresh in-memory token for this project → reuse it (expiry-aware).
+  const cached = sessionCache.get(projectId);
+  if (cached && isSessionFresh(cached)) return Promise.resolve(cached.token);
+  if (cached) sessionCache.delete(projectId);
+
+  // Another request for the SAME project is already exchanging → share it.
+  // (Different projects exchange independently — no more cross-project
+  // hijacking of a single module-global promise.)
+  const inFlight = inFlightExchanges.get(projectId);
+  if (inFlight) return inFlight;
 
   const stored = readStoredSession(projectId);
   if (stored) {
-    sessionToken = stored.token;
-    sessionProjectId = projectId;
+    sessionCache.set(projectId, stored);
     return Promise.resolve(stored.token);
   }
 
   // Normal navigation supplies a one-time fragment. If the user refreshes
   // the editor or opens its URL directly, re-mint through the authenticated
   // BFF instead of failing with the misleading "misconfigured" message.
-  exchangePromise = (async () => {
+  const exchange = (async () => {
     const launchToken = launchTokenFromFragment() || await mintLaunchToken(projectId);
     const response = await fetch(editorRuntimePath('api/v1/editor/launch/exchange'), {
     method: 'POST',
@@ -128,16 +153,20 @@ export function ensureEditorSessionToken(projectIdOverride?: string): Promise<st
       if (response.status === 401) throw new EditorUnauthorizedError();
       throw new Error(payload.error || 'Editor sessione non disponibile. Riapri il progetto da InstaEdit.');
     }
-    sessionToken = payload.launch_token;
-    sessionProjectId = projectId;
-    storeSession(projectId, payload.launch_token, payload.expires_at ? payload.expires_at * 1000 : undefined);
+    const session: StoredSession = {
+      token: payload.launch_token,
+      expiresAt: payload.expires_at ? payload.expires_at * 1000 : undefined,
+    };
+    sessionCache.set(projectId, session);
+    storeSession(projectId, session.token, session.expiresAt);
     clearLaunchFragment();
-    return payload.launch_token;
+    return session.token;
   })().finally(() => {
-    exchangePromise = null;
+    inFlightExchanges.delete(projectId);
   });
 
-  return exchangePromise;
+  inFlightExchanges.set(projectId, exchange);
+  return exchange;
 }
 
 /** Return the in-memory session bearer, exchanging the launch fragment if needed. */
@@ -146,11 +175,14 @@ export async function editorAuthorizationHeaders(projectIdOverride?: string): Pr
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-/** Test/reset seam; the token is never persisted to storage. */
+/**
+ * Test/reset seam. Clears the in-memory cache and any in-flight exchanges;
+ * sessionStorage entries (the persisted copy) are left untouched — call
+ * clearEditorSession to wipe those too.
+ */
 export function resetEditorSessionToken(): void {
-  sessionToken = null;
-  sessionProjectId = null;
-  exchangePromise = null;
+  sessionCache.clear();
+  inFlightExchanges.clear();
 }
 
 /**
