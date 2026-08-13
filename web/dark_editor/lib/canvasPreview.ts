@@ -1,4 +1,10 @@
 import { exportStageToBlob } from '@/lib/canvasExport';
+import {
+  neutralizeStageTransforms,
+  restoreStageTransforms,
+  snapshotStageTransforms,
+  type CaptureStage,
+} from '@/lib/canvasCaptureGeometry';
 import Konva from 'konva';
 
 type ExportStage = {
@@ -114,25 +120,8 @@ export async function captureEditorCanvasBlob(
   // white space. Export the scene rectangle explicitly so the whole canvas
   // is rendered at its real document dimensions.
   if (stage?.toDataURL) {
-    const original = {
-      x: stage.x?.() ?? 0,
-      y: stage.y?.() ?? 0,
-      scaleX: stage.scaleX?.() ?? 1,
-      scaleY: stage.scaleY?.() ?? 1,
-    };
-    const stageWithSize = stage as ExportStage;
-    const originalWidth = stageWithSize.width?.();
-    const originalHeight = stageWithSize.height?.();
-    const layerTransforms = (stage.find?.('Layer') ?? [])
-      .filter((node) => node.x && node.y && node.scaleX && node.scaleY && node.rotation)
-      .map((node) => ({
-        node,
-        x: node.x!(),
-        y: node.y!(),
-        scaleX: node.scaleX!(),
-        scaleY: node.scaleY!(),
-        rotation: node.rotation!() ?? 0,
-      }));
+    const captureStage = stage as CaptureStage;
+    const snapshot = snapshotStageTransforms(captureStage);
     const hiddenNodes: ExportStage[] = [];
     const editorOnlyNodes = [
       ...(stage.find?.('.export-exclude') ?? []),
@@ -162,14 +151,7 @@ export async function captureEditorCanvasBlob(
       // The stage itself is the canonical renderer used by the editor. Make
       // its backing surface match the logical document while capturing; the
       // viewport's CSS size is restored immediately afterwards.
-      stageWithSize.size?.({ width, height });
-      for (const { node } of layerTransforms) {
-        node.position?.({ x: 0, y: 0 });
-        node.scale?.({ x: 1, y: 1 });
-        node.rotation?.(0);
-      }
-      stage.position?.({ x: 0, y: 0 });
-      stage.scale?.({ x: 1, y: 1 });
+      neutralizeStageTransforms(captureStage, width, height, snapshot.layers);
       stage.draw();
       const dataUrl = stage.toDataURL({
         x: 0, y: 0, width, height, pixelRatio: 1, mimeType,
@@ -180,16 +162,7 @@ export async function captureEditorCanvasBlob(
     } finally {
       for (const [node, text] of previousText) node.text?.(text);
       for (const node of hiddenNodes) node.visible?.(true);
-      for (const { node, x, y, scaleX, scaleY, rotation } of layerTransforms) {
-        node.position?.({ x, y });
-        node.scale?.({ x: scaleX, y: scaleY });
-        node.rotation?.(rotation);
-      }
-      stage.position?.({ x: original.x, y: original.y });
-      stage.scale?.({ x: original.scaleX, y: original.scaleY });
-      if (originalWidth != null && originalHeight != null) {
-        stageWithSize.size?.({ width: originalWidth, height: originalHeight });
-      }
+      restoreStageTransforms(captureStage, snapshot);
       stage.draw();
     }
   }

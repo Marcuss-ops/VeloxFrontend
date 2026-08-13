@@ -1,4 +1,10 @@
 import Konva from 'konva';
+import {
+  neutralizeStageTransforms,
+  restoreStageTransforms,
+  snapshotStageTransforms,
+  type CaptureStage,
+} from '@/lib/canvasCaptureGeometry';
 
 export interface ExportedBlob {
   blob: Blob;
@@ -101,11 +107,8 @@ export async function exportStageToBlob(
   // logical surface.
   const logicalWidth = Math.max(1, canvasWidth);
   const logicalHeight = Math.max(1, canvasHeight);
-  const stageWithSize = stage as Konva.Stage & {
-    size?: (size?: { width: number; height: number }) => { width: number; height: number } | void;
-  };
-  const originalWidth = typeof stageWithSize.width === 'function' ? stageWithSize.width() : undefined;
-  const originalHeight = typeof stageWithSize.height === 'function' ? stageWithSize.height() : undefined;
+  const captureStage = stage as unknown as CaptureStage;
+  const snapshot = snapshotStageTransforms(captureStage);
 
   // 1. Identify and hide editor-only overlays.
   const excludeNodes = stage.find('.export-exclude');
@@ -116,38 +119,7 @@ export async function exportStageToBlob(
   }
 
   // 2. Neutralise pan/zoom so the exported region is the logical project rectangle.
-  const originalX = stage.x();
-  const originalY = stage.y();
-  const originalScaleX = stage.scaleX();
-  const originalScaleY = stage.scaleY();
-  const layerTransforms = stage.find('Layer')
-    .filter((layer) => {
-      const candidate = layer as unknown as Record<string, unknown>;
-      return typeof candidate.x === 'function'
-        && typeof candidate.y === 'function'
-        && typeof candidate.scaleX === 'function'
-        && typeof candidate.scaleY === 'function'
-        && typeof candidate.rotation === 'function';
-    })
-    .map((layer) => ({
-    layer,
-    x: layer.x(),
-    y: layer.y(),
-    scaleX: layer.scaleX(),
-    scaleY: layer.scaleY(),
-    rotation: layer.rotation(),
-  }));
-
-  if (stageWithSize.size) {
-    stageWithSize.size({ width: logicalWidth, height: logicalHeight });
-  }
-  for (const { layer } of layerTransforms) {
-    layer.position({ x: 0, y: 0 });
-    layer.scale({ x: 1, y: 1 });
-    layer.rotation(0);
-  }
-  stage.position({ x: 0, y: 0 });
-  stage.scale({ x: 1, y: 1 });
+  neutralizeStageTransforms(captureStage, logicalWidth, logicalHeight, snapshot.layers);
   stage.batchDraw();
 
   let dataURL: string;
@@ -166,16 +138,7 @@ export async function exportStageToBlob(
     // spends an async interval in export dimensions.
   } finally {
     // 3. Restore stage state and overlay visibility exactly once.
-    stage.position({ x: originalX, y: originalY });
-    stage.scale({ x: originalScaleX, y: originalScaleY });
-    for (const { layer, x, y, scaleX, scaleY, rotation } of layerTransforms) {
-      layer.position({ x, y });
-      layer.scale({ x: scaleX, y: scaleY });
-      layer.rotation(rotation);
-    }
-    if (stageWithSize.size && originalWidth != null && originalHeight != null) {
-      stageWithSize.size({ width: originalWidth, height: originalHeight });
-    }
+    restoreStageTransforms(captureStage, snapshot);
     for (const [node, wasVisible] of previousVisibility) {
       node.visible(wasVisible);
     }
