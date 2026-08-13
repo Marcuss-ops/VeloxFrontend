@@ -10,7 +10,7 @@ import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
 import { isScopedProjectId } from '@/lib/project-scope';
 import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
 import { requestEditorFlush } from '@/lib/editorEvents';
-import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
+import type { UseExportDialogReturn } from './useExportDialogTypes';
 import {
   EXPORT_WIDTH,
   EXPORT_HEIGHT,
@@ -25,70 +25,7 @@ import { useExportVariants } from '@/hooks/useExportVariants';
 import { useExportUpload } from '@/hooks/useExportUpload';
 import { useExportVariantEdit } from '@/hooks/useExportVariantEdit';
 
-export interface UseExportDialogReturn {
-  // dialog
-  open: boolean;
-  handleClose: () => void;
-  // selection
-  hasSelection: boolean;
-  selectedOnly: boolean;
-  setSelectedOnly: React.Dispatch<React.SetStateAction<boolean>>;
-  // metadata
-  youtubeTitle: string;
-  setYoutubeTitle: React.Dispatch<React.SetStateAction<string>>;
-  youtubeDescription: string;
-  setYoutubeDescription: React.Dispatch<React.SetStateAction<string>>;
-  isTranslatingMetadata: boolean;
-  metadataTranslationError: string;
-  translatedMetadata: Record<string, { title: string; description: string }>;
-  translateCompletedMetadata: () => Promise<void>;
-  // cover preview
-  coverPreviewUrl: string;
-  showCoverPreview: boolean;
-  setShowCoverPreview: React.Dispatch<React.SetStateAction<boolean>>;
-  snapshot: CanvasSnapshot | null;
-  snapshotStale: boolean;
-  canvasSignature: string;
-  // variants
-  variantPreviews: Record<string, RenderedVariant>;
-  isGeneratingPreviews: boolean;
-  allSelectedVariantsReady: boolean;
-  localizedMetadataByVideo: Record<string, { language: string; title: string; description: string }>;
-  // uploads
-  uploadResults: Record<string, { status: 'pending' | 'success' | 'error'; message?: string }>;
-  isApplyingToVideos: boolean;
-  // variant editing
-  editingVideoId: string | null;
-  setEditingVideoId: React.Dispatch<React.SetStateAction<string | null>>;
-  editingDraft: { title: string; description: string; coverText: string } | null;
-  setEditingDraft: React.Dispatch<React.SetStateAction<{ title: string; description: string; coverText: string } | null>>;
-  isSavingVariantEdit: boolean;
-  saveVariantEdit: () => Promise<void>;
-  // video targets
-  privateVideos: BatchVideo[];
-  visiblePrivateVideos: BatchVideo[];
-  latestPrivateVideos: BatchVideo[];
-  sortedVideos: BatchVideo[];
-  selectedVideoIds: string[];
-  setSelectedVideoIds: React.Dispatch<React.SetStateAction<string[]>>;
-  selectedVideoCount: number;
-  toggleVideo: (video: GroupVideo) => void;
-  selectAllVisible: () => void;
-  deselectAll: () => void;
-  selectLatest: () => void;
-  resetSelection: () => void;
-  loadingPrivateVideos: boolean;
-  youtubeTargetError: string | null;
-  youtubeTargetWarnings: string[];
-  targetVideos: BatchVideo[];
-  isEditorSession: boolean;
-  translationLayer: TextObject | undefined;
-  isExporting: boolean;
-  // actions
-  handleExport: () => Promise<void>;
-  handleDownloadAllLanguages: () => Promise<void>;
-  handleApplyToSelectedVideos: () => Promise<void>;
-}
+export type { UseExportDialogReturn } from './useExportDialogTypes';
 
 /**
  * Orchestrator for the export/publish flow. Owns the dialog/snapshot/targets
