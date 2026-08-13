@@ -64,6 +64,16 @@
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Hide scrollbars on compact horizontal strips (toolbar dock inspector) */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer components {
