@@ -13,6 +13,7 @@
 import { editorAuthorizationHeaders } from '@/lib/editor-session';
 import { editorBffPath, editorRuntimePath } from '@/lib/editor-runtime';
 import { isImageProxyHost } from '@/lib/image-proxy-allowlist';
+import { buildAuthHeaders } from './authHeaders';
 
 // ------------------------------------------------------------------
 // Base URLs
@@ -38,33 +39,11 @@ export function buildUrl(path: string): string {
 }
 
 // ------------------------------------------------------------------
-// Cookie helper — shared by the InstaEdit CSRF double-submit scheme.
-// Returns '' when running in a non-DOM environment (Vitest/Node).
+// Cookie + CSRF helpers live in lib/api/authHeaders.ts; re-exported here
+// so the legacy `./httpClient` and `@/lib/api` surfaces stay intact.
 // ------------------------------------------------------------------
 
-/** Read a cookie by name. */
-export function getCookie(name: string): string {
-  if (typeof document === 'undefined') return '';
-  const prefix = name + '=';
-  const entries = document.cookie.split(';');
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length));
-    }
-  }
-  return '';
-}
-
-/** Headers required for cookie-authenticated mutating API requests. */
-export function getCSRFHeaders(): Record<string, string> {
-  if (typeof document === 'undefined') return {};
-  const token = document.cookie
-    .split('; ')
-    .find((cookie) => cookie.startsWith('csrf_token='))
-    ?.slice('csrf_token='.length);
-  return token ? { 'X-CSRF-Token': decodeURIComponent(token) } : {};
-}
+export { getCookie, getCSRFHeaders } from './authHeaders';
 
 // ------------------------------------------------------------------
 // Core fetch — JWT/session authorization + CSRF + credentials
@@ -80,7 +59,7 @@ export async function editorFetch(input: RequestInfo | URL, init: RequestInit = 
   return fetch(input, {
     ...init,
     credentials: 'include',
-    headers: { ...authorization, ...getCSRFHeaders(), ...init.headers },
+    headers: buildAuthHeaders(authorization, init.headers),
   });
 }
 
@@ -94,7 +73,7 @@ export async function editorProjectFetch(projectId: string, path: string, init: 
   return fetch(editorBffPath(path), {
     ...init,
     credentials: 'include',
-    headers: { ...authorization, ...getCSRFHeaders(), ...init.headers },
+    headers: buildAuthHeaders(authorization, init.headers),
   });
 }
 
