@@ -242,6 +242,30 @@ export function process_mask(data, mask, width, height, feather) {
     const len1 = WASM_VECTOR_LEN;
     wasm.process_mask(ptr0, len0, data, ptr1, len1, width, height, feather);
 }
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} hue
+ * @param {number} saturation
+ * @param {number} lightness
+ */
+export function wasm_hsl_scalar(data, hue, saturation, lightness) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.wasm_hsl_scalar(ptr0, len0, data, hue, saturation, lightness);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} hue
+ * @param {number} saturation
+ * @param {number} lightness
+ */
+export function wasm_hsl_simd(data, hue, saturation, lightness) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.wasm_hsl_simd(ptr0, len0, data, hue, saturation, lightness);
+}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,

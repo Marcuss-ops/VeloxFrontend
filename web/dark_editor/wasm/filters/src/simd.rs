@@ -5,10 +5,10 @@
 // only exist on wasm32.
 //
 // Byte-identity: blur is integer-only (i32x4 channel sums), so it is exactly
-// byte-identical to the scalar blur. sharpen and noise convert the scalar
-// f64 math to f32, so they may differ from the scalar reference by a fraction
-// of an LSB on a small number of pixels — the Node benchmark reports the
-// actual deviation.
+// byte-identical to the scalar blur. sharpen, noise and hsl convert the
+// scalar f64 math to f32, so they may differ from the scalar reference by a
+// fraction of an LSB on a small number of pixels — the Node benchmark
+// reports the actual deviation.
 //
 // These are evaluation-only helpers kept internal to the crate: the public
 // WASM surface is limited to apply_pipeline / blend_layers / process_mask,
@@ -26,6 +26,9 @@ mod imp {
     }
     pub(crate) fn noise(data: &mut [u8], intensity: f64, seed: f64) {
         crate::noise::apply(data, intensity, seed);
+    }
+    pub(crate) fn hsl(data: &mut [u8], hue: f64, saturation: f64, lightness: f64) {
+        crate::color::apply_hsl(data, hue, saturation, lightness);
     }
 }
 
@@ -167,6 +170,151 @@ mod imp {
             clamp_trunc_store3(px, out);
         }
     }
+
+    // Byte-shuffle indices to transpose 4 interleaved RGBA pixels into
+    // one f32x4 lane per channel across the 4 pixels. Indices >= 16 zero
+    // the lane (i8x16.swizzle semantics), leaving only lanes 0..3 populated.
+    const R_IDX: v128 = i8x16(0, 4, 8, 12, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
+    const G_IDX: v128 = i8x16(1, 5, 9, 13, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
+    const B_IDX: v128 = i8x16(2, 6, 10, 14, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
+
+    /// The scalar `hue_to_rgb` converted branchlessly: the four `if` arms are
+    /// resolved with comparison masks + `v128_bitselect`.
+    #[inline]
+    fn hue_to_rgb(p: v128, q: v128, t: v128) -> v128 {
+        let t_lt0 = f32x4_lt(t, f32x4_splat(0.0));
+        let t_gt1 = f32x4_gt(t, f32x4_splat(1.0));
+        let t = f32x4_add(t, v128_bitselect(f32x4_splat(1.0), f32x4_splat(0.0), t_lt0));
+        let t = f32x4_sub(t, v128_bitselect(f32x4_splat(1.0), f32x4_splat(0.0), t_gt1));
+        let qp = f32x4_sub(q, p);
+        let r1 = f32x4_add(p, f32x4_mul(f32x4_mul(qp, f32x4_splat(6.0)), t));
+        let r3 = f32x4_add(p, f32x4_mul(f32x4_mul(qp, f32x4_splat(6.0)), f32x4_sub(f32x4_splat(2.0 / 3.0), t)));
+        let t_lt_1_6 = f32x4_lt(t, f32x4_splat(1.0 / 6.0));
+        let t_lt_0_5 = f32x4_lt(t, f32x4_splat(0.5));
+        let t_lt_2_3 = f32x4_lt(t, f32x4_splat(2.0 / 3.0));
+        let res = v128_bitselect(r3, p, t_lt_2_3);
+        let res = v128_bitselect(q, res, t_lt_0_5);
+        v128_bitselect(r1, res, t_lt_1_6)
+    }
+
+    #[inline]
+    fn clamp255(v: v128) -> v128 {
+        let t = f32x4_trunc(v);
+        f32x4_pmin(f32x4_pmax(t, f32x4_splat(0.0)), f32x4_splat(255.0))
+    }
+
+    /// Store R/G/B back into the interleaved layout, leaving alpha bytes
+    /// (offsets 3, 7, 11, 15) untouched — HSL only affects color channels.
+    #[inline]
+    fn store4(dst: &mut [u8], r: v128, g: v128, b: v128) {
+        // hue_to_rgb returns [0, 1]; scale to [0, 255] before the u8 clamp.
+        let s255 = f32x4_splat(255.0);
+        let r = clamp255(f32x4_mul(r, s255));
+        let g = clamp255(f32x4_mul(g, s255));
+        let b = clamp255(f32x4_mul(b, s255));
+        dst[0] = f32x4_extract_lane::<0>(r) as u8;
+        dst[1] = f32x4_extract_lane::<0>(g) as u8;
+        dst[2] = f32x4_extract_lane::<0>(b) as u8;
+        dst[4] = f32x4_extract_lane::<1>(r) as u8;
+        dst[5] = f32x4_extract_lane::<1>(g) as u8;
+        dst[6] = f32x4_extract_lane::<1>(b) as u8;
+        dst[8] = f32x4_extract_lane::<2>(r) as u8;
+        dst[9] = f32x4_extract_lane::<2>(g) as u8;
+        dst[10] = f32x4_extract_lane::<2>(b) as u8;
+        dst[12] = f32x4_extract_lane::<3>(r) as u8;
+        dst[13] = f32x4_extract_lane::<3>(g) as u8;
+        dst[14] = f32x4_extract_lane::<3>(b) as u8;
+    }
+
+    /// Apply the scalar HSL math to 4 pixels at once (one f32x4 lane per
+    /// pixel, per channel). The per-pixel branches (max == r/g/b, l > 0.5,
+    /// s == 0) become branchless mask selects; the saturation/lightness
+    /// branches are call-constant and resolved into a*s+b coefficients.
+    #[inline]
+    unsafe fn hsl4(dst: &mut [u8], hue_shift: f32, a_sat: f32, b_sat: f32, a_l: f32, b_l: f32) {
+        let v = v128_load(dst.as_ptr() as *const v128);
+        let inv255 = f32x4_splat(1.0 / 255.0);
+        let r = f32x4_mul(f32x4_convert_i32x4(u32x4_extend_low_u16x8(u16x8_extend_low_u8x16(i8x16_swizzle(v, R_IDX)))), inv255);
+        let g = f32x4_mul(f32x4_convert_i32x4(u32x4_extend_low_u16x8(u16x8_extend_low_u8x16(i8x16_swizzle(v, G_IDX)))), inv255);
+        let b = f32x4_mul(f32x4_convert_i32x4(u32x4_extend_low_u16x8(u16x8_extend_low_u8x16(i8x16_swizzle(v, B_IDX)))), inv255);
+
+        let max = f32x4_pmax(f32x4_pmax(r, g), b);
+        let min = f32x4_pmin(f32x4_pmin(r, g), b);
+        let l = f32x4_mul(f32x4_add(max, min), f32x4_splat(0.5));
+        let d = f32x4_sub(max, min);
+
+        let d_nonzero = f32x4_ne(d, f32x4_splat(0.0));
+        let l_gt_half = f32x4_gt(l, f32x4_splat(0.5));
+        let denom = v128_bitselect(
+            f32x4_sub(f32x4_splat(2.0), f32x4_add(max, min)),
+            f32x4_add(max, min),
+            l_gt_half,
+        );
+        let s = v128_bitselect(f32x4_div(d, denom), f32x4_splat(0.0), d_nonzero);
+
+        let max_eq_r = f32x4_eq(max, r);
+        let max_eq_g = f32x4_eq(max, g);
+        let g_lt_b = f32x4_lt(g, b);
+        let h_r = f32x4_add(
+            f32x4_div(f32x4_sub(g, b), d),
+            v128_bitselect(f32x4_splat(6.0), f32x4_splat(0.0), g_lt_b),
+        );
+        let h_g = f32x4_add(f32x4_div(f32x4_sub(b, r), d), f32x4_splat(2.0));
+        let h_b = f32x4_add(f32x4_div(f32x4_sub(r, g), d), f32x4_splat(4.0));
+        let h = v128_bitselect(h_g, h_b, max_eq_g);
+        let h = v128_bitselect(h_r, h, max_eq_r);
+        let h = v128_bitselect(f32x4_mul(h, f32x4_splat(1.0 / 6.0)), f32x4_splat(0.0), d_nonzero);
+
+        // h = (h + hue/360).rem_euclid(1.0) == t - floor(t)
+        let t = f32x4_add(h, f32x4_splat(hue_shift));
+        let h = f32x4_sub(t, f32x4_floor(t));
+
+        let s = f32x4_pmax(
+            f32x4_pmin(f32x4_add(f32x4_mul(s, f32x4_splat(a_sat)), f32x4_splat(b_sat)), f32x4_splat(1.0)),
+            f32x4_splat(0.0),
+        );
+        let l = f32x4_pmax(
+            f32x4_pmin(f32x4_add(f32x4_mul(l, f32x4_splat(a_l)), f32x4_splat(b_l)), f32x4_splat(1.0)),
+            f32x4_splat(0.0),
+        );
+
+        let s_zero = f32x4_eq(s, f32x4_splat(0.0));
+        let l_lt_half = f32x4_lt(l, f32x4_splat(0.5));
+        let q = v128_bitselect(
+            f32x4_mul(l, f32x4_add(f32x4_splat(1.0), s)),
+            f32x4_sub(f32x4_add(l, s), f32x4_mul(l, s)),
+            l_lt_half,
+        );
+        let p = f32x4_sub(f32x4_mul(f32x4_splat(2.0), l), q);
+
+        let nr = v128_bitselect(l, hue_to_rgb(p, q, f32x4_add(h, f32x4_splat(1.0 / 3.0))), s_zero);
+        let ng = v128_bitselect(l, hue_to_rgb(p, q, h), s_zero);
+        let nb = v128_bitselect(l, hue_to_rgb(p, q, f32x4_sub(h, f32x4_splat(1.0 / 3.0))), s_zero);
+
+        store4(dst, nr, ng, nb);
+    }
+
+    pub(crate) fn hsl(data: &mut [u8], hue: f64, saturation: f64, lightness: f64) {
+        let pixels = data.len() / 4;
+        if pixels == 0 { return; }
+        // The scalar saturation/lightness branches depend only on the call
+        // constants, so resolve them once here into a*s + b coefficients.
+        let hue_shift = (hue / 360.0) as f32;
+        let sm = 1.0 + saturation / 100.0;
+        let (a_sat, b_sat) = if sm >= 1.0 { ((2.0 - sm) as f32, (sm - 1.0) as f32) } else { (sm as f32, 0.0f32) };
+        let ls = lightness / 100.0;
+        let (a_l, b_l) = if ls > 0.0 { ((1.0 - ls) as f32, ls as f32) } else { ((1.0 + ls) as f32, 0.0f32) };
+        let blocks = pixels / 4;
+        for i in 0..blocks {
+            unsafe { hsl4(&mut data[i * 16..i * 16 + 16], hue_shift, a_sat, b_sat, a_l, b_l); }
+        }
+        // Remaining 1..3 pixels (plus any trailing non-RGBA bytes) run through
+        // the scalar reference, which only touches complete 4-byte pixels.
+        let tail = blocks * 16;
+        if tail < data.len() {
+            crate::color::apply_hsl(&mut data[tail..], hue, saturation, lightness);
+        }
+    }
 }
 
-pub(crate) use imp::{blur, noise, sharpen};
+pub(crate) use imp::{blur, hsl, noise, sharpen};
