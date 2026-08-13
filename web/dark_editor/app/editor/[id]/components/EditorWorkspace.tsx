@@ -7,7 +7,6 @@ import { Upload } from 'lucide-react';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import ToolbarDock from './ToolbarDock';
 import EditorHeader from './EditorHeader';
-import LegacySidebarPanels from './LegacySidebarPanels';
 import ContextualInspector from '@/components/editor/ContextualInspector';
 import LayersPanel from '@/components/editor/LayersPanel';
 import ExportDialog from '@/components/editor/ExportDialog';
@@ -20,7 +19,6 @@ import { useSyncDraftTitle } from '@/hooks/useSyncDraftTitle';
 import { useDragDropUpload } from '@/hooks/useDragDropUpload';
 import { useEditorProjectSession } from '@/hooks/useEditorProjectSession';
 import { useEditorAutosave } from '@/hooks/useEditorAutosave';
-import { useEditorAssets } from '@/hooks/useEditorAssets';
 import { useEditorSidebar, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from '@/hooks/useEditorSidebar';
 import { useEditorTabs } from '@/hooks/useEditorTabs';
 import { clearEditorSession } from '@/lib/editor-session';
@@ -78,7 +76,6 @@ export default function EditorWorkspace() {
 
   const { openTabs, switchEditorTab, closeEditorTab } = useEditorTabs(projectId, returnUrl);
   const sidebar = useEditorSidebar();
-  const assets = useEditorAssets(sidebar.sidebarTab);
   const dragDrop = useDragDropUpload();
 
   const { currentProject, updateProjectName } = useProjectStore();
@@ -248,12 +245,6 @@ export default function EditorWorkspace() {
                 <LayersPanel onLayerHover={handleObjectHover} />
               </div>
             </div>
-            {/* Legacy sidebar tabs + panels (dormant, never rendered) */}
-            <LegacySidebarPanels
-              sidebarTab={sidebar.sidebarTab}
-              setSidebarTab={sidebar.setSidebarTab}
-              assets={assets}
-            />
           </div>
         </aside>
       </div>
