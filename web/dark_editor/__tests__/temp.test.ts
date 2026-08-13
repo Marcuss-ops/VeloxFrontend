@@ -10,13 +10,14 @@ vi.mock('@/lib/server-utils', () => ({
 }));
 
 import { GET } from '@/app/temp/[filename]/route';
+import type { NextRequest } from 'next/server';
 
-function createMockRequest(): Request {
+function createMockRequest(): NextRequest {
   return {
     headers: new Headers(),
     method: 'GET',
     url: 'http://localhost:3001/instaeditor/temp/test.png',
-  } as unknown as Request;
+  } as unknown as NextRequest;
 }
 
 describe('GET /temp/[filename]', () => {
@@ -30,7 +31,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'test.png' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/png');
@@ -45,7 +46,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'photo.jpg' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/jpeg');
@@ -56,7 +57,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'photo.jpeg' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/jpeg');
@@ -67,7 +68,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'image.webp' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/webp');
@@ -78,7 +79,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'anim.gif' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/gif');
@@ -89,7 +90,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'icon.svg' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/svg+xml');
@@ -100,7 +101,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'nonexistent.png' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(404);
     const body = await response.json();
@@ -110,7 +111,7 @@ describe('GET /temp/[filename]', () => {
   it('should return 400 for path traversal with ..', async () => {
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: '../../../etc/passwd' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(400);
     const body = await response.json();
@@ -121,7 +122,7 @@ describe('GET /temp/[filename]', () => {
   it('should return 400 for path traversal with /', async () => {
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'subdir/file.png' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(400);
     const body = await response.json();
@@ -132,7 +133,7 @@ describe('GET /temp/[filename]', () => {
   it('should return 400 for path traversal with backslash', async () => {
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: '..\\..\\windows.ini' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     // Note: the route only checks '..' and '/', not '\\'
     // But '..' is present, so it should be caught
@@ -145,7 +146,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'data.bin' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('application/octet-stream');
@@ -157,7 +158,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'backup.test.photo.png' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('image/png');
@@ -168,7 +169,7 @@ describe('GET /temp/[filename]', () => {
 
     const request = createMockRequest();
     const context = { params: Promise.resolve({ filename: 'noextension' }) };
-    const response = await GET(request as any, context);
+    const response = await GET(request, context);
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Content-Type')).toBe('application/octet-stream');

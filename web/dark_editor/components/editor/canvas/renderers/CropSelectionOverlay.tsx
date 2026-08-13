@@ -144,8 +144,8 @@ export function CropSelectionOverlay({
         centeredScaling={false}
         boundBoxFunc={(oldBox, newBox) => {
           const minSize = 20;
-          let x = Math.max(stageBounds.x, newBox.x);
-          let y = Math.max(stageBounds.y, newBox.y);
+          const x = Math.max(stageBounds.x, newBox.x);
+          const y = Math.max(stageBounds.y, newBox.y);
           let width = Math.min(newBox.width, stageBounds.x + stageBounds.width - x);
           let height = Math.min(newBox.height, stageBounds.y + stageBounds.height - y);
           

@@ -31,7 +31,7 @@ export interface UseEditorSidebarReturn {
  */
 export function useEditorSidebar(): UseEditorSidebarReturn {
   const selectedIds = useEditorStore((state) => state.selectedIds);
-  const [sidebarPinned, setSidebarPinned] = useState(false);
+  const [, setSidebarPinned] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const sidebarTimerRef = useRef<number | null>(null);
   const sidebarResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);

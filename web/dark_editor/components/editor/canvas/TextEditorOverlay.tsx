@@ -17,7 +17,7 @@
 //     signature even though the body doesn't reference it (preserved for
 //     back-compat with callers like components/editor/Canvas.tsx).
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Konva from 'konva';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
 import { type TextObject } from '@/stores/editorStore';

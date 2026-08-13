@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/Dialog';
 import { Smartphone, Monitor, Eye } from 'lucide-react';
 import { useFeedPreviewCapture } from '@/hooks/useFeedPreviewCapture';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 import { DesktopFeedPreview } from './feedPreview/DesktopFeedPreview';
 import { MobileFeedPreview } from './feedPreview/MobileFeedPreview';
 import { FeedPreviewSettings } from './feedPreview/FeedPreviewSettings';
@@ -12,7 +13,7 @@ interface FeedPreviewDialogProps {
   isOpen: boolean;
   onClose: () => void;
   /** Capture the canonical Konva stage, never the viewport canvas. */
-  canvasRef?: React.RefObject<any>;
+  canvasRef?: React.RefObject<CanvasHandle>;
 }
 
 export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPreviewDialogProps) {

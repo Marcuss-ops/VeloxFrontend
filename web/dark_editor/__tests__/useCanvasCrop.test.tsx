@@ -5,9 +5,10 @@
 // centered 1:1 for square/circle) and the relative-to-previous-crops
 // commit math (nextCropRect must not stretch the aspect ratio).
 
-import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
+import Konva from 'konva';
+import type { RefObject } from 'react';
 import { useCanvasCrop } from '@/hooks/useCanvasCrop';
 import { useEditorStore, type ImageObject } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -30,7 +31,7 @@ const makeImage = (overrides: Partial<ImageObject> = {}): ImageObject => ({
   ...overrides,
 });
 
-const hookArgs = (stageRef: { current: null }) => ({
+const hookArgs = (stageRef: RefObject<Konva.Stage | null>) => ({
   stageRef,
   displayScale: 1,
   displayOffsetX: 0,
@@ -162,13 +163,14 @@ describe('useCanvasCrop', () => {
       .mockReturnValueOnce({ x: 300, y: 100 }) // → local (200, 0)
       .mockReturnValueOnce({ x: 300, y: 200 }) // → local (200, 100)
       .mockReturnValueOnce({ x: 100, y: 200 }); // → local (0, 100)
-    const stageRef = { current: { getPointerPosition } } as any;
+    const stageRef = { current: { getPointerPosition } } as unknown as RefObject<Konva.Stage | null>;
     const { result } = renderHook(() => useCanvasCrop(hookArgs(stageRef)));
 
-    act(() => { result.current.handleStageMouseDown({} as any); });
-    act(() => { result.current.handleStageMouseMove({} as any); });
-    act(() => { result.current.handleStageMouseMove({} as any); });
-    act(() => { result.current.handleStageMouseMove({} as any); });
+    const fakeEvent = {} as unknown as Konva.KonvaEventObject<MouseEvent | TouchEvent>;
+    act(() => { result.current.handleStageMouseDown(fakeEvent); });
+    act(() => { result.current.handleStageMouseMove(fakeEvent); });
+    act(() => { result.current.handleStageMouseMove(fakeEvent); });
+    act(() => { result.current.handleStageMouseMove(fakeEvent); });
     act(() => { result.current.handleStageMouseUp(); });
 
     const obj = useEditorStore.getState().objects['img-1'];

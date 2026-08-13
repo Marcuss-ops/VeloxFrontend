@@ -209,7 +209,7 @@ describe('canvasExport', () => {
         visibleCalls.push(value);
         return true;
       }),
-    } as unknown as any;
+    } as unknown as Konva.Node;
     (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([node]);
 
     const result = await exportStageToBlob(stage, 1920, 1080, 'png', 90);
@@ -320,7 +320,7 @@ describe('canvasExport', () => {
     // image/jpeg -- otherwise POST /media/presign would return HTTP 400
     // "Unsupported thumbnail format" and the upload pipeline would abort.
     const mockCanvas: HTMLCanvasElement = {
-      toBlob: vi.fn((callback: BlobCallback, mime?: string, quality?: number) => {
+      toBlob: vi.fn((callback: BlobCallback, mime?: string, _quality?: number) => {
         callback(
           new Blob(['jpeg-bytes'], { type: mime ?? 'image/jpeg' }) as unknown as globalThis.Blob,
         );
@@ -696,7 +696,7 @@ describe('canvasExport', () => {
     // is exactly when the PNG serializer reads node state, so this is the
     // canonical "what does the user see in the final image" sample.
     const snapshotAtToDataURL: Array<{ name: string; visible: boolean }> = [];
-    stage.toDataURL = vi.fn((opts: Record<string, unknown>) => {
+    stage.toDataURL = vi.fn((_opts: Record<string, unknown>) => {
       for (const node of editorOverlayNodes) {
         snapshotAtToDataURL.push({ name: node.name(), visible: node.visible() as boolean });
       }

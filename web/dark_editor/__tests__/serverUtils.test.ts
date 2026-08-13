@@ -5,11 +5,8 @@ import {
   getNvidiaApiKey,
   deleteTempFile,
   getTempFile,
-  saveToTemp,
   ensureDirectories,
 } from '@/lib/server-utils';
-import fs from 'fs';
-import path from 'path';
 
 const mockExistsSync = vi.fn();
 const mockMkdirSync = vi.fn();

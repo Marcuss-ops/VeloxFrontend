@@ -64,8 +64,8 @@ describe('PublishYouTubeEditorSessionResponse contract lock', () => {
     // -- Pick produces a type that is assignable to ``{}`` only when
     // the key is OPTIONAL (the ``?`` permits omission). Inverting the
     // result delivers the real "is this required?" boolean.
-    type IsStatusOptional =
-      {} extends Pick<PublishYouTubeEditorSessionResponse, 'status'> ? true : false;
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- {} means "any non-nullish value"; this is the canonical optionality probe.
+    type IsStatusOptional = {} extends Pick<PublishYouTubeEditorSessionResponse, 'status'> ? true : false;
     expectTypeOf<IsStatusOptional>().toEqualTypeOf<false>();
   });
 

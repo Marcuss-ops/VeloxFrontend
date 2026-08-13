@@ -46,9 +46,9 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
   const [selectedOnly, setSelectedOnly] = useState(false);
 
   // Export state
-  const [exportComplete, setExportComplete] = useState(false);
-  const [exportedBlob, setExportedBlob] = useState<Blob | null>(null);
-  const [exportedFilename, setExportedFilename] = useState<string>('');
+  const [, setExportComplete] = useState(false);
+  const [, setExportedBlob] = useState<Blob | null>(null);
+  const [, setExportedFilename] = useState<string>('');
   const [coverPreviewUrl, setCoverPreviewUrl] = useState('');
   const [showCoverPreview, setShowCoverPreview] = useState(true);
   const [snapshot, setSnapshot] = useState<CanvasSnapshot | null>(null);
@@ -110,7 +110,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     // click on Export.
     const liveState = useEditorStore.getState();
     const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
-    const blob = await captureEditorCanvasBlob(canvasRef?.current?.getStage?.(), EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png');
+    const blob = await captureEditorCanvasBlob(canvasRef?.current?.getStage?.() ?? undefined, EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png');
     if (!blob) return null;
     const sha256 = await sha256Hex(blob);
     const version = snapshotVersionRef.current + 1;
@@ -184,13 +184,16 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     addToast,
   });
 
+  const selectedTextId = selectedObject?.type === 'text' ? selectedObject.id : undefined;
+  const selectedText = selectedObject?.type === 'text' ? selectedObject.text : undefined;
+
   // Keep the translation layer in sync with the selected text object.
   useEffect(() => {
-    if (selectedObject?.type === 'text' && selectedObject.text) {
-      setTranslationLayerId(selectedObject.id);
+    if (selectedTextId && selectedText) {
+      setTranslationLayerId(selectedTextId);
       setVariantPreviews({});
     }
-  }, [selectedObject?.id, selectedObject?.type === 'text' ? selectedObject.text : undefined]);
+  }, [selectedTextId, selectedText]);
 
   // Repair old sessions whose persisted source image is dead or missing.
   // The authorized project context is the same source used by the cards, so
@@ -254,7 +257,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     if (!currentSnapshot || currentSnapshot.signature !== liveSignature) {
       currentSnapshot = await captureSnapshot();
     }
-    const stage = canvasRef?.current?.getStage?.();
+    const stage = canvasRef?.current?.getStage?.() ?? undefined;
     const blob = currentSnapshot
       ? currentSnapshot.blob
       : await captureEditorCanvasBlob(stage, EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png');

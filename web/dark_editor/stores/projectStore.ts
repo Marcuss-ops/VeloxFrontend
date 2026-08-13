@@ -1,11 +1,8 @@
 import { create } from 'zustand';
-import { CanvasObject } from './editorStore';
 import {
-  listProjects,
   saveProject as apiSaveProject,
   getProject as apiGetProject,
   deleteProject as apiDeleteProject,
-  Project as APIProject
 } from '@/lib/api';
 
 export interface Project {
@@ -157,7 +154,6 @@ export const useProjectStore = create<ProjectState>((set, get) => {
   exportProject: async () => {
     // This will be implemented with actual export logic
     // For now, return null
-    console.log('Export project: PNG');
     return null;
   },
   });

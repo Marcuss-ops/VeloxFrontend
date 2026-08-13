@@ -11,6 +11,8 @@ import React from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { useEditorStore } from '@/stores/editorStore';
+import type Konva from 'konva';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 
 // Capture must go through the canonical export helper — mock it so the call
 // (and its arguments) is observable instead of reading the source for the
@@ -24,21 +26,24 @@ vi.mock('@/lib/canvasExport', () => ({
 // the node surface its effect/handlers touch (nodes / getLayer / scale…).
 vi.mock('react-konva', async () => {
   const React = await import('react');
-  const Node = React.forwardRef((props: any, ref: any) => {
-    const { name, children } = props;
-    React.useImperativeHandle(ref, () => ({
-      nodes: () => {},
-      getLayer: () => ({ batchDraw: () => {} }),
-      scaleX: () => 1,
-      scaleY: () => 1,
-      width: () => 1,
-      height: () => 1,
-      x: () => 0,
-      y: () => 0,
-      position: () => {},
-    }));
-    return React.createElement('konva-node', name ? { name } : undefined, children);
-  });
+  const Node = React.forwardRef<unknown, { name?: string; children?: React.ReactNode }>(
+    (props, ref) => {
+      const { name, children } = props;
+      React.useImperativeHandle(ref, () => ({
+        nodes: () => {},
+        getLayer: () => ({ batchDraw: () => {} }),
+        scaleX: () => 1,
+        scaleY: () => 1,
+        width: () => 1,
+        height: () => 1,
+        x: () => 0,
+        y: () => 0,
+        position: () => {},
+      }));
+      return React.createElement('konva-node', name ? { name } : undefined, children);
+    }
+  );
+  Node.displayName = 'MockKonvaNode';
   return { Group: Node, Line: Node, Rect: Node, Transformer: Node, Stage: Node, Layer: Node };
 });
 
@@ -46,7 +51,7 @@ import FeedPreviewDialog from '@/components/editor/FeedPreviewDialog';
 import { DocumentCropOverlay } from '@/components/editor/canvas/renderers/DocumentCropOverlay';
 import { exportStageToBlob } from '@/lib/canvasExport';
 
-const fakeStage = { isFakeStage: true };
+const fakeStage = { isFakeStage: true } as unknown as Konva.Stage;
 
 beforeAll(() => {
   // jsdom has no blob URL factory — stub it so the happy path can run.
@@ -64,7 +69,7 @@ afterEach(cleanup);
 describe('FeedPreviewDialog capture (behavior)', () => {
   it('captures the preview through the canonical exportStageToBlob helper', async () => {
     vi.mocked(exportStageToBlob).mockResolvedValue({ blob: new Blob(['png']) });
-    const canvasRef: React.RefObject<any> = { current: { getStage: () => fakeStage } };
+    const canvasRef: React.RefObject<CanvasHandle> = { current: { getStage: () => fakeStage } };
 
     render(<FeedPreviewDialog isOpen onClose={() => {}} canvasRef={canvasRef} />);
 

@@ -8,7 +8,6 @@ import {
   exportImage as apiExport,
   generateImage as apiGenerate,
   upscaleImage as apiUpscale,
-  UploadResponse,
   FilterResponse,
   GenerateResponse,
   UpscaleResponse,

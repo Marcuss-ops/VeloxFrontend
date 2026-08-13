@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
 
 /** Canonical YouTube thumbnail document size used by every export variant. */
@@ -37,5 +38,5 @@ export type RenderedVariant = {
 export interface ExportDialogProps {
   isOpen?: boolean;
   onClose?: () => void;
-  canvasRef?: RefObject<any>;
+  canvasRef?: RefObject<CanvasHandle>;
 }

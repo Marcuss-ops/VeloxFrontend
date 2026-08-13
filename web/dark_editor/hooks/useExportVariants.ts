@@ -6,6 +6,7 @@ import { useEditorStore, type TextObject } from '@/stores/editorStore';
 import { selectOrderedObjects } from '@/lib/editorSelectors';
 import { translateText } from '@/lib/api';
 import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 import type { UIState } from '@/stores/uiStore';
 import {
   EXPORT_WIDTH,
@@ -23,7 +24,7 @@ interface UseExportVariantsOptions {
   translationLayer: TextObject | undefined;
   youtubeTitle: string;
   youtubeDescription: string;
-  canvasRef?: RefObject<any>;
+  canvasRef?: RefObject<CanvasHandle>;
   snapshotRef: MutableRefObject<CanvasSnapshot | null>;
   snapshot: CanvasSnapshot | null;
   snapshotStale: boolean;
@@ -119,7 +120,7 @@ export function useExportVariants(opts: UseExportVariantsOptions): UseExportVari
         metadataNext[language] = { title, description };
         const variantBlob = language === 'en'
           ? currentSnapshot.blob
-          : await captureEditorCanvasBlob(canvasRef?.current?.getStage?.(), EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png', undefined, { textOverrides });
+          : await captureEditorCanvasBlob(canvasRef?.current?.getStage?.() ?? undefined, EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png', undefined, { textOverrides });
         if (!variantBlob) throw new Error(`Impossibile generare la variante ${language}`);
         const sha256 = await sha256Hex(variantBlob);
         variantsByLanguage.set(language, {

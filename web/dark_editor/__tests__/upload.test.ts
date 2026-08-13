@@ -12,6 +12,7 @@ vi.mock('@/lib/server-utils', () => ({
 }));
 
 import { POST } from '@/app/upload/route';
+import type { NextRequest } from 'next/server';
 
 function createMockFile(
   name: string,
@@ -31,7 +32,7 @@ function createMockFile(
   } as unknown as File;
 }
 
-function createMockRequest(file: File | null): Request {
+function createMockRequest(file: File | null): NextRequest {
   const mockFormData = {
     get: (key: string) => (key === 'file' ? file : null),
   };
@@ -41,7 +42,7 @@ function createMockRequest(file: File | null): Request {
     headers: new Headers(),
     method: 'POST',
     url: 'http://localhost:3001/instaeditor/upload',
-  } as unknown as Request;
+  } as unknown as NextRequest;
 }
 
 describe('POST /upload', () => {
@@ -54,7 +55,7 @@ describe('POST /upload', () => {
     mockSaveToTemp.mockResolvedValue('1234567890_abc123def.png');
     mockGetTempFileUrl.mockReturnValue('temp/1234567890_abc123def.png');
 
-    const response = await POST(createMockRequest(file) as any);
+    const response = await POST(createMockRequest(file));
 
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -67,7 +68,7 @@ describe('POST /upload', () => {
   });
 
   it('should return 400 when no file is provided', async () => {
-    const response = await POST(createMockRequest(null) as any);
+    const response = await POST(createMockRequest(null));
 
     expect(response.status).toBe(400);
     const body = await response.json();
@@ -78,7 +79,7 @@ describe('POST /upload', () => {
   it('should return 400 for non-image files', async () => {
     const file = createMockFile('test.txt', 'text/plain');
 
-    const response = await POST(createMockRequest(file) as any);
+    const response = await POST(createMockRequest(file));
 
     expect(response.status).toBe(400);
     const body = await response.json();
@@ -95,7 +96,7 @@ describe('POST /upload', () => {
       mockGetTempFileUrl.mockReturnValue('temp/abc.png');
 
       const file = createMockFile('test', mimeType);
-      const response = await POST(createMockRequest(file) as any);
+      const response = await POST(createMockRequest(file));
 
       expect(response.status).toBe(200);
     }
@@ -105,7 +106,7 @@ describe('POST /upload', () => {
     const file = createMockFile('test.png', 'image/png');
     mockSaveToTemp.mockRejectedValue(new Error('Disk full'));
 
-    const response = await POST(createMockRequest(file) as any);
+    const response = await POST(createMockRequest(file));
 
     expect(response.status).toBe(500);
     const body = await response.json();
@@ -117,7 +118,7 @@ describe('POST /upload', () => {
     mockSaveToTemp.mockResolvedValue('12345_bin');
     mockGetTempFileUrl.mockReturnValue('temp/12345_bin');
 
-    const response = await POST(createMockRequest(file) as any);
+    const response = await POST(createMockRequest(file));
 
     expect(response.status).toBe(200);
     expect(mockSaveToTemp).toHaveBeenCalledWith(file);
@@ -126,7 +127,7 @@ describe('POST /upload', () => {
   it('should reject file with empty MIME type', async () => {
     const file = createMockFile('test.png', '');
 
-    const response = await POST(createMockRequest(file) as any);
+    const response = await POST(createMockRequest(file));
 
     expect(response.status).toBe(400);
     const body = await response.json();

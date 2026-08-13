@@ -106,7 +106,6 @@ export async function processImage(
   const sharp = (await import('sharp')).default;
   
   let image = sharp(inputPath);
-  const metadata = await image.metadata();
   
   // Apply crop
   if (operations.crop) {

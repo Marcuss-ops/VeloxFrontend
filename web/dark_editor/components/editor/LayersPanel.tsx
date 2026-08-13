@@ -72,9 +72,8 @@ export default function LayersPanel({ onLayerHover }: { onLayerHover?: (id: stri
           </div>
         ) : (
           <div className="space-y-1.5">
-            {reversedObjects.map((obj, index) => {
+            {reversedObjects.map((obj) => {
               const isSelected = selectedIds.includes(obj.id);
-              const realIndex = objects.length - 1 - index;
               
               return (
                 <div

@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import { useProjectStore } from '@/stores/projectStore';
 import { Loader2, Check } from 'lucide-react';
 

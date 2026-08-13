@@ -14,7 +14,7 @@
  * BroadcastChannel before each test.
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 
 // @vitest-environment node
 
@@ -60,25 +60,6 @@ import {
     publishBroadcast,
     type PublishYouTubeEditorSessionResponse,
 } from '../bff';
-
-const documentCookieSetter = `
-let __cookie = 'csrf_token=test-csrf';
-Object.defineProperty(document, 'cookie', {
-    configurable: true,
-    get() { return __cookie; },
-    set(v) {
-        const idx = v.indexOf('=');
-        const name = idx > -1 ? v.slice(0, idx) : v;
-        const value = idx > -1 ? v.slice(idx + 1) : '';
-        if (/^[^;]+;\s*expires=Thu, 01 Jan 1970/.test(v) || value === '') return;
-        const existing = __cookie.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
-        if (existing) {
-            __cookie = __cookie.replace(existing, name + '=' + value);
-        } else {
-            __cookie = __cookie ? __cookie + '; ' + name + '=' + value : name + '=' + value;
-        }
-    },
-});`;
 
 function installDomCookieMock(): void {
     const g = globalThis as unknown as { document?: { cookie: string } };

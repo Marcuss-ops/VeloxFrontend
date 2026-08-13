@@ -41,8 +41,6 @@ export function censorText(text: string, config: Partial<CensorshipConfig> = {})
       return word;
     }
     
-    const lowerWord = word.toLowerCase();
-    
     // Check if word is in profanity list
     const isProfanity = PROFANITY_LIST.some(profane => {
       // Check for exact match or word boundaries

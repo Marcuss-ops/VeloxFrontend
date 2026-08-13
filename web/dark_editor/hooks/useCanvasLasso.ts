@@ -86,7 +86,7 @@ export function useCanvasLasso(opts: CanvasLassoOptions): CanvasLassoApi {
   }, [cancelCropEditing, cropTarget, lassoPoints, selectObject, setActiveTool, updateObject]);
 
   const handleStageMouseDown = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       if (isPanning) return;
       if (cropEditingId && cropEditingMode === 'free' && cropTarget) {
         const stage = stageRef.current;
@@ -102,7 +102,7 @@ export function useCanvasLasso(opts: CanvasLassoOptions): CanvasLassoApi {
   );
 
   const handleStageMouseMove = useCallback(
-    (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       if (!isDrawingLasso || !cropTarget) return;
       const stage = stageRef.current;
       if (!stage) return;

@@ -183,6 +183,11 @@ export function useEditorProjectSession(projectId: string): UseEditorProjectSess
     }
   }, [addToast, loadObjects, openTab, projectId, setCanvasSize, setCurrentProject, setDirty]);
 
+  // Read the error message once here so the effect's dependency array stays
+  // a primitive (SessionGateState['message'] only exists on the 'error'
+  // variant, so it cannot be referenced in the deps array directly).
+  const sessionErrorMessage = sessionGate.state === 'error' ? sessionGate.message : null;
+
   useEffect(() => {
     if (sessionGate.state === 'editable_editing' || sessionGate.state === 'editable_failed' || sessionGate.state === 'readonly_publishing' || sessionGate.state === 'readonly_published' || sessionGate.state === 'readonly_unknown') {
       loadProject();
@@ -191,9 +196,9 @@ export function useEditorProjectSession(projectId: string): UseEditorProjectSess
       setError(sessionGate.state === 'unauthorized' ? 'Authentication required' : 'Editor project context not available');
     } else if (sessionGate.state === 'error') {
       setLoading(false);
-      setError(sessionGate.message);
+      setError(sessionErrorMessage ?? 'Failed to validate editor session');
     }
-  }, [loadProject, sessionGate.state]);
+  }, [loadProject, sessionErrorMessage, sessionGate.state]);
 
   // Mark the project dirty when objects change, but ignore the initial load.
   useEffect(() => {

@@ -24,6 +24,7 @@ import { useProjectName } from '@/hooks/useProjectName';
 import { useEditorSidebar } from '@/hooks/useEditorSidebar';
 import { useEditorTabs } from '@/hooks/useEditorTabs';
 import { clearEditorSession } from '@/lib/editor-session';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 
 // Dynamically import Canvas to avoid SSR issues with Konva
 const Canvas = dynamic(() => import('@/components/editor/Canvas'), {
@@ -68,7 +69,7 @@ export default function EditorWorkspace() {
     window.location.assign(returnUrl);
   }, [projectId, returnUrl, sessionGate.state]);
 
-  const canvasRef = useRef<any>(null);
+  const canvasRef = useRef<CanvasHandle>(null);
   useEditorAutosave({ canvasRef, sessionGate, hydratedRef });
 
   const { openTabs, switchEditorTab, closeEditorTab } = useEditorTabs(projectId, returnUrl);

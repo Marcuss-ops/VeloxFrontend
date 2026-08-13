@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { useEditorStore } from '@/stores/editorStore';
 import { exportStageToBlob } from '@/lib/canvasExport';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 
 /**
  * useFeedPreviewCapture — captures the canonical Konva stage to a blob URL
  * whenever the feed preview opens, and owns the object-URL lifecycle so no
  * URL leaks when the dialog closes or the component unmounts.
  */
-export function useFeedPreviewCapture(isOpen: boolean, canvasRef?: RefObject<any>): string | null {
+export function useFeedPreviewCapture(isOpen: boolean, canvasRef?: RefObject<CanvasHandle>): string | null {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const previewObjectUrlRef = useRef<string | null>(null);
 

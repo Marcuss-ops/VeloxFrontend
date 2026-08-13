@@ -37,11 +37,11 @@ describe('bff.saveEditorSessionDraft', () => {
   beforeEach(() => {
     // jsdom-style minimal stub so the cookie reader returns a CSRF
     // token (the helper refuses POST bodies without one).
-    (globalThis as any).document = {
+    (globalThis as unknown as { document: { cookie: string } }).document = {
       cookie: 'csrf_token=test-csrf; other=foo',
     };
     fetchMock = vi.fn();
-    (globalThis as any).fetch = fetchMock;
+    (globalThis as unknown as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
   });
 
   afterEach(() => {
@@ -110,7 +110,7 @@ describe('bff.saveEditorSessionDraft', () => {
   });
 
   it('tolerates a missing csrf cookie (header omitted, server returns 403 in production)', async () => {
-    (globalThis as any).document.cookie = 'other=foo';
+    (globalThis as unknown as { document: { cookie: string } }).document.cookie = 'other=foo';
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,

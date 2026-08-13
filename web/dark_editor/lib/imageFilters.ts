@@ -29,7 +29,7 @@ export class ImageFilterProcessor {
   private canvas: HTMLCanvasElement | OffscreenCanvas;
   private ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   private worker: Worker | null = null;
-  private pendingJobs: Map<string, { resolve: (data: ImageData) => void, reject: (err: any) => void }> = new Map();
+  private pendingJobs: Map<string, { resolve: (data: ImageData) => void, reject: (err: Error) => void }> = new Map();
   private jobIdCounter = 0;
 
   constructor() {
@@ -129,7 +129,7 @@ export class ImageFilterProcessor {
     outCanvas.width = width;
     outCanvas.height = height;
     const outCtx = outCanvas.getContext('2d')!;
-    outCtx.drawImage(this.canvas as any, 0, 0);
+    outCtx.drawImage(this.canvas, 0, 0);
     return outCanvas;
   }
 

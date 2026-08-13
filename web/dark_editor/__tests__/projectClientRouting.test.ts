@@ -33,14 +33,6 @@ function okResponse(body: unknown): Response {
     } as unknown as Response;
 }
 
-function failResponse(): Response {
-    return {
-        ok: false,
-        status: 404,
-        json: async () => ({ error: 'not found' }),
-    } as unknown as Response;
-}
-
 beforeEach(() => {
     mockProjectFetch.mockReset();
     mockFetch.mockReset();

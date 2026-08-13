@@ -3,12 +3,13 @@
 import { useCallback, useState } from 'react';
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import { captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 import type { TextObject } from '@/stores/editorStore';
 import type { UIState } from '@/stores/uiStore';
 import { EXPORT_WIDTH, EXPORT_HEIGHT, type CanvasSnapshot, type RenderedVariant } from '@/components/editor/export/types';
 
 interface UseExportVariantEditOptions {
-  canvasRef?: RefObject<any>;
+  canvasRef?: RefObject<CanvasHandle>;
   snapshotRef: MutableRefObject<CanvasSnapshot | null>;
   translationLayer: TextObject | undefined;
   variantPreviews: Record<string, RenderedVariant>;
@@ -43,7 +44,7 @@ export function useExportVariantEdit(opts: UseExportVariantEditOptions): UseExpo
     setIsSavingVariantEdit(true);
     try {
       const blob = await captureEditorCanvasBlob(
-        canvasRef?.current?.getStage?.(),
+        canvasRef?.current?.getStage?.() ?? undefined,
         EXPORT_WIDTH,
         EXPORT_HEIGHT,
         'image/png',

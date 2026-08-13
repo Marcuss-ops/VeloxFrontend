@@ -62,6 +62,12 @@ type OpenAPISchema = {
   properties: Record<string, OpenAPIProperty>;
 };
 
+type OpenAPIDocument = {
+  components?: {
+    schemas?: Record<string, OpenAPISchema | undefined>;
+  };
+};
+
 type TSField = {
   type: string;
   optional: boolean;
@@ -80,7 +86,7 @@ function loadOpenAPISchema(): OpenAPISchema {
     );
   }
   const content = fs.readFileSync(VENDORED_OPENAPI_PATH, 'utf8');
-  const doc = yaml.load(content) as any;
+  const doc = yaml.load(content) as OpenAPIDocument;
   const schema = doc?.components?.schemas?.[OPENAPI_SCHEMA_NAME];
   if (!schema) {
     const available = Object.keys(doc?.components?.schemas ?? {});

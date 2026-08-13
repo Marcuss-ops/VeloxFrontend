@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act, render, cleanup, fireEvent } from '@testing-library/react';
 import ContextualInspector from '@/components/editor/ContextualInspector';
 import { useEditorStore, type CanvasObject } from '@/stores/editorStore';

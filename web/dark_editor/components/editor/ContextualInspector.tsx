@@ -25,7 +25,7 @@ type ContextualInspectorProps = {
 // controls without the panel flickering shut.
 const DISMISS_AFTER_LEAVE_MS = 250;
 
-export default function ContextualInspector({ hoveredObjectId, dark = false, placement = 'toolbar' }: ContextualInspectorProps) {
+export default function ContextualInspector({ hoveredObjectId: _hoveredObjectId, dark = false, placement = 'toolbar' }: ContextualInspectorProps) {
   const { selectedIds, updateObjectLive, updateObject, saveToHistory, clearSelection } = useEditorStore();
   const objects = useObjectsArray();
   // Dismiss-on-leave: there is no close button anymore — the card hides

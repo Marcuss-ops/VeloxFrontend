@@ -5,7 +5,7 @@ import { Stage, Layer, Rect, Transformer, Circle, Line, Group } from 'react-konv
 import { useEditorStore, type CanvasObject } from '@/stores/editorStore';
 import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useUIStore } from '@/stores/uiStore';
-import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 import Konva from 'konva';
 import {
   CropSelectionOverlay,
@@ -21,10 +21,10 @@ import { useCanvasPanZoom } from '@/hooks/useCanvasPanZoom';
 
 interface CanvasProps {
   containerRef?: React.RefObject<HTMLDivElement>;
-  canvasRef?: React.Ref<any>;
+  canvasRef?: React.RefObject<CanvasHandle>;
 }
 
-const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
+const Canvas = React.forwardRef<CanvasHandle, CanvasProps>((props, ref) => {
   const stageRef = React.useRef<Konva.Stage | null>(null);
   const internalContainerRef = React.useRef<HTMLDivElement>(null);
   const containerRef = props.containerRef || internalContainerRef;
@@ -38,7 +38,6 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
   const transformerRef = useRef<Konva.Transformer>(null);
 
   const {
-    selectedIds,
     canvasWidth,
     canvasHeight,
     selectObject,
@@ -51,7 +50,6 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     activeTool,
     setActiveTool,
     showGrid,
-    snapToGrid,
     gridSize,
     editingId,
     setEditingId,
@@ -59,7 +57,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     cropEditingMode,
   } = useUIStore();
 
-  const [guides, setGuides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
+  const [guides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
 
   const viewport = useCanvasViewport(containerRef);
   const { viewportSize, displayScale, displayOffsetX, displayOffsetY } = viewport;
@@ -91,16 +89,7 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     isPanning,
   });
 
-  const snap = useCallback(
-    (value: number) => {
-      if (!snapToGrid) return value;
-      const size = gridSize > 0 ? gridSize : 1;
-      return Math.round(value / size) * size;
-    },
-    [gridSize, snapToGrid]
-  );
-
-  const handleStageClick = useCallback((e: Konva.KonvaEventObject<any>) => {
+  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (isPanning) return;
     if (cropEditingId) return;
     const isBackground = e.target === stageRef.current || e.target.name() === 'canvas-background';
@@ -149,13 +138,6 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
   }, [objects, selectObject, setEditingId]);
 
   const renderObject = (obj: CanvasObject) => {
-    const isSelected = selectedIds.includes(obj.id);
-    const isEditing = editingId === obj.id;
-    const isCropTarget = cropEditingId === obj.id && obj.type === 'image' && cropDraft;
-
-    // Hide standard transformer bounding box controls when image crop editing is active
-    const isTransformable = isSelected && !isEditing && !isCropTarget && !obj.locked;
-
     const commonProps = {
       id: obj.id,
       x: obj.x,

@@ -7,11 +7,12 @@ import { selectOrderedObjects } from '@/lib/editorSelectors';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { onEditorFlushRequest, onEditorSaveRequest } from '@/lib/editorEvents';
 import { uploadImage } from '@/lib/api';
+import type { CanvasHandle } from '@/lib/canvasHandle';
 import type { SessionGateState } from '@/hooks/useYouTubeSessionGate';
 
 export interface UseEditorAutosaveInput {
   /** Ref to the Konva stage host (Canvas component forwards getStage()). */
-  canvasRef: React.RefObject<any>;
+  canvasRef: React.RefObject<CanvasHandle>;
   /** Gate state — saves are blocked while the session is read-only. */
   sessionGate: SessionGateState;
   /** Set by useEditorProjectSession once the project row has been hydrated. */
@@ -51,7 +52,7 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
     if (shouldUpdatePreview) {
       try {
         const previewFile = await captureEditorCanvasPreviewFile(
-          canvasRef.current?.getStage?.(),
+          canvasRef.current?.getStage?.() ?? undefined,
           latestCanvasWidth,
           latestCanvasHeight,
         );
@@ -105,7 +106,7 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
         autosaveTimerRef.current = null;
       }
     };
-  }, [currentProject, isDirty, objects, performSave, sessionGate.state]);
+  }, [currentProject, hydratedRef, isDirty, objects, performSave, sessionGate.state]);
 
   // Warn the operator before closing the tab with unsaved changes.
   useEffect(() => {

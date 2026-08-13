@@ -222,7 +222,7 @@ export function useYouTubeSessionGate(
             if (pollTimer !== null) window.clearTimeout(pollTimer);
             document.removeEventListener('visibilitychange', onVisibilityChange);
         };
-    }, [projectId]);
+    }, [projectId, pollIntervalMs]);
 
     return gateState;
 }

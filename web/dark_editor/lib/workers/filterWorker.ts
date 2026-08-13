@@ -36,10 +36,10 @@ self.onmessage = async (e: MessageEvent) => {
 
     // Data must be passed as an array to match signature, 
     // or cast appropriately if we alter the rust binding
-    let data = new Uint8Array(imageData.data.buffer);
+    const data = new Uint8Array(imageData.data.buffer);
 
     if (options.pixelation && options.pixelation > 0) {
-      wasm_apply_pixelation(data as any, width, height, options.pixelation);
+      wasm_apply_pixelation(data, width, height, options.pixelation);
     }
     
     if (options.blur && options.blur > 0) {
@@ -47,13 +47,13 @@ self.onmessage = async (e: MessageEvent) => {
     }
     
     if (options.sharpen && options.sharpen > 0) {
-      wasm_apply_sharpen(data as any, width, height, options.sharpen);
+      wasm_apply_sharpen(data, width, height, options.sharpen);
     }
 
     // NEW: HSL adjustment
     if (options.hue !== undefined || options.saturation !== undefined || options.lightness !== undefined) {
       wasm_apply_hsl(
-        data as any, 
+        data, 
         options.hue || 0, 
         options.saturation || 0, 
         options.lightness || 0
@@ -63,7 +63,7 @@ self.onmessage = async (e: MessageEvent) => {
     // NEW: Brightness & Contrast
     if (options.brightness !== undefined || options.contrast !== undefined) {
       wasm_apply_brightness_contrast(
-        data as any, 
+        data, 
         options.brightness || 0, 
         options.contrast || 0
       );
@@ -72,7 +72,7 @@ self.onmessage = async (e: MessageEvent) => {
     // NEW: Vignette
     if (options.vignetteRadius !== undefined && options.vignetteRadius > 0) {
       wasm_apply_vignette(
-        data as any, 
+        data, 
         width, 
         height, 
         options.vignetteRadius, 
@@ -83,7 +83,7 @@ self.onmessage = async (e: MessageEvent) => {
     // NEW: Noise/Grain
     if (options.noiseIntensity !== undefined && options.noiseIntensity > 0) {
       wasm_apply_noise(
-        data as any, 
+        data, 
         options.noiseIntensity, 
         options.noiseSeed || Date.now()
       );
@@ -92,7 +92,7 @@ self.onmessage = async (e: MessageEvent) => {
     // NEW: Color Curves
     if (options.curveR && options.curveG && options.curveB) {
       wasm_apply_curves(
-        data as any, 
+        data, 
         options.curveR, 
         options.curveG, 
         options.curveB
