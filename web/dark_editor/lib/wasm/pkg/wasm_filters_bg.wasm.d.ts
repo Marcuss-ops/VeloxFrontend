@@ -1,11 +1,38 @@
 /* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
+export const __wbg_get_pipelineconfig_blur: (a: number) => number;
+export const __wbg_get_pipelineconfig_brightness: (a: number) => number;
+export const __wbg_get_pipelineconfig_contrast: (a: number) => number;
+export const __wbg_get_pipelineconfig_hue: (a: number) => number;
+export const __wbg_get_pipelineconfig_lightness: (a: number) => number;
+export const __wbg_get_pipelineconfig_noise_intensity: (a: number) => number;
+export const __wbg_get_pipelineconfig_noise_seed: (a: number) => number;
+export const __wbg_get_pipelineconfig_pixelation: (a: number) => number;
+export const __wbg_get_pipelineconfig_saturation: (a: number) => number;
+export const __wbg_get_pipelineconfig_sharpen: (a: number) => number;
+export const __wbg_get_pipelineconfig_vignette_radius: (a: number) => number;
+export const __wbg_get_pipelineconfig_vignette_softness: (a: number) => number;
+export const __wbg_pipelineconfig_free: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_blur: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_brightness: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_contrast: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_hue: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_lightness: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_noise_intensity: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_noise_seed: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_pixelation: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_saturation: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_sharpen: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_vignette_radius: (a: number, b: number) => void;
+export const __wbg_set_pipelineconfig_vignette_softness: (a: number, b: number) => void;
+export const pipelineconfig_new: () => number;
 export const wasm_apply_blur: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
 export const wasm_apply_brightness_contrast: (a: number, b: number, c: any, d: number, e: number) => void;
 export const wasm_apply_curves: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number) => void;
 export const wasm_apply_hsl: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
 export const wasm_apply_noise: (a: number, b: number, c: any, d: number, e: number) => void;
+export const wasm_apply_pipeline: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
 export const wasm_apply_pixelation: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
 export const wasm_apply_sharpen: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
 export const wasm_apply_vignette: (a: number, b: number, c: any, d: number, e: number, f: number, g: number) => void;

@@ -1,5 +1,195 @@
 /* @ts-self-types="./wasm_filters.d.ts" */
 
+export class PipelineConfig {
+    __destroy_into_raw() {
+        const ptr = this.__wbg_ptr;
+        this.__wbg_ptr = 0;
+        PipelineConfigFinalization.unregister(this);
+        return ptr;
+    }
+    free() {
+        const ptr = this.__destroy_into_raw();
+        wasm.__wbg_pipelineconfig_free(ptr, 0);
+    }
+    /**
+     * Box blur radius; <= 0 disables.
+     * @returns {number}
+     */
+    get blur() {
+        const ret = wasm.__wbg_get_pipelineconfig_blur(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Brightness/contrast; both zero disables.
+     * @returns {number}
+     */
+    get brightness() {
+        const ret = wasm.__wbg_get_pipelineconfig_brightness(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get contrast() {
+        const ret = wasm.__wbg_get_pipelineconfig_contrast(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * HSL adjustment; all zero disables.
+     * @returns {number}
+     */
+    get hue() {
+        const ret = wasm.__wbg_get_pipelineconfig_hue(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get lightness() {
+        const ret = wasm.__wbg_get_pipelineconfig_lightness(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Noise; intensity <= 0 disables.
+     * @returns {number}
+     */
+    get noise_intensity() {
+        const ret = wasm.__wbg_get_pipelineconfig_noise_intensity(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get noise_seed() {
+        const ret = wasm.__wbg_get_pipelineconfig_noise_seed(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Pixelation block size; <= 0 disables.
+     * @returns {number}
+     */
+    get pixelation() {
+        const ret = wasm.__wbg_get_pipelineconfig_pixelation(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get saturation() {
+        const ret = wasm.__wbg_get_pipelineconfig_saturation(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Sharpen amount; <= 0 disables.
+     * @returns {number}
+     */
+    get sharpen() {
+        const ret = wasm.__wbg_get_pipelineconfig_sharpen(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * Vignette; radius <= 0 disables.
+     * @returns {number}
+     */
+    get vignette_radius() {
+        const ret = wasm.__wbg_get_pipelineconfig_vignette_radius(this.__wbg_ptr);
+        return ret;
+    }
+    /**
+     * @returns {number}
+     */
+    get vignette_softness() {
+        const ret = wasm.__wbg_get_pipelineconfig_vignette_softness(this.__wbg_ptr);
+        return ret;
+    }
+    constructor() {
+        const ret = wasm.pipelineconfig_new();
+        this.__wbg_ptr = ret;
+        PipelineConfigFinalization.register(this, this.__wbg_ptr, this);
+        return this;
+    }
+    /**
+     * Box blur radius; <= 0 disables.
+     * @param {number} arg0
+     */
+    set blur(arg0) {
+        wasm.__wbg_set_pipelineconfig_blur(this.__wbg_ptr, arg0);
+    }
+    /**
+     * Brightness/contrast; both zero disables.
+     * @param {number} arg0
+     */
+    set brightness(arg0) {
+        wasm.__wbg_set_pipelineconfig_brightness(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set contrast(arg0) {
+        wasm.__wbg_set_pipelineconfig_contrast(this.__wbg_ptr, arg0);
+    }
+    /**
+     * HSL adjustment; all zero disables.
+     * @param {number} arg0
+     */
+    set hue(arg0) {
+        wasm.__wbg_set_pipelineconfig_hue(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set lightness(arg0) {
+        wasm.__wbg_set_pipelineconfig_lightness(this.__wbg_ptr, arg0);
+    }
+    /**
+     * Noise; intensity <= 0 disables.
+     * @param {number} arg0
+     */
+    set noise_intensity(arg0) {
+        wasm.__wbg_set_pipelineconfig_noise_intensity(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set noise_seed(arg0) {
+        wasm.__wbg_set_pipelineconfig_noise_seed(this.__wbg_ptr, arg0);
+    }
+    /**
+     * Pixelation block size; <= 0 disables.
+     * @param {number} arg0
+     */
+    set pixelation(arg0) {
+        wasm.__wbg_set_pipelineconfig_pixelation(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set saturation(arg0) {
+        wasm.__wbg_set_pipelineconfig_saturation(this.__wbg_ptr, arg0);
+    }
+    /**
+     * Sharpen amount; <= 0 disables.
+     * @param {number} arg0
+     */
+    set sharpen(arg0) {
+        wasm.__wbg_set_pipelineconfig_sharpen(this.__wbg_ptr, arg0);
+    }
+    /**
+     * Vignette; radius <= 0 disables.
+     * @param {number} arg0
+     */
+    set vignette_radius(arg0) {
+        wasm.__wbg_set_pipelineconfig_vignette_radius(this.__wbg_ptr, arg0);
+    }
+    /**
+     * @param {number} arg0
+     */
+    set vignette_softness(arg0) {
+        wasm.__wbg_set_pipelineconfig_vignette_softness(this.__wbg_ptr, arg0);
+    }
+}
+if (Symbol.dispose) PipelineConfig.prototype[Symbol.dispose] = PipelineConfig.prototype.free;
+
 /**
  * @param {Uint8Array} data
  * @param {number} width
@@ -68,6 +258,29 @@ export function wasm_apply_noise(data, intensity, seed) {
  * @param {Uint8Array} data
  * @param {number} width
  * @param {number} height
+ * @param {PipelineConfig} config
+ * @param {Uint8Array} curve_r
+ * @param {Uint8Array} curve_g
+ * @param {Uint8Array} curve_b
+ */
+export function wasm_apply_pipeline(data, width, height, config, curve_r, curve_g, curve_b) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    _assertClass(config, PipelineConfig);
+    var ptr1 = config.__destroy_into_raw();
+    const ptr2 = passArray8ToWasm0(curve_r, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(curve_g, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ptr4 = passArray8ToWasm0(curve_b, wasm.__wbindgen_malloc);
+    const len4 = WASM_VECTOR_LEN;
+    wasm.wasm_apply_pipeline(ptr0, len0, data, width, height, ptr1, ptr2, len2, ptr3, len3, ptr4, len4);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} width
+ * @param {number} height
  * @param {number} size
  */
 export function wasm_apply_pixelation(data, width, height, size) {
@@ -121,6 +334,9 @@ function __wbg_get_imports() {
         __wbg___wbindgen_copy_to_typed_array_c7f28e53671b41e8: function(arg0, arg1, arg2) {
             new Uint8Array(arg2.buffer, arg2.byteOffset, arg2.byteLength).set(getArrayU8FromWasm0(arg0, arg1));
         },
+        __wbg___wbindgen_throw_bb96b2010945f0bc: function(arg0, arg1) {
+            throw new Error(getStringFromWasm0(arg0, arg1));
+        },
         __wbindgen_init_externref_table: function() {
             const table = wasm.__wbindgen_externrefs;
             const offset = table.grow(4);
@@ -137,9 +353,23 @@ function __wbg_get_imports() {
     };
 }
 
+const PipelineConfigFinalization = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(ptr => wasm.__wbg_pipelineconfig_free(ptr, 1));
+
+function _assertClass(instance, klass) {
+    if (!(instance instanceof klass)) {
+        throw new Error(`expected instance of ${klass.name}`);
+    }
+}
+
 function getArrayU8FromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return getUint8ArrayMemory0().subarray(ptr / 1, ptr / 1 + len);
+}
+
+function getStringFromWasm0(ptr, len) {
+    return decodeText(ptr >>> 0, len);
 }
 
 let cachedUint8ArrayMemory0 = null;
@@ -155,6 +385,20 @@ function passArray8ToWasm0(arg, malloc) {
     getUint8ArrayMemory0().set(arg, ptr / 1);
     WASM_VECTOR_LEN = arg.length;
     return ptr;
+}
+
+let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+cachedTextDecoder.decode();
+const MAX_SAFARI_DECODE_BYTES = 2146435072;
+let numBytesDecoded = 0;
+function decodeText(ptr, len) {
+    numBytesDecoded += len;
+    if (numBytesDecoded >= MAX_SAFARI_DECODE_BYTES) {
+        cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+        cachedTextDecoder.decode();
+        numBytesDecoded = len;
+    }
+    return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
 }
 
 let WASM_VECTOR_LEN = 0;

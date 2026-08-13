@@ -164,9 +164,136 @@ pub fn wasm_apply_curves(data: &mut [u8], curve_r: &[u8], curve_g: &[u8], curve_
     for px in data.chunks_exact_mut(4) { if curve_r.len()>px[0] as usize { px[0]=curve_r[px[0] as usize]; } if curve_g.len()>px[1] as usize { px[1]=curve_g[px[1] as usize]; } if curve_b.len()>px[2] as usize { px[2]=curve_b[px[2] as usize]; } }
 }
 
+// Single-entry pipeline: the worker sends the image into WASM once and every
+// enabled filter runs here, in the same order the worker previously applied
+// them with separate per-filter crossings.
+#[wasm_bindgen]
+#[derive(Clone, Copy)]
+pub struct PipelineConfig {
+    /// Pixelation block size; <= 0 disables.
+    pub pixelation: f64,
+    /// Box blur radius; <= 0 disables.
+    pub blur: f64,
+    /// Sharpen amount; <= 0 disables.
+    pub sharpen: f64,
+    /// HSL adjustment; all zero disables.
+    pub hue: f64,
+    pub saturation: f64,
+    pub lightness: f64,
+    /// Brightness/contrast; both zero disables.
+    pub brightness: f64,
+    pub contrast: f64,
+    /// Vignette; radius <= 0 disables.
+    pub vignette_radius: f64,
+    pub vignette_softness: f64,
+    /// Noise; intensity <= 0 disables.
+    pub noise_intensity: f64,
+    pub noise_seed: f64,
+}
+
+#[wasm_bindgen]
+impl PipelineConfig {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> PipelineConfig {
+        PipelineConfig {
+            pixelation: 0.0,
+            blur: 0.0,
+            sharpen: 0.0,
+            hue: 0.0,
+            saturation: 0.0,
+            lightness: 0.0,
+            brightness: 0.0,
+            contrast: 0.0,
+            vignette_radius: 0.0,
+            vignette_softness: 50.0,
+            noise_intensity: 0.0,
+            noise_seed: 1.0,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub fn wasm_apply_pipeline(
+    data: &mut [u8],
+    width: u32,
+    height: u32,
+    config: PipelineConfig,
+    curve_r: &[u8],
+    curve_g: &[u8],
+    curve_b: &[u8],
+) {
+    if config.pixelation > 0.0 {
+        wasm_apply_pixelation(data, width, height, config.pixelation as u32);
+    }
+    if config.blur > 0.0 {
+        wasm_apply_blur(data, width, height, config.blur as u32);
+    }
+    if config.sharpen > 0.0 {
+        wasm_apply_sharpen(data, width, height, config.sharpen);
+    }
+    if config.hue != 0.0 || config.saturation != 0.0 || config.lightness != 0.0 {
+        wasm_apply_hsl(data, config.hue, config.saturation, config.lightness);
+    }
+    if config.brightness != 0.0 || config.contrast != 0.0 {
+        wasm_apply_brightness_contrast(data, config.brightness, config.contrast);
+    }
+    if config.vignette_radius > 0.0 {
+        wasm_apply_vignette(data, width, height, config.vignette_radius, config.vignette_softness);
+    }
+    if config.noise_intensity > 0.0 {
+        wasm_apply_noise(data, config.noise_intensity, config.noise_seed);
+    }
+    // Empty slices mean "no curves", matching the worker's previous
+    // `curveR && curveG && curveB` guard (wasm_apply_curves no-ops on empty).
+    if !curve_r.is_empty() && !curve_g.is_empty() && !curve_b.is_empty() {
+        wasm_apply_curves(data, curve_r, curve_g, curve_b);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test] fn pixelation_copies_the_block_origin() { let mut data=vec![10,20,30,255, 40,50,60,255, 70,80,90,255, 1,2,3,255]; wasm_apply_pixelation(&mut data,2,2,2); assert_eq!(&data[4..8], &[10,20,30,255]); assert_eq!(&data[8..12], &[10,20,30,255]); }
     #[test] fn curves_are_deterministic() { let mut data=vec![1,2,3,255]; let c: Vec<u8>=(0..=255).rev().collect(); wasm_apply_curves(&mut data,&c,&c,&c); assert_eq!(&data[..3], &[254,253,252]); }
+    #[test] fn pipeline_disabled_is_a_noop() {
+        let mut data = vec![10,20,30,255, 40,50,60,255, 70,80,90,255, 1,2,3,255];
+        let original = data.clone();
+        let no_curves: [u8; 0] = [];
+        wasm_apply_pipeline(&mut data, 2, 2, PipelineConfig::new(), &no_curves, &no_curves, &no_curves);
+        assert_eq!(data, original);
+    }
+    #[test] fn pipeline_matches_sequential_filter_calls() {
+        let mut data = vec![
+            10,20,30,255, 200,180,160,255, 50,60,70,255,
+            90,100,110,255, 15,25,35,255, 240,230,220,255,
+            120,130,140,255, 5,15,25,255, 210,200,190,255,
+        ];
+        let mut expected = data.clone();
+        wasm_apply_pixelation(&mut expected, 3, 3, 2);
+        wasm_apply_blur(&mut expected, 3, 3, 1);
+        wasm_apply_sharpen(&mut expected, 3, 3, 0.5);
+        wasm_apply_hsl(&mut expected, 10.0, 5.0, -5.0);
+        wasm_apply_brightness_contrast(&mut expected, 8.0, 10.0);
+        wasm_apply_vignette(&mut expected, 3, 3, 40.0, 50.0);
+        wasm_apply_noise(&mut expected, 10.0, 42.0);
+        let c: Vec<u8> = (0u8..=255).map(|v| v.wrapping_add(2)).collect();
+        wasm_apply_curves(&mut expected, &c, &c, &c);
+
+        let config = PipelineConfig {
+            pixelation: 2.0,
+            blur: 1.0,
+            sharpen: 0.5,
+            hue: 10.0,
+            saturation: 5.0,
+            lightness: -5.0,
+            brightness: 8.0,
+            contrast: 10.0,
+            vignette_radius: 40.0,
+            vignette_softness: 50.0,
+            noise_intensity: 10.0,
+            noise_seed: 42.0,
+        };
+        wasm_apply_pipeline(&mut data, 3, 3, config, &c, &c, &c);
+        assert_eq!(data, expected);
+    }
 }

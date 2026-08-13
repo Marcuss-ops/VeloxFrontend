@@ -1,6 +1,45 @@
 /* tslint:disable */
 /* eslint-disable */
 
+export class PipelineConfig {
+    free(): void;
+    [Symbol.dispose](): void;
+    constructor();
+    /**
+     * Box blur radius; <= 0 disables.
+     */
+    blur: number;
+    /**
+     * Brightness/contrast; both zero disables.
+     */
+    brightness: number;
+    contrast: number;
+    /**
+     * HSL adjustment; all zero disables.
+     */
+    hue: number;
+    lightness: number;
+    /**
+     * Noise; intensity <= 0 disables.
+     */
+    noise_intensity: number;
+    noise_seed: number;
+    /**
+     * Pixelation block size; <= 0 disables.
+     */
+    pixelation: number;
+    saturation: number;
+    /**
+     * Sharpen amount; <= 0 disables.
+     */
+    sharpen: number;
+    /**
+     * Vignette; radius <= 0 disables.
+     */
+    vignette_radius: number;
+    vignette_softness: number;
+}
+
 export function wasm_apply_blur(data: Uint8Array, width: number, height: number, radius: number): void;
 
 export function wasm_apply_brightness_contrast(data: Uint8Array, brightness: number, contrast: number): void;
@@ -10,6 +49,8 @@ export function wasm_apply_curves(data: Uint8Array, curve_r: Uint8Array, curve_g
 export function wasm_apply_hsl(data: Uint8Array, hue: number, saturation: number, lightness: number): void;
 
 export function wasm_apply_noise(data: Uint8Array, intensity: number, seed: number): void;
+
+export function wasm_apply_pipeline(data: Uint8Array, width: number, height: number, config: PipelineConfig, curve_r: Uint8Array, curve_g: Uint8Array, curve_b: Uint8Array): void;
 
 export function wasm_apply_pixelation(data: Uint8Array, width: number, height: number, size: number): void;
 
@@ -23,11 +64,38 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
+    readonly __wbg_get_pipelineconfig_blur: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_brightness: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_contrast: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_hue: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_lightness: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_noise_intensity: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_noise_seed: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_pixelation: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_saturation: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_sharpen: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_vignette_radius: (a: number) => number;
+    readonly __wbg_get_pipelineconfig_vignette_softness: (a: number) => number;
+    readonly __wbg_pipelineconfig_free: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_blur: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_brightness: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_contrast: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_hue: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_lightness: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_noise_intensity: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_noise_seed: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_pixelation: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_saturation: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_sharpen: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_vignette_radius: (a: number, b: number) => void;
+    readonly __wbg_set_pipelineconfig_vignette_softness: (a: number, b: number) => void;
+    readonly pipelineconfig_new: () => number;
     readonly wasm_apply_blur: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly wasm_apply_brightness_contrast: (a: number, b: number, c: any, d: number, e: number) => void;
     readonly wasm_apply_curves: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number) => void;
     readonly wasm_apply_hsl: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly wasm_apply_noise: (a: number, b: number, c: any, d: number, e: number) => void;
+    readonly wasm_apply_pipeline: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number, i: number, j: number, k: number, l: number) => void;
     readonly wasm_apply_pixelation: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly wasm_apply_sharpen: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly wasm_apply_vignette: (a: number, b: number, c: any, d: number, e: number, f: number, g: number) => void;

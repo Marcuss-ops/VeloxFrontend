@@ -1,17 +1,14 @@
 // Web Worker for Image Filtering
 // Offloads heavy WASM calculations from the main thread
 
-import initWasm, { 
-  wasm_apply_blur, 
-  wasm_apply_sharpen, 
-  wasm_apply_pixelation, 
-  wasm_apply_hsl,
-  wasm_apply_brightness_contrast,
-  wasm_apply_vignette,
-  wasm_apply_noise,
-  wasm_apply_curves,
+import initWasm, {
+  wasm_apply_pipeline,
+  PipelineConfig,
 } from '../wasm/pkg/wasm_filters.js';
 import type { FilterOptions } from '../imageFilters';
+
+// Empty curve tables disable the curves stage inside the pipeline.
+const NO_CURVES = new Uint8Array(0);
 
 let wasmInitialized: Promise<void> | null = null;
 
@@ -38,66 +35,37 @@ self.onmessage = async (e: MessageEvent) => {
     // or cast appropriately if we alter the rust binding
     const data = new Uint8Array(imageData.data.buffer);
 
-    if (options.pixelation && options.pixelation > 0) {
-      wasm_apply_pixelation(data, width, height, options.pixelation);
-    }
-    
-    if (options.blur && options.blur > 0) {
-      wasm_apply_blur(data, width, height, options.blur);
-    }
-    
-    if (options.sharpen && options.sharpen > 0) {
-      wasm_apply_sharpen(data, width, height, options.sharpen);
-    }
-
-    // NEW: HSL adjustment
-    if (options.hue !== undefined || options.saturation !== undefined || options.lightness !== undefined) {
-      wasm_apply_hsl(
-        data, 
-        options.hue || 0, 
-        options.saturation || 0, 
-        options.lightness || 0
-      );
-    }
-
-    // NEW: Brightness & Contrast
-    if (options.brightness !== undefined || options.contrast !== undefined) {
-      wasm_apply_brightness_contrast(
-        data, 
-        options.brightness || 0, 
-        options.contrast || 0
-      );
-    }
-
-    // NEW: Vignette
+    // Single WASM crossing: build the whole filter config and let Rust run
+    // every enabled filter inside one call (pixelation, blur, sharpen, HSL,
+    // brightness/contrast, vignette, noise, curves) instead of one crossing
+    // per filter.
+    const config = new PipelineConfig();
+    config.pixelation = options.pixelation || 0;
+    config.blur = options.blur || 0;
+    config.sharpen = options.sharpen || 0;
+    config.hue = options.hue || 0;
+    config.saturation = options.saturation || 0;
+    config.lightness = options.lightness || 0;
+    config.brightness = options.brightness || 0;
+    config.contrast = options.contrast || 0;
     if (options.vignetteRadius !== undefined && options.vignetteRadius > 0) {
-      wasm_apply_vignette(
-        data, 
-        width, 
-        height, 
-        options.vignetteRadius, 
-        options.vignetteSoftness || 50
-      );
+      config.vignette_radius = options.vignetteRadius;
+      config.vignette_softness = options.vignetteSoftness || 50;
     }
-
-    // NEW: Noise/Grain
     if (options.noiseIntensity !== undefined && options.noiseIntensity > 0) {
-      wasm_apply_noise(
-        data, 
-        options.noiseIntensity, 
-        options.noiseSeed || Date.now()
-      );
+      config.noise_intensity = options.noiseIntensity;
+      config.noise_seed = options.noiseSeed || Date.now();
     }
 
-    // NEW: Color Curves
-    if (options.curveR && options.curveG && options.curveB) {
-      wasm_apply_curves(
-        data, 
-        options.curveR, 
-        options.curveG, 
-        options.curveB
-      );
-    }
+    wasm_apply_pipeline(
+      data,
+      width,
+      height,
+      config,
+      options.curveR || NO_CURVES,
+      options.curveG || NO_CURVES,
+      options.curveB || NO_CURVES
+    );
 
     // Pass the buffer back as transferable to avoid copy overhead
     const outImageData = new ImageData(new Uint8ClampedArray(data.buffer), width, height);

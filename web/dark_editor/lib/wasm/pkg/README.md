@@ -1,8 +1,8 @@
 # Velox editor filters
 
-Rust implementation of the pixel filters used by the editor worker and layer
-compositor. The JavaScript facade in `lib/wasm/wasm_filters.js` is kept stable
-so callers do not depend on the generated `wasm-bindgen` module.
+Rust implementation of the pixel filters used directly by the editor worker
+and layer compositor. There is no JavaScript fallback: the generated
+`wasm-bindgen` package is the runtime implementation.
 
 From `web/dark_editor`:
 
