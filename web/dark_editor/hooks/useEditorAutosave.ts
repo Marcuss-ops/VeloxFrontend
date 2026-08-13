@@ -8,6 +8,8 @@ import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { onEditorFlushRequest, onEditorSaveRequest } from '@/lib/editorEvents';
 import { uploadImage } from '@/lib/api';
 import type { CanvasHandle } from '@/lib/canvasHandle';
+import { uploadMediaAsset, updateEditorSessionThumbnail } from '@/lib/api/bff';
+import { isScopedProjectId } from '@/lib/project-scope';
 import type { SessionGateState } from '@/hooks/useYouTubeSessionGate';
 
 export interface UseEditorAutosaveInput {
@@ -57,8 +59,20 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
           latestCanvasHeight,
         );
         if (previewFile) {
-          const uploaded = await uploadImage(previewFile);
-          previewFilename = uploaded.filename;
+          if (isScopedProjectId(currentProject.id)) {
+            // ve_*/vx_* projects are owned by the InstaEdit backend: persist
+            // the preview as a DURABLE media asset and attach it to the
+            // editor session (thumbnail_media_id) so the Copertine hub can
+            // render the latest cover state. The legacy uploadImage endpoint
+            // stores only a temp file that the scoped save path never
+            // persists — without this, the hub keeps showing the stale
+            // source thumbnail (or a blank card).
+            const mediaId = await uploadMediaAsset(previewFile, `${currentProject.id}_preview.png`);
+            await updateEditorSessionThumbnail(currentProject.id, mediaId);
+          } else {
+            const uploaded = await uploadImage(previewFile);
+            previewFilename = uploaded.filename;
+          }
           lastPreviewAtRef.current = now;
         }
       } catch (err) {

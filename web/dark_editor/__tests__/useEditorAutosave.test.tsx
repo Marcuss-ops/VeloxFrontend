@@ -21,6 +21,7 @@ import { useProjectStore } from '@/stores/projectStore';
 import { requestEditorFlush, requestEditorSave } from '@/lib/editorEvents';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { uploadImage, saveProject as apiSaveProject } from '@/lib/api';
+import { uploadMediaAsset, updateEditorSessionThumbnail } from '@/lib/api/bff';
 import type { SessionGateState } from '@/hooks/useYouTubeSessionGate';
 
 vi.mock('@/lib/api', () => ({
@@ -29,6 +30,11 @@ vi.mock('@/lib/api', () => ({
     listProjects: vi.fn(),
     getProject: vi.fn(),
     deleteProject: vi.fn(),
+}));
+
+vi.mock('@/lib/api/bff', () => ({
+    uploadMediaAsset: vi.fn(),
+    updateEditorSessionThumbnail: vi.fn(),
 }));
 
 vi.mock('@/lib/canvasPreview', () => ({
@@ -88,6 +94,8 @@ beforeEach(() => {
     useProjectStore.getState().setCurrentProject(project);
     useProjectStore.getState().setDirty(false);
     vi.mocked(uploadImage).mockResolvedValue({ url: '/media/preview-1.png', filename: 'preview-1.png' });
+    vi.mocked(uploadMediaAsset).mockResolvedValue('media-asset-1');
+    vi.mocked(updateEditorSessionThumbnail).mockResolvedValue(undefined);
     vi.mocked(captureEditorCanvasPreviewFile).mockResolvedValue(new File(['x'], 'preview.png', { type: 'image/png' }));
     vi.mocked(apiSaveProject).mockResolvedValue(undefined);
 });
@@ -152,11 +160,16 @@ describe('useEditorAutosave', () => {
         expect(apiSaveProject).toHaveBeenCalledTimes(1);
         // first save captures and uploads a fresh preview
         expect(captureEditorCanvasPreviewFile).toHaveBeenCalledTimes(1);
-        expect(uploadImage).toHaveBeenCalledTimes(1);
+        // ve_* projects persist the preview as a durable media asset and
+        // attach it to the session (thumbnail_media_id) so the Copertine
+        // hub renders the latest cover state.
+        expect(uploadMediaAsset).toHaveBeenCalledTimes(1);
+        expect(updateEditorSessionThumbnail).toHaveBeenCalledWith('ve_1', 'media-asset-1');
+        expect(uploadImage).not.toHaveBeenCalled();
         // the store action wraps the payload: canvas data + preview filename
         expect(apiSaveProject).toHaveBeenCalledWith(expect.objectContaining({
             id: 've_1',
-            preview_filename: 'preview-1.png',
+            preview_filename: undefined,
         }));
     });
 
@@ -188,7 +201,9 @@ describe('useEditorAutosave', () => {
         expect(apiSaveProject).toHaveBeenCalledTimes(2);
         // only one preview capture/upload for two saves inside the window
         expect(captureEditorCanvasPreviewFile).toHaveBeenCalledTimes(1);
-        expect(uploadImage).toHaveBeenCalledTimes(1);
+        expect(uploadMediaAsset).toHaveBeenCalledTimes(1);
+        expect(updateEditorSessionThumbnail).toHaveBeenCalledTimes(1);
+        expect(uploadImage).not.toHaveBeenCalled();
     });
 
     it('saves without a preview capture when the capture yields nothing', async () => {
@@ -206,6 +221,8 @@ describe('useEditorAutosave', () => {
 
         expect(apiSaveProject).toHaveBeenCalledTimes(1);
         expect(uploadImage).not.toHaveBeenCalled();
+        expect(uploadMediaAsset).not.toHaveBeenCalled();
+        expect(updateEditorSessionThumbnail).not.toHaveBeenCalled();
     });
 
     it('flush requests force a save with a fresh preview', async () => {
@@ -217,7 +234,8 @@ describe('useEditorAutosave', () => {
 
         expect(apiSaveProject).toHaveBeenCalledTimes(1);
         expect(captureEditorCanvasPreviewFile).toHaveBeenCalledTimes(1);
-        expect(uploadImage).toHaveBeenCalledTimes(1);
+        expect(uploadMediaAsset).toHaveBeenCalledTimes(1);
+        expect(updateEditorSessionThumbnail).toHaveBeenCalledWith('ve_1', 'media-asset-1');
     });
 
     it('explicit save requests (keyboard shortcuts) force a save', async () => {
