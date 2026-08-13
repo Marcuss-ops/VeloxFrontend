@@ -1,10 +1,11 @@
-// stores/slices/objectSlice.ts — Canvas object CRUD, selection, clipboard
-// and layer ordering. Extracted from stores/editorStore.ts (P1 of the
-// editor-store-slices refactor).
+// stores/slices/objectSlice.ts — Canvas object CRUD + bulk lifecycle.
+// Extracted from stores/editorStore.ts (P1 of the editor-store-slices
+// refactor); selection/clipboard now live in selectionSlice and layer
+// ordering in layerSlice.
 //
 // All mutations go through get().commitMutation / commitLiveMutation
-// (historySlice) so every edit is undoable. Selection and clipboard are
-// plain `set` updates.
+// (historySlice) so every edit is undoable. Selection is updated inline
+// (plain `set`) by the CRUD actions that affect it.
 //
 // The canvas is normalized: `objects` is a Record keyed by id (O(1) lookup)
 // and `objectIds` holds the layer order (index 0 = back, last = front).
@@ -13,15 +14,12 @@
 
 import type { StoreApi } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { readEditorClipboard, writeEditorClipboard } from '@/lib/editorClipboard';
 import type { EditorState } from '../editorStore';
 import type { CanvasObject } from '../canvasObjectTypes';
 
 export interface ObjectSlice {
   objects: Record<string, CanvasObject>;
   objectIds: string[];
-  selectedIds: string[];
-  clipboard: CanvasObject[];
 
   // Object CRUD
   addObject: (obj: CanvasObject) => void;
@@ -31,24 +29,9 @@ export interface ObjectSlice {
   deleteSelected: () => void;
   duplicateSelected: () => void;
 
-  // Clipboard
-  copySelected: () => void;
-  pasteClipboard: () => void;
-
-  // Selection
-  selectObject: (id: string | null, addToSelection?: boolean) => void;
-  selectAll: () => void;
-  clearSelection: () => void;
-
   // Bulk actions
   loadObjects: (objects: CanvasObject[]) => void;
   clearCanvas: () => void;
-
-  // Layer actions
-  moveLayerUp: (id: string) => void;
-  moveLayerDown: (id: string) => void;
-  bringToFront: (id: string) => void;
-  sendToBack: (id: string) => void;
 }
 
 export const createObjectSlice = (
@@ -57,8 +40,6 @@ export const createObjectSlice = (
 ): ObjectSlice => ({
   objects: {},
   objectIds: [],
-  selectedIds: [],
-  clipboard: [],
 
   addObject: (obj) => {
     get().commitMutation((draft) => {
@@ -130,67 +111,6 @@ export const createObjectSlice = (
     set({ selectedIds: newIds });
   },
 
-  copySelected: () => {
-    const { objects, selectedIds } = get();
-    if (selectedIds.length === 0) return;
-
-    // O(1) Record lookup per selected id — no linear scan of the canvas.
-    const copiedObjects = selectedIds
-      .map((id) => objects[id])
-      .filter((obj): obj is CanvasObject => Boolean(obj))
-      .map((obj) => JSON.parse(JSON.stringify(obj)) as CanvasObject);
-
-    set({ clipboard: copiedObjects });
-    writeEditorClipboard(copiedObjects);
-  },
-
-  pasteClipboard: () => {
-    const storedClipboard = readEditorClipboard();
-    const clipboard = storedClipboard.length > 0 ? storedClipboard : get().clipboard;
-    if (clipboard.length === 0) return;
-
-    const newIds: string[] = [];
-    get().commitMutation((draft) => {
-      for (const obj of clipboard) {
-        const newId = uuidv4();
-        newIds.push(newId);
-        draft.objects[newId] = {
-          ...obj,
-          id: newId,
-          x: obj.x + 20,
-          y: obj.y + 20,
-        };
-        draft.objectIds.push(newId);
-      }
-    });
-
-    set({ selectedIds: newIds });
-  },
-
-  selectObject: (id, addToSelection = false) => {
-    const { selectedIds } = get();
-    if (id === null) {
-      set({ selectedIds: [] });
-    } else if (addToSelection) {
-      if (selectedIds.includes(id)) {
-        set({ selectedIds: selectedIds.filter((sid) => sid !== id) });
-      } else {
-        set({ selectedIds: [...selectedIds, id] });
-      }
-    } else {
-      set({ selectedIds: [id] });
-    }
-  },
-
-  selectAll: () => {
-    const { objectIds } = get();
-    set({ selectedIds: [...objectIds] });
-  },
-
-  clearSelection: () => {
-    set({ selectedIds: [] });
-  },
-
   loadObjects: (objects) => {
     const objectIds = objects.map((obj) => obj.id);
     const nextObjects: Record<string, CanvasObject> = {};
@@ -217,44 +137,6 @@ export const createObjectSlice = (
       futurePatches: [],
       pendingPatches: [],
       pendingInversePatches: [],
-    });
-  },
-
-  moveLayerUp: (id) => {
-    get().commitMutation((draft) => {
-      const index = draft.objectIds.indexOf(id);
-      if (index < draft.objectIds.length - 1 && index !== -1) {
-        [draft.objectIds[index], draft.objectIds[index + 1]] = [draft.objectIds[index + 1], draft.objectIds[index]];
-      }
-    });
-  },
-
-  moveLayerDown: (id) => {
-    get().commitMutation((draft) => {
-      const index = draft.objectIds.indexOf(id);
-      if (index > 0 && index !== -1) {
-        [draft.objectIds[index], draft.objectIds[index - 1]] = [draft.objectIds[index - 1], draft.objectIds[index]];
-      }
-    });
-  },
-
-  bringToFront: (id) => {
-    get().commitMutation((draft) => {
-      const index = draft.objectIds.indexOf(id);
-      if (index < draft.objectIds.length - 1 && index !== -1) {
-        const [objId] = draft.objectIds.splice(index, 1);
-        draft.objectIds.push(objId);
-      }
-    });
-  },
-
-  sendToBack: (id) => {
-    get().commitMutation((draft) => {
-      const index = draft.objectIds.indexOf(id);
-      if (index > 0 && index !== -1) {
-        const [objId] = draft.objectIds.splice(index, 1);
-        draft.objectIds.unshift(objId);
-      }
     });
   },
 });

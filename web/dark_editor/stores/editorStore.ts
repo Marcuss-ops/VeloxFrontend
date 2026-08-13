@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { enablePatches } from 'immer';
 import { createObjectSlice, type ObjectSlice } from './slices/objectSlice';
+import { createSelectionSlice, type SelectionSlice } from './slices/selectionSlice';
+import { createLayerSlice, type LayerSlice } from './slices/layerSlice';
 import { createHistorySlice, type HistorySlice } from './slices/historySlice';
 import { createEffectsSlice, type EffectsSlice } from './slices/effectsSlice';
 import { createViewSlice, type ViewSlice } from './slices/viewSlice';
@@ -15,8 +17,9 @@ enablePatches();
 
 /**
  * Composed editor store. The implementation lives in the cohesive slices
- * under stores/slices/ (objectSlice: CRUD + selection + clipboard +
- * layering; historySlice: undo/redo + immer patch machinery; effectsSlice:
+ * under stores/slices/ (objectSlice: CRUD + bulk lifecycle;
+ * selectionSlice: selection + clipboard; layerSlice: z-order;
+ * historySlice: undo/redo + immer patch machinery; effectsSlice:
  * filters + text/shape effects; viewSlice: canvas size/zoom/offset). This
  * file is the registry/composition point only. The canvas object domain
  * types live in stores/canvasObjectTypes.ts.
@@ -24,11 +27,13 @@ enablePatches();
  * Note: `removeBackground` no longer lives here — the network I/O belongs
  * to the application layer (lib/api/mediaClient).
  */
-export interface EditorState extends ObjectSlice, HistorySlice, EffectsSlice, ViewSlice {}
+export interface EditorState extends ObjectSlice, SelectionSlice, LayerSlice, HistorySlice, EffectsSlice, ViewSlice {}
 
 export const useEditorStore = create<EditorState>((set, get) => ({
   // Slice state + actions (spread order is irrelevant — no key overlaps)
   ...createObjectSlice(set, get),
+  ...createSelectionSlice(set, get),
+  ...createLayerSlice(set, get),
   ...createHistorySlice(set, get),
   ...createEffectsSlice(set, get),
   ...createViewSlice(set, get),
