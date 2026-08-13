@@ -8,7 +8,8 @@ import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { onEditorFlushRequest, onEditorSaveRequest } from '@/lib/editorEvents';
 import { uploadImage } from '@/lib/api';
 import type { CanvasHandle } from '@/lib/canvasHandle';
-import { uploadMediaAsset, updateEditorSessionThumbnail } from '@/lib/api/bff';
+import { getEditorSessionByProject, uploadMediaAsset, updateEditorSessionThumbnail } from '@/lib/api/bff';
+import { isImageSrcFailed } from '@/lib/imageLoadTracker';
 import { isScopedProjectId } from '@/lib/project-scope';
 import type { SessionGateState } from '@/hooks/useYouTubeSessionGate';
 
@@ -67,8 +68,26 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
             // stores only a temp file that the scoped save path never
             // persists — without this, the hub keeps showing the stale
             // source thumbnail (or a blank card).
-            const mediaId = await uploadMediaAsset(previewFile, `${currentProject.id}_preview.png`);
-            await updateEditorSessionThumbnail(currentProject.id, mediaId);
+            //
+            // A canvas image that failed to load (deleted/private video,
+            // CDN refusal) must never regress an already-persisted preview:
+            // skip overwriting the existing thumbnail_media_id while a
+            // source is in a failed state. A brand-new cover with no
+            // previous preview still attaches, so the card is never left
+            // blank — the user's design (on the neutral background) is
+            // still meaningful.
+            const hasFailedImage = latestObjects.some(
+              (obj) => obj.type === 'image' && isImageSrcFailed(obj.src),
+            );
+            let shouldAttach = true;
+            if (hasFailedImage) {
+              const session = await getEditorSessionByProject(currentProject.id).catch(() => null);
+              shouldAttach = !session?.thumbnail_media_id;
+            }
+            if (shouldAttach) {
+              const mediaId = await uploadMediaAsset(previewFile, `${currentProject.id}_preview.png`);
+              await updateEditorSessionThumbnail(currentProject.id, mediaId);
+            }
           } else {
             const uploaded = await uploadImage(previewFile);
             previewFilename = uploaded.filename;

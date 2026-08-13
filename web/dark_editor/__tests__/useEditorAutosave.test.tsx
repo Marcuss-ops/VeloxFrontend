@@ -21,7 +21,8 @@ import { useProjectStore } from '@/stores/projectStore';
 import { requestEditorFlush, requestEditorSave } from '@/lib/editorEvents';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import { uploadImage, saveProject as apiSaveProject } from '@/lib/api';
-import { uploadMediaAsset, updateEditorSessionThumbnail } from '@/lib/api/bff';
+import { uploadMediaAsset, updateEditorSessionThumbnail, getEditorSessionByProject } from '@/lib/api/bff';
+import { markImageLoadFailed, resetImageLoadTracker } from '@/lib/imageLoadTracker';
 import type { SessionGateState } from '@/hooks/useYouTubeSessionGate';
 
 vi.mock('@/lib/api', () => ({
@@ -35,6 +36,7 @@ vi.mock('@/lib/api', () => ({
 vi.mock('@/lib/api/bff', () => ({
     uploadMediaAsset: vi.fn(),
     updateEditorSessionThumbnail: vi.fn(),
+    getEditorSessionByProject: vi.fn(),
 }));
 
 vi.mock('@/lib/canvasPreview', () => ({
@@ -83,6 +85,23 @@ const makeObject = (id: string) => ({
     name: id,
 });
 
+const makeImageObject = (id: string, src: string) => ({
+    id,
+    type: 'image' as const,
+    name: 'Source Thumbnail',
+    src,
+    x: 0,
+    y: 0,
+    width: 1920,
+    height: 1080,
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1,
+    opacity: 1,
+    visible: true,
+    locked: false,
+});
+
 const defaultArgs = (hydrated = true) => ({
     canvasRef: { current: null },
     sessionGate: editableGate,
@@ -93,9 +112,14 @@ beforeEach(() => {
     useEditorStore.getState().clearCanvas();
     useProjectStore.getState().setCurrentProject(project);
     useProjectStore.getState().setDirty(false);
+    resetImageLoadTracker();
     vi.mocked(uploadImage).mockResolvedValue({ url: '/media/preview-1.png', filename: 'preview-1.png' });
     vi.mocked(uploadMediaAsset).mockResolvedValue('media-asset-1');
     vi.mocked(updateEditorSessionThumbnail).mockResolvedValue(undefined);
+    vi.mocked(getEditorSessionByProject).mockResolvedValue({
+        ...baseSession,
+        thumbnail_media_id: undefined,
+    } as never);
     vi.mocked(captureEditorCanvasPreviewFile).mockResolvedValue(new File(['x'], 'preview.png', { type: 'image/png' }));
     vi.mocked(apiSaveProject).mockResolvedValue(undefined);
 });
@@ -204,6 +228,59 @@ describe('useEditorAutosave', () => {
         expect(uploadMediaAsset).toHaveBeenCalledTimes(1);
         expect(updateEditorSessionThumbnail).toHaveBeenCalledTimes(1);
         expect(uploadImage).not.toHaveBeenCalled();
+    });
+
+    it('keeps the existing preview when a canvas source image failed to load', async () => {
+        vi.useFakeTimers();
+        // A previously-persisted preview exists (the hub card shows it).
+        vi.mocked(getEditorSessionByProject).mockResolvedValue({
+            ...baseSession,
+            thumbnail_media_id: 'prev-1',
+        } as never);
+        const source = 'https://i.ytimg.com/vi/abc/hqdefault.jpg';
+        markImageLoadFailed(source);
+        renderHook(() => useEditorAutosave(defaultArgs()));
+        await vi.advanceTimersByTimeAsync(10000);
+
+        act(() => {
+            useProjectStore.getState().setDirty(true);
+            useEditorStore.getState().addObject(makeImageObject('img-1', source));
+        });
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(900);
+        });
+
+        // the document still saves, but the broken capture never replaces
+        // the previously-persisted thumbnail_media_id
+        expect(apiSaveProject).toHaveBeenCalledTimes(1);
+        expect(uploadMediaAsset).not.toHaveBeenCalled();
+        expect(updateEditorSessionThumbnail).not.toHaveBeenCalled();
+    });
+
+    it('still attaches a first preview when the source failed but no preview exists yet', async () => {
+        vi.useFakeTimers();
+        // Brand-new cover: no thumbnail_media_id yet, so the design on the
+        // neutral background is still attached (card must never stay blank).
+        vi.mocked(getEditorSessionByProject).mockResolvedValue({
+            ...baseSession,
+            thumbnail_media_id: undefined,
+        } as never);
+        const source = 'https://i.ytimg.com/vi/abc/hqdefault.jpg';
+        markImageLoadFailed(source);
+        renderHook(() => useEditorAutosave(defaultArgs()));
+        await vi.advanceTimersByTimeAsync(10000);
+
+        act(() => {
+            useProjectStore.getState().setDirty(true);
+            useEditorStore.getState().addObject(makeImageObject('img-1', source));
+        });
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(900);
+        });
+
+        expect(apiSaveProject).toHaveBeenCalledTimes(1);
+        expect(uploadMediaAsset).toHaveBeenCalledTimes(1);
+        expect(updateEditorSessionThumbnail).toHaveBeenCalledWith('ve_1', 'media-asset-1');
     });
 
     it('saves without a preview capture when the capture yields nothing', async () => {

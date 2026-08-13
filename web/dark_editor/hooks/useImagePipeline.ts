@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { applyAllFilters } from '@/lib/imageFilters';
 import { resolveEditorAssetUrl } from '@/lib/api';
 import { traceCropShape } from '@/lib/cropClipGeometry';
+import { markImageLoadFailed, markImageLoadSucceeded } from '@/lib/imageLoadTracker';
 import type { ImageObject } from '@/stores/editorStore';
 
 export interface ImagePipelineResult {
@@ -11,6 +12,12 @@ export interface ImagePipelineResult {
   processedImage: HTMLImageElement | HTMLCanvasElement | null;
   featheredImage: HTMLCanvasElement | HTMLImageElement | null;
 }
+
+/** Extra load attempts after the first try (3 total attempts). */
+const MAX_IMAGE_LOAD_ATTEMPTS = 2;
+
+/** Backoff between retries: 1.5s, then 3s. */
+const IMAGE_LOAD_RETRY_BASE_MS = 1500;
 
 /**
  * useImagePipeline — the image-renderer effect chain: load the asset, apply
@@ -36,12 +43,43 @@ export function useImagePipeline(obj: ImageObject): ImagePipelineResult {
   const [processedImage, setProcessedImage] = useState<HTMLImageElement | HTMLCanvasElement | null>(null);
   const [featheredImage, setFeatheredImage] = useState<HTMLCanvasElement | HTMLImageElement | null>(null);
 
+  // Load the asset with a bounded retry. A CDN refusal (403) or transient
+  // network error at open would otherwise leave the cover background broken
+  // for the whole session; the retry lets a recoverable source self-heal.
+  // Failures are recorded in the image-load tracker so the autosave can
+  // avoid persisting a preview with a broken source image.
   useEffect(() => {
     if (!src) return;
-    const img = new window.Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => setOriginalImage(img);
-    img.src = resolveEditorAssetUrl(src);
+    let cancelled = false;
+    let attempt = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const tryLoad = () => {
+      if (cancelled) return;
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        if (cancelled) return;
+        markImageLoadSucceeded(src);
+        setOriginalImage(img);
+      };
+      img.onerror = () => {
+        if (cancelled) return;
+        attempt += 1;
+        if (attempt <= MAX_IMAGE_LOAD_ATTEMPTS) {
+          retryTimer = setTimeout(tryLoad, attempt * IMAGE_LOAD_RETRY_BASE_MS);
+        } else {
+          markImageLoadFailed(src);
+        }
+      };
+      img.src = resolveEditorAssetUrl(src);
+    };
+
+    tryLoad();
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, [src]);
 
   useEffect(() => {

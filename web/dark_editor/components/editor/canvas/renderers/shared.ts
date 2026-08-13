@@ -6,6 +6,7 @@ import type { KonvaNodeEvents } from 'react-konva';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
 import { resolveEditorAssetUrl } from '@/lib/api';
 import { thumbnailFallbackDataUrl } from '@/lib/thumbnailFallback';
+import { markImageLoadFailed, markImageLoadSucceeded } from '@/lib/imageLoadTracker';
 import type { BaseCanvasObject } from '@/stores/editorStore';
 
 export function resolveFontFamily(name?: string): string {
@@ -32,8 +33,15 @@ export function useImageLoader(src?: string) {
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.src = resolveEditorAssetUrl(src);
-    img.onload = () => setImage(img);
+    img.onload = () => {
+      markImageLoadSucceeded(src);
+      setImage(img);
+    };
     img.onerror = () => {
+      // Record the failure so the autosave never persists a preview with
+      // this broken source, then swap in the (text-free) neutral fallback
+      // so the shape/text fill keeps rendering.
+      markImageLoadFailed(src);
       if (fallbackApplied.current) {
         setImage(null);
         return;
