@@ -14,7 +14,7 @@
 // lives in folderClient (it sets the project's folder pointer and is
 // grouped semantically with the folder management surface).
 
-import { apiDelete, API_BASE, editorFetch, editorImageProxyUrl, editorProjectFetch } from './httpClient';
+import { API_BASE, editorFetch, editorImageProxyUrl, editorProjectFetch } from './httpClient';
 import { isScopedProjectId } from '../project-scope';
 import type { Project } from './types';
 
@@ -154,12 +154,21 @@ export async function saveProject(project: {
 }
 
 // Delete a project — only InstaEdit-scoped projects exist; the legacy
-// global catalog (and its local projects.json store) is gone.
+// global catalog (and its local projects.json store) is gone, so the
+// document is deleted through the project-scoped BFF route, never a
+// dead /api/projects/{id} endpoint.
 export async function deleteProject(id: string): Promise<{ success: boolean }> {
   if (!isScopedProjectId(id)) {
     throw new Error(
       `Project ${id} is not an InstaEdit-scoped project: only ve_*/vx_* handles can be deleted.`,
     );
   }
-  return apiDelete<{ success: boolean }>(`/api/projects/${id}`);
+  const response = await editorProjectFetch(id, `projects/${encodeURIComponent(id)}/document`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to delete editor document');
+  }
+  return { success: true };
 }

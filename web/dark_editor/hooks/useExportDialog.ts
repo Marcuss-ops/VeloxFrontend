@@ -5,6 +5,7 @@ import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore, type ImageObject, type TextObject } from '@/stores/editorStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
+import { isScopedProjectId } from '@/lib/project-scope';
 import { translateText } from '@/lib/api';
 import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
 import { requestEditorFlush } from '@/lib/editorEvents';
@@ -147,7 +148,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     || (selectedObject?.type === 'text' ? selectedObject : undefined)
     || textLayers[0];
   const hasSelection = selectedIds.length > 0;
-  const isEditorSession = Boolean(currentProject?.id?.startsWith('ve_'));
+  const isEditorSession = Boolean(currentProject?.id && isScopedProjectId(currentProject.id));
   const {
     videos: privateVideos,
     visibleVideos: visiblePrivateVideos,

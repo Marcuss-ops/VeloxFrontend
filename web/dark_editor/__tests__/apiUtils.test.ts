@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractFilenameFromPath, getTempFileUrl, getProjectFileUrl } from '@/lib/api';
+import { extractFilenameFromPath, getTempFileUrl } from '@/lib/api';
 
 describe('extractFilenameFromPath', () => {
   it('extracts filename from a path', () => {
@@ -28,7 +28,7 @@ describe('URL helpers', () => {
     expect(getTempFileUrl('file.png')).toBe('/instaeditor/api/temp/file.png');
   });
 
-  it('getProjectFileUrl builds the project file URL', () => {
-    expect(getProjectFileUrl('p1', 'file.png')).toBe('/instaeditor/api/projects/p1/file.png');
-  });
+  // NOTE: getProjectFileUrl was removed deliberately — the local
+  // /api/projects/{id}/... catalog route is retired, so no per-project
+  // file URL exists on this side.
 });

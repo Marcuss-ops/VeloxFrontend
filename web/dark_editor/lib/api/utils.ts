@@ -6,7 +6,7 @@
 // extractor used by __tests__/apiUtils.test.ts and a handful of
 // components that need to render <img src> or <a href> tags.
 
-import { API_BASE, resolveEditorAssetUrl } from './httpClient';
+import { resolveEditorAssetUrl } from './httpClient';
 
 /** Extract the basename from a full URL or path, stripping query
  *  string + hash fragment. Returns '' for empty input. */
@@ -22,7 +22,8 @@ export function getTempFileUrl(filename: string): string {
   return resolveEditorAssetUrl(`temp/${filename}`);
 }
 
-/** Absolute URL for a file attached to a saved project. */
-export function getProjectFileUrl(projectId: string, filename: string): string {
-  return `${API_BASE}/api/projects/${projectId}/${filename}`;
-}
+// NOTE: there is deliberately no getProjectFileUrl here. The local
+// /api/projects/{id}/... catalog route was retired (410) — project files
+// are owned by the InstaEdit backend, so a per-project file URL on this
+// side would only point at a dead endpoint. Use the temp-file URL above
+// or the project-scoped BFF when a document-bound asset is needed.

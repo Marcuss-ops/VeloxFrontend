@@ -10,7 +10,7 @@
 // silently reintroduce the split.
 
 import { describe, expect, it, vi } from 'vitest';
-import { getProject } from '@/lib/api/projectClient';
+import { getProject, deleteProject } from '@/lib/api/projectClient';
 import { editorProjectFetch, editorFetch } from '@/lib/api/httpClient';
 
 vi.mock('@/lib/api/httpClient', async () => {
@@ -116,13 +116,45 @@ describe('getProject routing (ve_/vx_ → project-scoped BFF)', () => {
         );
         expect(project.name).toBe('Draft');
         expect(project.type).toBe('youtube_thumbnail');
-    });
+    });  it('never hits the BFF for a non-scoped id — fails with the clear contract error', async () => {
+    await expect(getProject('project_123')).rejects.toThrow(
+      /not an InstaEdit-scoped project/,
+    );
+    expect(mockProjectFetch).not.toHaveBeenCalled();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
 
-    it('never hits the BFF for a non-scoped id — fails with the clear contract error', async () => {
-        await expect(getProject('project_123')).rejects.toThrow(
-            /not an InstaEdit-scoped project/,
-        );
-        expect(mockProjectFetch).not.toHaveBeenCalled();
-        expect(mockFetch).not.toHaveBeenCalled();
-    });
+describe('deleteProject routing (ve_/vx_ → project-scoped BFF document)', () => {
+  it('deletes a vx_ document through the BFF, not the dead /api/projects/{id} route', async () => {
+    mockProjectFetch.mockResolvedValue(okResponse({ success: true }));
+
+    const result = await deleteProject('vx_777');
+
+    expect(mockProjectFetch).toHaveBeenCalledWith(
+      'vx_777',
+      'projects/vx_777/document',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+    expect(result).toEqual({ success: true });
+  });
+
+  it('routes a ve_ delete through the same BFF document path shape', async () => {
+    mockProjectFetch.mockResolvedValue(okResponse({ success: true }));
+
+    await deleteProject('ve_888');
+
+    expect(mockProjectFetch).toHaveBeenCalledWith(
+      've_888',
+      'projects/ve_888/document',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('never hits the BFF for a non-scoped delete — clear contract error', async () => {
+    await expect(deleteProject('project_123')).rejects.toThrow(
+      /not an InstaEdit-scoped project/,
+    );
+    expect(mockProjectFetch).not.toHaveBeenCalled();
+  });
 });
