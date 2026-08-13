@@ -1,133 +1,39 @@
 'use client';
 
-import React, { useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useUIStore } from '@/stores/uiStore';
-import { useEditorStore, type ImageObject } from '@/stores/editorStore';
+import { useEditorStore } from '@/stores/editorStore';
 import { useObjectsArray } from '@/hooks/useObjectsArray';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { resolveEditorAssetUrl } from '@/lib/api';
 import {
   Type,
   Image as ImageIcon,
-  Crop,
   Square,
   Circle,
   Maximize,
   Eye,
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/DropdownMenu';
 import { DockItem } from './DockItem';
+import { CropDropdown } from './CropDropdown';
+import { useImageUpload } from './useImageUpload';
 
 /**
  * ToolsSection — the creation/insertion tools of the toolbar dock: text,
- * image (file upload), shape, circle, crop and the utility tools (upscale,
- * feed preview). Extracted from ToolbarDock.tsx.
+ * image (file upload), shape, circle, crop (CropDropdown) and the utility
+ * tools (upscale, feed preview). The image upload flow lives in
+ * useImageUpload; the crop menu in CropDropdown.
  */
 export function ToolsSection() {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const {
-    activeTool,
-    setActiveTool,
-    setUploading,
-    addToast,
-    setFeedPreviewDialog,
-    startCropEditing,
-  } = useUIStore();
-  const {
-    addObject,
-    selectObject,
-    updateObject,
-    selectedIds,
-  } = useEditorStore();
+  const { activeTool, setActiveTool, addToast, setFeedPreviewDialog } = useUIStore();
+  const { addObject, selectObject, updateObject, selectedIds } = useEditorStore();
   const objects = useObjectsArray();
   const { upscale } = useImageProcessor();
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const { uploadImage } = await import('@/lib/api');
-      const result = await uploadImage(file);
-      const { v4: uuidv4 } = await import('uuid');
-      await new Promise<void>((resolve) => {
-        const img = new window.Image();
-        const assetUrl = resolveEditorAssetUrl(result.url);
-        img.src = assetUrl;
-        img.onload = () => {
-          let w = img.naturalWidth || img.width || 400;
-          let h = img.naturalHeight || img.height || 300;
-          const max = 400;
-          if (w > max || h > max) {
-            if (w > h) {
-              h = Math.round((h / w) * max);
-              w = max;
-            } else {
-              w = Math.round((w / h) * max);
-              h = max;
-            }
-          }
-          addObject({
-            id: uuidv4(),
-            type: 'image',
-            name: file.name,
-            x: 100,
-            y: 100,
-            width: w,
-            height: h,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-            opacity: 1,
-            visible: true,
-            locked: false,
-            src: assetUrl,
-          });
-          resolve();
-        };
-        img.onerror = () => {
-          addObject({
-            id: uuidv4(),
-            type: 'image',
-            name: file.name,
-            x: 100,
-            y: 100,
-            width: 400,
-            height: 300,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-            opacity: 1,
-            visible: true,
-            locked: false,
-            src: assetUrl,
-          });
-          resolve();
-        };
-      });
-    } catch (error) {
-      console.error('Upload failed:', error);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
+  const { fileInputRef, openFileDialog, handleFileChange } = useImageUpload();
 
   const tools = [
     { id: 'text', icon: Type, label: 'Text' },
-    { id: 'image', icon: ImageIcon, label: 'Image', isFileInput: true },
+    { id: 'image', icon: ImageIcon, label: 'Image' },
     { id: 'rect', icon: Square, label: 'Shape' },
     { id: 'circle', icon: Circle, label: 'Circle' },
   ];
@@ -139,7 +45,7 @@ export function ToolsSection() {
 
   const handleToolClick = async (toolId: string) => {
     if (toolId === 'image') {
-      fileInputRef.current?.click();
+      openFileDialog();
       return;
     }
 
@@ -211,20 +117,6 @@ export function ToolsSection() {
     }
   };
 
-  const selectedImage = objects.find((obj): obj is ImageObject => selectedIds.includes(obj.id) && obj.type === 'image') ?? null;
-
-  const applyCropMode = (mode: 'free' | 'square' | 'circle') => {
-    if (!selectedImage) {
-      addToast({ type: 'warning', message: 'Seleziona prima un’immagine' });
-      return;
-    }
-    startCropEditing(selectedImage.id, mode);
-    addToast({
-      type: 'info',
-      message: mode === 'circle' ? 'Crop cerchio pronto: trascina i bordi e premi Invio' : mode === 'square' ? 'Crop quadrato pronto: trascina i bordi e premi Invio' : 'Crop libero pronto: trascina i bordi e premi Invio',
-    });
-  };
-
   return (
     <>
       <input
@@ -250,36 +142,7 @@ export function ToolsSection() {
           );
         })}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className={`tool-button group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all ${
-                selectedImage?.cropMode && selectedImage.cropMode !== 'free'
-                  ? 'bg-[#111111] text-white shadow-sm dark:bg-white dark:text-[#111111]'
-                  : 'text-black/60 hover:bg-black/[0.06] hover:text-black dark:text-white/65 dark:hover:bg-white/10 dark:hover:text-white'
-              }`}
-              title="Crop"
-              aria-label="Crop"
-              type="button"
-            >
-              <Crop className="h-[18px] w-[18px]" strokeWidth={1.8} />
-              <span className="pointer-events-none absolute bottom-12 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#111111] px-2.5 py-1.5 text-[10px] font-semibold text-white shadow-lg group-hover:block">Crop</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" side="top">
-            <DropdownMenuLabel>Crop</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => applyCropMode('free')}>
-              Crop libero
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => applyCropMode('square')}>
-              Crop quadrato
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => applyCropMode('circle')}>
-              Crop cerchio
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <CropDropdown />
       </div>
 
       <div className="mx-1 h-7 w-px shrink-0 bg-black/[0.08] dark:bg-white/10"></div>
