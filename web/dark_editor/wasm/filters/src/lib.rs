@@ -1,4 +1,5 @@
 mod blend;
+mod simd;
 
 use std::cell::RefCell;
 
@@ -197,7 +198,7 @@ pub fn wasm_apply_vignette(data: &mut [u8], width: u32, height: u32, radius: f64
 // Date.now() values one millisecond apart) so nearby seeds still produce
 // unrelated noise streams.
 #[inline]
-fn noise_seed_state(seed: f64) -> u32 {
+pub(crate) fn noise_seed_state(seed: f64) -> u32 {
     let bits = seed.to_bits();
     let mut z = (bits ^ (bits >> 32)) as u32;
     z = z.wrapping_mul(0x9E37_79B9);
@@ -210,14 +211,14 @@ fn noise_seed_state(seed: f64) -> u32 {
 }
 
 // xorshift32: cheap deterministic PRNG, far cheaper than sin() per pixel.
-struct Xorshift32 { state: u32 }
+pub(crate) struct Xorshift32 { state: u32 }
 
 impl Xorshift32 {
     #[inline]
-    fn new(seed: u32) -> Self { Xorshift32 { state: seed } }
+    pub(crate) fn new(seed: u32) -> Self { Xorshift32 { state: seed } }
 
     #[inline]
-    fn next_u32(&mut self) -> u32 {
+    pub(crate) fn next_u32(&mut self) -> u32 {
         let mut x = self.state;
         x ^= x << 13;
         x ^= x >> 17;
@@ -228,7 +229,7 @@ impl Xorshift32 {
 
     /// Uniform in [0, 1) using the top 24 bits.
     #[inline]
-    fn next_unit(&mut self) -> f64 {
+    pub(crate) fn next_unit(&mut self) -> f64 {
         (self.next_u32() >> 8) as f64 / 16_777_216.0
     }
 }
@@ -295,6 +296,24 @@ impl PipelineConfig {
             noise_seed: 1.0,
         }
     }
+}
+
+// SIMD evaluation entry points: mirror the scalar wasm_apply_* functions so
+// the Node benchmark can compare output (byte-identity / deviation) and time
+// both paths in the real WASM runtime. Not wired into the pipeline yet.
+#[wasm_bindgen]
+pub fn wasm_blur_simd(data: &mut [u8], width: u32, height: u32, radius: u32) {
+    simd::blur(data, width, height, radius);
+}
+
+#[wasm_bindgen]
+pub fn wasm_sharpen_simd(data: &mut [u8], width: u32, height: u32, amount: f64) {
+    simd::sharpen(data, width, height, amount);
+}
+
+#[wasm_bindgen]
+pub fn wasm_noise_simd(data: &mut [u8], intensity: f64, seed: f64) {
+    simd::noise(data, intensity, seed);
 }
 
 #[wasm_bindgen]

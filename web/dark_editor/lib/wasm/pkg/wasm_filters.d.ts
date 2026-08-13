@@ -60,6 +60,12 @@ export function wasm_apply_vignette(data: Uint8Array, width: number, height: num
 
 export function wasm_blend_layers(base: Uint8Array, overlay: Uint8Array, width: number, height: number, mode: number): void;
 
+export function wasm_blur_simd(data: Uint8Array, width: number, height: number, radius: number): void;
+
+export function wasm_noise_simd(data: Uint8Array, intensity: number, seed: number): void;
+
+export function wasm_sharpen_simd(data: Uint8Array, width: number, height: number, amount: number): void;
+
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
 export interface InitOutput {
@@ -100,6 +106,9 @@ export interface InitOutput {
     readonly wasm_apply_sharpen: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly wasm_apply_vignette: (a: number, b: number, c: any, d: number, e: number, f: number, g: number) => void;
     readonly wasm_blend_layers: (a: number, b: number, c: any, d: number, e: number, f: number, g: number, h: number) => void;
+    readonly wasm_blur_simd: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
+    readonly wasm_noise_simd: (a: number, b: number, c: any, d: number, e: number) => void;
+    readonly wasm_sharpen_simd: (a: number, b: number, c: any, d: number, e: number, f: number) => void;
     readonly __wbindgen_externrefs: WebAssembly.Table;
     readonly __wbindgen_malloc: (a: number, b: number) => number;
     readonly __wbindgen_start: () => void;

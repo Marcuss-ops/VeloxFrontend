@@ -328,6 +328,41 @@ export function wasm_blend_layers(base, overlay, width, height, mode) {
     const len1 = WASM_VECTOR_LEN;
     wasm.wasm_blend_layers(ptr0, len0, base, ptr1, len1, width, height, mode);
 }
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} width
+ * @param {number} height
+ * @param {number} radius
+ */
+export function wasm_blur_simd(data, width, height, radius) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.wasm_blur_simd(ptr0, len0, data, width, height, radius);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} intensity
+ * @param {number} seed
+ */
+export function wasm_noise_simd(data, intensity, seed) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.wasm_noise_simd(ptr0, len0, data, intensity, seed);
+}
+
+/**
+ * @param {Uint8Array} data
+ * @param {number} width
+ * @param {number} height
+ * @param {number} amount
+ */
+export function wasm_sharpen_simd(data, width, height, amount) {
+    var ptr0 = passArray8ToWasm0(data, wasm.__wbindgen_malloc);
+    var len0 = WASM_VECTOR_LEN;
+    wasm.wasm_sharpen_simd(ptr0, len0, data, width, height, amount);
+}
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,

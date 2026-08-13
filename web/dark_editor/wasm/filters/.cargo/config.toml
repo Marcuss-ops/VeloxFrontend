@@ -1,0 +1,4 @@
+# Enable wasm SIMD (simd128) for the wasm32 target so the simd.rs intrinsics
+# compile. Only affects the wasm build; host `cargo test` stays scalar.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]
