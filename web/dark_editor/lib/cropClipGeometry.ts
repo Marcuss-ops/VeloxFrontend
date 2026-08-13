@@ -1,12 +1,29 @@
-// lib/cropClipGeometry.ts — Pure crop-mask geometry shared by the image
-// renderer: the same circle/square/lasso path is traced both into a 2D
-// mask canvas (for feathering) and into a Konva clip context. Extracted
-// from components/editor/canvas/renderers/ImageRenderer.tsx so the two
-// copies of the path logic can't drift.
+// lib/cropClipGeometry.ts — Pure crop geometry shared by the image
+// renderer and the crop overlays:
+//   - the circle/square/lasso clip/mask path tracing (ImageRenderer)
+//   - the outside "shield" dimming rectangles and rule-of-thirds/grid
+//     guide lines (DocumentCropOverlay + CropSelectionOverlay)
+// Extracted so the duplicated path + overlay math can't drift.
 
 import type { ImageObject } from '@/stores/editorStore';
 
 export type CropShape = NonNullable<ImageObject['cropMode']>;
+
+/** A simple axis-aligned rectangle in whichever space the caller uses. */
+export interface CropRectGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** A guide line expressed as its two endpoints. */
+export interface GuideLine {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
 
 /** Minimal path-drawing surface satisfied by both CanvasRenderingContext2D and Konva.Context. */
 export interface CropPathContext {
@@ -62,4 +79,50 @@ export function traceCropShape(
     return true;
   }
   return false;
+}
+
+/**
+ * The four rectangles OUTSIDE `rect` within `bounds` — used to dim the area
+ * around the active crop so the crop itself reads as the highlight. Order is
+ * left, right, top, bottom (the renderers spread these as `<Rect>` shields).
+ */
+export function shieldRects(rect: CropRectGeometry, bounds: CropRectGeometry): CropRectGeometry[] {
+  return [
+    { x: bounds.x, y: bounds.y, width: Math.max(0, rect.x - bounds.x), height: bounds.height },
+    {
+      x: rect.x + rect.width,
+      y: bounds.y,
+      width: Math.max(0, bounds.x + bounds.width - (rect.x + rect.width)),
+      height: bounds.height,
+    },
+    { x: rect.x, y: bounds.y, width: rect.width, height: Math.max(0, rect.y - bounds.y) },
+    {
+      x: rect.x,
+      y: rect.y + rect.height,
+      width: rect.width,
+      height: Math.max(0, bounds.y + bounds.height - (rect.y + rect.height)),
+    },
+  ];
+}
+
+/** The four rule-of-thirds guide lines inside `rect` (2 vertical + 2 horizontal). */
+export function thirdsGuideLines(rect: CropRectGeometry): GuideLine[] {
+  return [
+    { x1: rect.x + rect.width / 3, y1: rect.y, x2: rect.x + rect.width / 3, y2: rect.y + rect.height },
+    { x1: rect.x + (rect.width * 2) / 3, y1: rect.y, x2: rect.x + (rect.width * 2) / 3, y2: rect.y + rect.height },
+    { x1: rect.x, y1: rect.y + rect.height / 3, x2: rect.x + rect.width, y2: rect.y + rect.height / 3 },
+    { x1: rect.x, y1: rect.y + (rect.height * 2) / 3, x2: rect.x + rect.width, y2: rect.y + (rect.height * 2) / 3 },
+  ];
+}
+
+/** A 3x3 grid of guide lines inside `rect` (defaults to thirds at 4 divisions). */
+export function gridGuideLines(rect: CropRectGeometry, divisions = 4): GuideLine[] {
+  const lines: GuideLine[] = [];
+  for (let i = 1; i < divisions; i++) {
+    const vx = rect.x + (rect.width * i) / divisions;
+    const hy = rect.y + (rect.height * i) / divisions;
+    lines.push({ x1: vx, y1: rect.y, x2: vx, y2: rect.y + rect.height });
+    lines.push({ x1: rect.x, y1: hy, x2: rect.x + rect.width, y2: hy });
+  }
+  return lines;
 }

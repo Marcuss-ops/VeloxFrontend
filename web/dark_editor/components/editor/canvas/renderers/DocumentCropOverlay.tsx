@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import type Konva from 'konva';
 import { Group, Line, Rect, Transformer } from 'react-konva';
+import { gridGuideLines, shieldRects, thirdsGuideLines } from '@/lib/cropClipGeometry';
 
 export function DocumentCropOverlay({
   canvasWidth,
@@ -32,25 +33,7 @@ export function DocumentCropOverlay({
   const keepRatio = ratioPreset !== 'free' && ratioPreset !== 'custom';
 
   // Scurimento aree esterne
-  const leftRect = { x: 0, y: 0, width: Math.max(0, cropRect.x), height: canvasHeight };
-  const rightRect = {
-    x: cropRect.x + cropRect.width,
-    y: 0,
-    width: Math.max(0, canvasWidth - (cropRect.x + cropRect.width)),
-    height: canvasHeight,
-  };
-  const topRect = {
-    x: cropRect.x,
-    y: 0,
-    width: cropRect.width,
-    height: Math.max(0, cropRect.y),
-  };
-  const bottomRect = {
-    x: cropRect.x,
-    y: cropRect.y + cropRect.height,
-    width: cropRect.width,
-    height: Math.max(0, canvasHeight - (cropRect.y + cropRect.height)),
-  };
+  const shields = shieldRects(cropRect, { x: 0, y: 0, width: canvasWidth, height: canvasHeight });
 
   const handleTransform = () => {
     const node = rectRef.current;
@@ -74,77 +57,29 @@ export function DocumentCropOverlay({
   };
 
   // Guide lines
-  const lines: React.ReactNode[] = [];
-  if (guidesType === 'thirds') {
-    lines.push(
-      <Line
-        key="v1"
-        points={[cropRect.x + cropRect.width / 3, cropRect.y, cropRect.x + cropRect.width / 3, cropRect.y + cropRect.height]}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-        listening={false}
-      />
-    );
-    lines.push(
-      <Line
-        key="v2"
-        points={[cropRect.x + (cropRect.width * 2) / 3, cropRect.y, cropRect.x + (cropRect.width * 2) / 3, cropRect.y + cropRect.height]}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-        listening={false}
-      />
-    );
-    lines.push(
-      <Line
-        key="h1"
-        points={[cropRect.x, cropRect.y + cropRect.height / 3, cropRect.x + cropRect.width, cropRect.y + cropRect.height / 3]}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-        listening={false}
-      />
-    );
-    lines.push(
-      <Line
-        key="h2"
-        points={[cropRect.x, cropRect.y + (cropRect.height * 2) / 3, cropRect.x + cropRect.width, cropRect.y + (cropRect.height * 2) / 3]}
-        stroke="rgba(255,255,255,0.4)"
-        strokeWidth={1}
-        listening={false}
-      />
-    );
-  } else if (guidesType === 'grid') {
-    for (let i = 1; i <= 3; i++) {
-      const vx = cropRect.x + (cropRect.width * i) / 4;
-      const hy = cropRect.y + (cropRect.height * i) / 4;
-      lines.push(
-        <Line
-          key={`gv-${i}`}
-          points={[vx, cropRect.y, vx, cropRect.y + cropRect.height]}
-          stroke="rgba(255,255,255,0.3)"
-          strokeWidth={0.5}
-          listening={false}
-        />
-      );
-      lines.push(
-        <Line
-          key={`gh-${i}`}
-          points={[cropRect.x, hy, cropRect.x + cropRect.width, hy]}
-          stroke="rgba(255,255,255,0.3)"
-          strokeWidth={0.5}
-          listening={false}
-        />
-      );
-    }
-  }
+  const guideLines = guidesType === 'thirds'
+    ? thirdsGuideLines(cropRect)
+    : guidesType === 'grid'
+      ? gridGuideLines(cropRect)
+      : [];
+  const guideStroke = guidesType === 'grid' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.4)';
+  const guideStrokeWidth = guidesType === 'grid' ? 0.5 : 1;
 
   return (
     <Group name="export-exclude">
-      <Rect {...leftRect} fill="rgba(0,0,0,0.65)" listening={false} />
-      <Rect {...rightRect} fill="rgba(0,0,0,0.65)" listening={false} />
-      <Rect {...topRect} fill="rgba(0,0,0,0.65)" listening={false} />
-      <Rect {...bottomRect} fill="rgba(0,0,0,0.65)" listening={false} />
+      {shields.map((rect, index) => (
+        <Rect key={index} {...rect} fill="rgba(0,0,0,0.65)" listening={false} />
+      ))}
 
-      {lines}
+      {guideLines.map((line, index) => (
+        <Line
+          key={index}
+          points={[line.x1, line.y1, line.x2, line.y2]}
+          stroke={guideStroke}
+          strokeWidth={guideStrokeWidth}
+          listening={false}
+        />
+      ))}
 
       <Rect
         ref={rectRef}

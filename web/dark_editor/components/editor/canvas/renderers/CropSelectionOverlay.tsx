@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { Line, Rect, Transformer } from 'react-konva';
 import Konva from 'konva';
 import type { CanvasObject } from '@/stores/editorStore';
+import { shieldRects, thirdsGuideLines } from '@/lib/cropClipGeometry';
 
 type CropDraft = { x: number; y: number; width: number; height: number };
 
@@ -96,28 +97,26 @@ export function CropSelectionOverlay({
     height: draft.height * scaleY,
   };
 
-  const cx = stageRect.x;
-  const cy = stageRect.y;
-  const cw = stageRect.width;
-  const ch = stageRect.height;
-  const bx = stageBounds.x;
-  const by = stageBounds.y;
-  const bw = stageBounds.width;
-  const bh = stageBounds.height;
+  const shields = shieldRects(stageRect, stageBounds);
+  const guideLines = thirdsGuideLines(stageRect);
 
   return (
     <>
       {/* Dimming / Shield Areas (Photoshop style) */}
-      <Rect x={bx} y={by} width={Math.max(0, cx - bx)} height={bh} fill="rgba(0, 0, 0, 0.55)" listening={false} />
-      <Rect x={cx + cw} y={by} width={Math.max(0, bx + bw - (cx + cw))} height={bh} fill="rgba(0, 0, 0, 0.55)" listening={false} />
-      <Rect x={cx} y={by} width={cw} height={Math.max(0, cy - by)} fill="rgba(0, 0, 0, 0.55)" listening={false} />
-      <Rect x={cx} y={cy + ch} width={cw} height={Math.max(0, by + bh - (cy + ch))} fill="rgba(0, 0, 0, 0.55)" listening={false} />
+      {shields.map((rect, index) => (
+        <Rect key={index} {...rect} fill="rgba(0, 0, 0, 0.55)" listening={false} />
+      ))}
 
       {/* Rule of Thirds Helper Grid lines */}
-      <Line points={[cx + cw / 3, cy, cx + cw / 3, cy + ch]} stroke="rgba(255, 255, 255, 0.35)" strokeWidth={1} listening={false} />
-      <Line points={[cx + (cw * 2) / 3, cy, cx + (cw * 2) / 3, cy + ch]} stroke="rgba(255, 255, 255, 0.35)" strokeWidth={1} listening={false} />
-      <Line points={[cx, cy + ch / 3, cx + cw, cy + ch / 3]} stroke="rgba(255, 255, 255, 0.35)" strokeWidth={1} listening={false} />
-      <Line points={[cx, cy + (ch * 2) / 3, cx + cw, cy + (ch * 2) / 3]} stroke="rgba(255, 255, 255, 0.35)" strokeWidth={1} listening={false} />
+      {guideLines.map((line, index) => (
+        <Line
+          key={index}
+          points={[line.x1, line.y1, line.x2, line.y2]}
+          stroke="rgba(255, 255, 255, 0.35)"
+          strokeWidth={1}
+          listening={false}
+        />
+      ))}
 
       <Rect
         ref={rectRef}
