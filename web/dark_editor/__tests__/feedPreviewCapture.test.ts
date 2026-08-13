@@ -48,7 +48,9 @@ describe('FeedPreviewDialog capture path', () => {
 });
 
 describe('document-crop-overlay tag', () => {
-  const renderers = read('components/editor/canvas/CanvasRenderers.tsx');
+  // CanvasRenderers.tsx is a barrel since the per-kind renderer split;
+  // DocumentCropOverlay lives in ./renderers/DocumentCropOverlay.tsx.
+  const renderers = read('components/editor/canvas/renderers/DocumentCropOverlay.tsx');
 
   it('no longer uses the old "document-crop-overlay" name', () => {
     // The legacy tag leaked editor overlays (crop rect, dimming, thirds
