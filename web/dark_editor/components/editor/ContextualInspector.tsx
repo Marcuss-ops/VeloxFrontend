@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Check, Gauge, Image as ImageIcon, Palette, Sparkles, Type, X } from 'lucide-react';
-import { useEditorStore, type CanvasObject } from '@/stores/editorStore';
+import { useEditorStore, type CanvasObject, type CanvasObjectField } from '@/stores/editorStore';
 
 type ContextualInspectorProps = {
   hoveredObjectId: string | null;
@@ -190,8 +190,10 @@ export default function ContextualInspector({ hoveredObjectId, dark = false, pla
   // layer-row hover wiring, but it no longer gates the inspector.
   if (!selectedObject) return null;
 
-  const updateLive = (field: keyof CanvasObject, value: unknown) => updateObjectLive(selectedObject.id, { [field]: value });
-  const update = (field: keyof CanvasObject, value: unknown) => updateObject(selectedObject.id, { [field]: value });
+  // Any field of any canvas-object kind can be edited through the inspector;
+  // widen beyond `keyof CanvasObject` (which only exposes the common keys).
+  const updateLive = (field: CanvasObjectField, value: unknown) => updateObjectLive(selectedObject.id, { [field]: value } as Partial<CanvasObject>);
+  const update = (field: CanvasObjectField, value: unknown) => updateObject(selectedObject.id, { [field]: value } as Partial<CanvasObject>);
   const setShadow = (enabled: boolean) => {
     if (selectedObject.type === 'text') {
       update('textShadow', enabled ? { offsetX: 2, offsetY: 2, blur: 8, color: '#000000' } : undefined);

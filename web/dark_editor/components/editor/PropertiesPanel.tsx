@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useEditorStore, CanvasObject } from '@/stores/editorStore';
+import { useEditorStore, type CanvasObject, type CanvasObjectField } from '@/stores/editorStore';
 import { resolveEditorAssetUrl, uploadImage, translateText } from '@/lib/api';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
 import { Settings, Lock, Sparkles, Type, Globe, ShieldAlert, Move, Scaling, Palette, Image as ImageIcon, Upload, X, Languages } from 'lucide-react';
@@ -97,12 +97,14 @@ export default function PropertiesPanel() {
     );
   }
 
-  const handleChange = (field: keyof CanvasObject, value: unknown) => {
-    updateObject(selectedObject.id, { [field]: value });
+  // Any field of any canvas-object kind can be edited through the panel;
+  // widen beyond `keyof CanvasObject` (which only exposes the common keys).
+  const handleChange = (field: CanvasObjectField, value: unknown) => {
+    updateObject(selectedObject.id, { [field]: value } as Partial<CanvasObject>);
   };
 
-  const handleLiveChange = (field: keyof CanvasObject, value: unknown) => {
-    updateObjectLive(selectedObject.id, { [field]: value });
+  const handleLiveChange = (field: CanvasObjectField, value: unknown) => {
+    updateObjectLive(selectedObject.id, { [field]: value } as Partial<CanvasObject>);
   };
 
   const commitChanges = () => saveToHistory();

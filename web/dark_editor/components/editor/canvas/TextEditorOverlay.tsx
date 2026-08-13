@@ -20,7 +20,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Konva from 'konva';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
-import { type CanvasObject } from '@/stores/editorStore';
+import { type TextObject } from '@/stores/editorStore';
 
 // resolveFontFamily is duplicated here (also lives in canvas/ObjectRenderer.tsx)
 // — kept inline rather than extracted to a 7th utils.ts file because the user
@@ -33,7 +33,7 @@ function resolveFontFamily(name?: string): string {
 }
 
 interface TextEditorOverlayProps {
-  obj: CanvasObject;
+  obj: TextObject;
   stage: Konva.Stage;
   zoom: number;
   offsetX: number;

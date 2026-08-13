@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { Stage, Layer, Rect, Transformer, Circle, Line, Group } from 'react-konva';
-import { useEditorStore, CanvasObject } from '@/stores/editorStore';
+import { useEditorStore, type CanvasObject, type ImageObject } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
 import { captureEditorCanvasPreviewFile } from '@/lib/canvasPreview';
 import Konva from 'konva';
@@ -132,9 +132,10 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     transformerRef.current.getLayer()?.batchDraw();
   }, [selectedIds, cropEditingId]);
 
-  const cropTarget = React.useMemo(() => {
+  const cropTarget = React.useMemo<ImageObject | null>(() => {
     if (!cropEditingId) return null;
-    return objects.find((obj) => obj.id === cropEditingId && obj.type === 'image') ?? null;
+    const found = objects.find((obj) => obj.id === cropEditingId);
+    return found && found.type === 'image' ? found : null;
   }, [cropEditingId, objects]);
 
   // Initialize crop selection to cover 100% of the image size (maintaining aspect ratio)
@@ -520,6 +521,8 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
     );
   };
 
+  const editingObject = objects.find((o) => o.id === editingId);
+
   return (
     <div ref={containerRef} className="canvas-container relative w-full h-full overflow-hidden">
       <Stage
@@ -637,15 +640,15 @@ const Canvas = React.forwardRef<any, CanvasProps>((props, ref) => {
       </Stage>
 
       {/* Inline Text Editor Overlay */}
-      {editingId && objects.find(o => o.id === editingId) && (
+      {editingObject && editingObject.type === 'text' && (
         <TextEditorOverlay
-          obj={objects.find(o => o.id === editingId)!}
+          obj={editingObject}
           stage={stageRef.current!}
           zoom={displayScale}
           offsetX={displayOffsetX}
           offsetY={displayOffsetY}
           onSave={(text) => {
-            updateObject(editingId, { text });
+            updateObject(editingObject.id, { text });
             setEditingId(null);
             // Enter closes the inline editor; persist the mutation immediately
             // instead of waiting for the debounce timer.

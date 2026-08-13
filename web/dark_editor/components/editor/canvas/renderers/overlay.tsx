@@ -6,7 +6,7 @@ import Konva from 'konva';
 import { resolveFontFamily } from './utils';
 
 interface TextEditorOverlayProps {
-  obj: import('@/stores/editorStore').CanvasObject;
+  obj: import('@/stores/editorStore').TextObject;
   stage: Konva.Stage;
   zoom: number;
   offsetX: number;

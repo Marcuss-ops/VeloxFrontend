@@ -9,7 +9,7 @@
 // updateObjectLive (no history entry per slider tick).
 
 import type { StoreApi } from 'zustand';
-import type { EditorState, CanvasObject } from '../editorStore';
+import type { EditorState, CanvasObject, TextObject } from '../editorStore';
 
 export interface EffectsSlice {
   // Filter actions
@@ -20,10 +20,10 @@ export interface EffectsSlice {
   clearFilters: (id: string) => void;
 
   // Advanced text effects actions
-  applyTextShadow: (id: string, shadow: CanvasObject['textShadow']) => void;
-  applyTextStroke: (id: string, stroke: CanvasObject['textStroke']) => void;
-  applyTextGradient: (id: string, gradient: CanvasObject['textGradient']) => void;
-  applyTextCurve: (id: string, curve: CanvasObject['textCurve']) => void;
+  applyTextShadow: (id: string, shadow: TextObject['textShadow']) => void;
+  applyTextStroke: (id: string, stroke: TextObject['textStroke']) => void;
+  applyTextGradient: (id: string, gradient: TextObject['textGradient']) => void;
+  applyTextCurve: (id: string, curve: TextObject['textCurve']) => void;
   clearTextEffects: (id: string) => void;
 
   // Shape & image effects actions
@@ -90,35 +90,35 @@ export const createEffectsSlice = (
   applyTextShadow: (id, shadow) => {
     get().commitMutation((draft) => {
       const obj = draft.find((o) => o.id === id);
-      if (obj) obj.textShadow = shadow;
+      if (obj && obj.type === 'text') obj.textShadow = shadow;
     });
   },
 
   applyTextStroke: (id, stroke) => {
     get().commitMutation((draft) => {
       const obj = draft.find((o) => o.id === id);
-      if (obj) obj.textStroke = stroke;
+      if (obj && obj.type === 'text') obj.textStroke = stroke;
     });
   },
 
   applyTextGradient: (id, gradient) => {
     get().commitMutation((draft) => {
       const obj = draft.find((o) => o.id === id);
-      if (obj) obj.textGradient = gradient;
+      if (obj && obj.type === 'text') obj.textGradient = gradient;
     });
   },
 
   applyTextCurve: (id, curve) => {
     get().commitMutation((draft) => {
       const obj = draft.find((o) => o.id === id);
-      if (obj) obj.textCurve = curve;
+      if (obj && obj.type === 'text') obj.textCurve = curve;
     });
   },
 
   clearTextEffects: (id) => {
     get().commitMutation((draft) => {
       const obj = draft.find((o) => o.id === id);
-      if (obj) {
+      if (obj && obj.type === 'text') {
         obj.textShadow = undefined;
         obj.textStroke = undefined;
         obj.textGradient = undefined;

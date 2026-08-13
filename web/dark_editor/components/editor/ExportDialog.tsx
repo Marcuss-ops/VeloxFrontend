@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
 import { Button } from '@/components/ui/Button';
 import { useUIStore } from '@/stores/uiStore';
-import { useEditorStore } from '@/stores/editorStore';
+import { useEditorStore, type ImageObject, type TextObject } from '@/stores/editorStore';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { CheckCircle2, Download, ExternalLink, Loader2, Youtube, AlertCircle, Eye, EyeOff, UploadCloud } from 'lucide-react';
 import { translateText } from '@/lib/api';
@@ -132,7 +132,10 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
   const handleClose = onClose ?? defaultClose;
 
   const selectedObject = objects.find((obj) => selectedIds[0] === obj.id);
-  const textLayers = React.useMemo(() => objects.filter((object) => object.type === 'text' && object.text), [objects]);
+  const textLayers = React.useMemo(
+    () => objects.filter((object): object is TextObject => object.type === 'text' && Boolean(object.text)),
+    [objects],
+  );
   const [translationLayerId, setTranslationLayerId] = useState('');
   const translationLayer = textLayers.find((layer) => layer.id === translationLayerId)
     || (selectedObject?.type === 'text' ? selectedObject : undefined)
@@ -193,7 +196,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
       setTranslationLayerId(selectedObject.id);
       setVariantPreviews({});
     }
-  }, [selectedObject?.id, selectedObject?.text]);
+  }, [selectedObject?.id, selectedObject?.type === 'text' ? selectedObject.text : undefined]);
 
   const captureSnapshot = useCallback(async (): Promise<CanvasSnapshot | null> => {
     // Read the store at capture time. Do not rely on the render that created
@@ -235,7 +238,7 @@ export default function ExportDialog({ isOpen, onClose, canvasRef }: ExportDialo
   // the canvas and the project payload cannot silently diverge anymore.
   useEffect(() => {
     if (!isEditorSession || !currentProject?.id || privateVideos.length === 0) return;
-    const source = objects.find((object) => object.type === 'image' && object.name?.toLowerCase().includes('source thumbnail'));
+    const source = objects.find((object): object is ImageObject => object.type === 'image' && object.name?.toLowerCase().includes('source thumbnail'));
     const currentVideoId = privateVideos.find((video) => video.video_id === currentProject.name.replace(/^YouTube thumbnail\s+/i, '').trim())?.video_id;
     const matched = currentVideoId ? privateVideos.find((video) => video.video_id === currentVideoId) : privateVideos[0];
     if (source && matched?.thumbnail && source.src !== matched.thumbnail) {

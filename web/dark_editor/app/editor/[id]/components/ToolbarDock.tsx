@@ -3,7 +3,7 @@
 import React, { useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useUIStore } from '@/stores/uiStore';
-import { useEditorStore } from '@/stores/editorStore';
+import { useEditorStore, type ImageObject } from '@/stores/editorStore';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import { useImageProcessor } from '@/hooks/useImageProcessor';
 import { resolveEditorAssetUrl } from '@/lib/api';
@@ -259,7 +259,7 @@ export default function ToolbarDock() {
     }
   };
 
-  const selectedImage = objects.find((obj) => selectedIds.includes(obj.id) && obj.type === 'image') ?? null;
+  const selectedImage = objects.find((obj): obj is ImageObject => selectedIds.includes(obj.id) && obj.type === 'image') ?? null;
 
   const applyCropMode = (mode: 'free' | 'square' | 'circle') => {
     if (!selectedImage) {

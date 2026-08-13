@@ -141,7 +141,7 @@ export const useVersioningStore = create<VersioningState>()(
             if (obj1.height !== obj2.height) changes.push(`height: ${obj1.height} → ${obj2.height}`);
             if (obj1.rotation !== obj2.rotation) changes.push(`rotation: ${obj1.rotation} → ${obj2.rotation}`);
             if (obj1.opacity !== obj2.opacity) changes.push(`opacity: ${obj1.opacity} → ${obj2.opacity}`);
-            if (obj1.text !== obj2.text) changes.push(`text: "${obj1.text}" → "${obj2.text}"`);
+            if (obj1.type === 'text' && obj2.type === 'text' && obj1.text !== obj2.text) changes.push(`text: "${obj1.text}" → "${obj2.text}"`);
             if (obj1.fill !== obj2.fill) changes.push(`fill: ${obj1.fill} → ${obj2.fill}`);
             
             if (changes.length > 0) {

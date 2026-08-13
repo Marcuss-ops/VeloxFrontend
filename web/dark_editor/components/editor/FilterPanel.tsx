@@ -56,7 +56,7 @@ export default function FilterPanel() {
     async (filterId: string, value: number) => {
       setValues((prev) => ({ ...prev, [filterId]: value }));
 
-      if (!selectedObject?.src || !isImageSelected) return;
+      if (!selectedObject || selectedObject.type !== 'image' || !selectedObject.src) return;
 
       setIsApplying(true);
       try {

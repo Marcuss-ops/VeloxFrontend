@@ -6,7 +6,7 @@ import { censorText } from '@/lib/textCensorship';
 import { resolveFontFamily, useImageLoader } from './utils';
 
 export interface TextLayerProps {
-  obj: import('@/stores/editorStore').CanvasObject;
+  obj: import('@/stores/editorStore').TextObject;
   commonProps: any;
   shadowProps: any;
   editingId: string | null;

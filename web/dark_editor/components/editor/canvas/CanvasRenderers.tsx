@@ -6,7 +6,7 @@ import Konva from 'konva';
 import { applyAllFilters } from '@/lib/imageFilters';
 import { censorText } from '@/lib/textCensorship';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
-import { type CanvasObject } from '@/stores/editorStore';
+import { type CanvasObject, type TextObject } from '@/stores/editorStore';
 import { resolveEditorAssetUrl } from '@/lib/api';
 import { thumbnailFallbackDataUrl } from '@/lib/thumbnailFallback';
 
@@ -51,7 +51,7 @@ function useImageLoader(src?: string) {
 }
 
 interface TextEditorOverlayProps {
-  obj: CanvasObject;
+  obj: TextObject;
   stage: Konva.Stage;
   zoom: number;
   offsetX: number;

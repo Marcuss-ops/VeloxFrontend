@@ -209,7 +209,7 @@ function ImageRenderer({
 }
 
 export interface RenderMediaLayerArgs {
-  obj: import('@/stores/editorStore').CanvasObject;
+  obj: import('@/stores/editorStore').ImageObject;
   commonProps: any;
   shadowProps: any;
 }
