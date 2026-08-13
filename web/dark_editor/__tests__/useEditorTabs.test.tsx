@@ -123,7 +123,9 @@ describe('useEditorTabs', () => {
         );
         const { result } = renderHook(() => useEditorTabs('p1', '/app/covers'));
 
-        await result.current.closeEditorTab('p2');
+        await act(async () => {
+            await result.current.closeEditorTab('p2');
+        });
 
         expect(result.current.openTabs.map((t) => t.id)).toEqual(['p1']);
         expect(mockPush).not.toHaveBeenCalled();
@@ -139,7 +141,9 @@ describe('useEditorTabs', () => {
         );
         const { result } = renderHook(() => useEditorTabs('p1', '/app/covers'));
 
-        await result.current.closeEditorTab('p1');
+        await act(async () => {
+            await result.current.closeEditorTab('p1');
+        });
 
         expect(result.current.openTabs.map((t) => t.id)).toEqual(['p2']);
         expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('/instaeditor/editor/p2'));
@@ -166,7 +170,9 @@ describe('useEditorTabs', () => {
         const { result } = renderHook(() => useEditorTabs('p1', '/app/covers'));
         act(() => useProjectStore.getState().setDirty(true));
 
-        await result.current.closeEditorTab('p1');
+        await act(async () => {
+            await result.current.closeEditorTab('p1');
+        });
 
         expect(result.current.openTabs).toHaveLength(0);
     });
@@ -182,7 +188,9 @@ describe('useEditorTabs', () => {
         });
         const { result } = renderHook(() => useEditorTabs('p1', '/app/covers'));
 
-        await result.current.closeEditorTab('p1');
+        await act(async () => {
+            await result.current.closeEditorTab('p1');
+        });
 
         expect(assignMock).toHaveBeenCalledWith('/app/covers');
         Object.defineProperty(window, 'location', {
@@ -202,7 +210,9 @@ describe('useEditorTabs', () => {
         );
         const { result } = renderHook(() => useEditorTabs('p1', '/app/covers'));
 
-        await result.current.closeEditorTab('p1');
+        await act(async () => {
+            await result.current.closeEditorTab('p1');
+        });
 
         expect(result.current.openTabs.map((t) => t.id)).toEqual(['p2', 'p3']);
         expect(mockPush).toHaveBeenCalledWith(expect.stringContaining('/instaeditor/editor/p3'));

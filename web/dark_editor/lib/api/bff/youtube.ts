@@ -6,8 +6,8 @@
 // PublishYouTubeEditorSessionRequest/Response, EditorSessionDetail,
 // YouTubeEditorSessionDraftRequest/Response) live in youtube/types.ts and
 // are re-exported below for back-compat. The shared CSRF-aware fetcher and
-// poll timing constants come from ./client; the PollResult shape from
-// ./types.
+// poll timing constants come from ./client; the PollResult short-poll shape
+// comes from ./youtube/types alongside the wire types.
 //
 // Public surface (4 runtime functions + 6 re-exported wire types):
 //   - publishEditorSession(veloxProjectId, body)
@@ -16,9 +16,9 @@
 //   - saveEditorSessionDraft(veloxProjectId, body)
 
 import { bffFetch, POLL_INTERVAL_MS, POLL_MAX_ATTEMPTS } from './client';
-import type { PollResult } from './types';
 import type {
   EditorSessionDetail,
+  PollResult,
   PublishYouTubeEditorSessionRequest,
   PublishYouTubeEditorSessionResponse,
   YouTubeEditorSessionDraftRequest,
@@ -32,6 +32,8 @@ export type {
   EditorSessionDetail,
   YouTubeEditorSessionDraftRequest,
   YouTubeEditorSessionDraftResponse,
+  PollResult,
+  PollResultStatus,
 } from './youtube/types';
 
 export async function publishEditorSession(

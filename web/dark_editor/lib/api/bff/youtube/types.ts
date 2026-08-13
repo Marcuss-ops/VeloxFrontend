@@ -150,3 +150,19 @@ export interface YouTubeEditorSessionDraftResponse {
   draft_desired_privacy: string;
   draft_updated_at: string;
 }
+
+// ------------------------------------------------------------------
+// Short-poll helper types (used by pollEditorSessionUntilConfirmed)
+// ------------------------------------------------------------------
+
+export type PollResultStatus = 'confirmed' | 'timeout';
+
+export interface PollResult {
+  /** Final status of the polling loop. */
+  status: PollResultStatus;
+  /** Number of attempts performed (1..POLL_MAX_ATTEMPTS). */
+  attempts: number;
+  /** The last observed EditorSessionDetail. May differ from the
+   *  initial optimistic POST response if the reconciler fired. */
+  detail: EditorSessionDetail;
+}

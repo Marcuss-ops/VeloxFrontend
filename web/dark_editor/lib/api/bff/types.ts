@@ -2,20 +2,12 @@
 //
 // PURE TYPE module — zero imports, zero runtime code. The shared HTTP
 // infrastructure (bffFetch / bffPost / getCookie / BFF_BASE / sha256Hex /
-// POLL_* constants) lives in lib/api/bff/client.ts. Every other bff/<X>.ts
-// module (auth, youtube, projects, upload, socialDestinations, broadcast)
-// imports the wire types from here, so the DAG is strictly bottom-up:
-//
-//                          bff.ts (barrel)
-//                                |
-//     +----------+-----+---------+---------+---------+---------+
-//     |          |     |         |         |         |         |
-//    auth    youtube  projects  upload  socialD  broadcast
-//     |          |     |         |         |         |
-//     +----------+-----+---------+---------+---------+---------+
-//                     |                    |
-//                  types.ts            client.ts
-//                 (this file)       (HTTP helpers)
+// POLL_* constants) lives in lib/api/bff/client.ts. The YouTube wire types
+// (YouTubeTranslation, Publish*/EditorSessionDetail/Draft* + the PollResult
+// short-poll shape) live in youtube/types.ts — the authoritative contract —
+// and are re-exported by youtube.ts. This file keeps only the cross-domain
+// shapes (auth, social destinations, projects/jobs, media upload) that the
+// auth / projects / upload / socialDestinations modules import.
 //
 // Originally a single 578-LOC monolith at lib/api/bff.ts; the type-only
 // surface was extracted here so consumers can import the shape contract
@@ -93,103 +85,6 @@ export interface PresignMediaResponse {
   upload_url: string;
   upload_method: string;
   upload_headers: Record<string, string>;
-}
-
-// ------------------------------------------------------------------
-// YouTube publish + draft auto-save + session-detail read
-// ------------------------------------------------------------------
-
-export interface YouTubeTranslation {
-  title: string;
-  description: string;
-}
-
-export interface PublishYouTubeEditorSessionRequest {
-  title?: string;
-  description?: string;
-  privacy_status?: 'public' | 'unlisted' | 'private';
-  publish_at?: string | null;
-  tags?: string[];
-  default_language?: string;
-  default_audio_language?: string;
-  translations?: Record<string, YouTubeTranslation>;
-}
-
-export interface PublishYouTubeEditorSessionResponse {
-  public_url: string;
-  video_id: string;
-  privacy_status: string;
-  published_at?: string | null;
-  // Live-update additions: see LIVE-UPDATE EXTENSION comment that
-  //   used to live at the top of lib/api/bff.ts before this commit.
-  /** Editor session status at the moment the publish orchestrator
-   *  stamps the row. Always 'published' on a successful POST. */
-  status: string;
-  /** YouTube-confirmed privacy after the videos.list read-back. */
-  actual_privacy: string;
-  /** Lifecycle marker for the drift reconciler (confirmed/drift/pending/failed). */
-  youtube_sync_status: string;
-}
-
-export interface EditorSessionDetail {
-  id: string;
-  workspace_id: number;
-  platform_account_id: number;
-  youtube_video_id: string;
-  velox_project_id: string;
-  source_thumbnail_url?: string;
-  thumbnail_media_id?: string | null;
-  desired_privacy: string;
-  publish_at?: string | null;
-  status: string;
-  last_error?: string;
-  actual_privacy?: string | null;
-  youtube_sync_status?: string | null;
-  youtube_updated_at?: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface YouTubeEditorSessionDraftRequest {
-  title?: string;
-  description?: string;
-  tags?: string[];
-  default_language?: string;
-  default_audio_language?: string;
-  translations?: Record<string, YouTubeTranslation>;
-  desired_privacy?: 'public' | 'unlisted' | 'private';
-  /** ISO-8601 UTC timestamp. Only sent when scheduling; null/absent = publish immediately. */
-  publish_at?: string | null;
-}
-
-export interface YouTubeEditorSessionDraftResponse {
-  velox_project_id: string;
-  draft_title: string;
-  draft_description: string;
-  draft_tags: string[];
-  draft_default_language: string;
-  draft_default_audio_language: string;
-  draft_translations: Record<string, YouTubeTranslation>;
-  draft_desired_privacy: string;
-  draft_updated_at: string;
-  /** ISO-8601 UTC timestamp echoed from the draft. null when no scheduling is set. */
-  draft_publish_at: string | null;
-}
-
-// ------------------------------------------------------------------
-// Short-poll helper types (used by pollEditorSessionUntilConfirmed)
-// ------------------------------------------------------------------
-
-export type PollResultStatus = 'confirmed' | 'timeout';
-
-export interface PollResult {
-  /** Final status of the polling loop. */
-  status: PollResultStatus;
-  /** Number of attempts performed (1..POLL_MAX_ATTEMPTS). */
-  attempts: number;
-  /** The last observed EditorSessionDetail. May differ from the
-   *  initial optimistic POST response if the reconciler fired. */
-  detail: EditorSessionDetail;
 }
 
 // ------------------------------------------------------------------

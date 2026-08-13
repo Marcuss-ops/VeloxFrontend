@@ -145,7 +145,9 @@ describe('useEditorAutosave', () => {
         act(() => useEditorStore.getState().addObject(makeObject('b')));
         await vi.advanceTimersByTimeAsync(300);
         act(() => useEditorStore.getState().addObject(makeObject('c')));
-        await vi.advanceTimersByTimeAsync(900);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(900);
+        });
 
         expect(apiSaveProject).toHaveBeenCalledTimes(1);
         // first save captures and uploads a fresh preview
@@ -167,7 +169,9 @@ describe('useEditorAutosave', () => {
             useProjectStore.getState().setDirty(true);
             useEditorStore.getState().addObject(makeObject('a'));
         });
-        await vi.advanceTimersByTimeAsync(900);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(900);
+        });
         expect(apiSaveProject).toHaveBeenCalledTimes(1);
         expect(captureEditorCanvasPreviewFile).toHaveBeenCalledTimes(1);
 
@@ -178,7 +182,9 @@ describe('useEditorAutosave', () => {
             useProjectStore.getState().setDirty(true);
             useEditorStore.getState().addObject(makeObject('b'));
         });
-        await vi.advanceTimersByTimeAsync(900);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(900);
+        });
         expect(apiSaveProject).toHaveBeenCalledTimes(2);
         // only one preview capture/upload for two saves inside the window
         expect(captureEditorCanvasPreviewFile).toHaveBeenCalledTimes(1);
@@ -194,7 +200,9 @@ describe('useEditorAutosave', () => {
             useProjectStore.getState().setDirty(true);
             useEditorStore.getState().addObject(makeObject('a'));
         });
-        await vi.advanceTimersByTimeAsync(900);
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(900);
+        });
 
         expect(apiSaveProject).toHaveBeenCalledTimes(1);
         expect(uploadImage).not.toHaveBeenCalled();
@@ -203,7 +211,9 @@ describe('useEditorAutosave', () => {
     it('flush requests force a save with a fresh preview', async () => {
         renderHook(() => useEditorAutosave(defaultArgs()));
 
-        await requestEditorFlush();
+        await act(async () => {
+            await requestEditorFlush();
+        });
 
         expect(apiSaveProject).toHaveBeenCalledTimes(1);
         expect(captureEditorCanvasPreviewFile).toHaveBeenCalledTimes(1);
