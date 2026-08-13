@@ -4,11 +4,11 @@ import * as path from 'node:path';
 
 // The old FormatQualitySection component (dead since the ExportDialog
 // composition refactor) pinned this policy; the live publish panel renders
-// the same "Formato fisso / PNG" card inline in PublishExportDialog, so the
-// policy is now read from the live surface it applies to.
+// the same "Formato fisso / PNG" card in CoverPreviewSection, so the policy
+// is read from the live surface it applies to.
 const LIVE_PUBLISH_PANEL_PATH = path.resolve(
   __dirname,
-  '../components/editor/export/PublishExportDialog.tsx',
+  '../components/editor/export/CoverPreviewSection.tsx',
 );
 
 describe('Publish panel format policy', () => {
