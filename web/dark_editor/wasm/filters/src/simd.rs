@@ -295,9 +295,18 @@ mod imp {
     pub(crate) fn hsl(data: &mut [u8], hue: f64, saturation: f64, lightness: f64) {
         let pixels = data.len() / 4;
         if pixels == 0 { return; }
+        // Match the scalar short-circuit: a whole multiple of 360° with no
+        // saturation/lightness is a no-op, so skip the round-trip entirely.
+        if hue % 360.0 == 0.0 && saturation == 0.0 && lightness == 0.0 {
+            return;
+        }
         // The scalar saturation/lightness branches depend only on the call
         // constants, so resolve them once here into a*s + b coefficients.
-        let hue_shift = (hue / 360.0) as f32;
+        // Use the fractional part of hue/360: the integer part is discarded
+        // by the mod-1 anyway, and keeping the shift in (-1, 1) makes an
+        // integer hue (e.g. 360°) an exact no-op instead of losing the low
+        // bits of `h` through `h + 1.0 - floor(h + 1.0)` in f32.
+        let hue_shift = ((hue / 360.0).fract()) as f32;
         let sm = 1.0 + saturation / 100.0;
         let (a_sat, b_sat) = if sm >= 1.0 { ((2.0 - sm) as f32, (sm - 1.0) as f32) } else { (sm as f32, 0.0f32) };
         let ls = lightness / 100.0;

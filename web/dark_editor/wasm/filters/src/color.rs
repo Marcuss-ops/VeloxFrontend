@@ -11,6 +11,12 @@ fn hue_to_rgb(p: f64, q: f64, mut t: f64) -> f64 {
 }
 
 pub(crate) fn apply_hsl(data: &mut [u8], hue: f64, saturation: f64, lightness: f64) {
+    // A hue that is a whole multiple of 360° plus zero saturation/lightness
+    // is a semantic no-op: return without the RGB->HSL->RGB round-trip, which
+    // would otherwise perturb pixels by an LSB at the truncation boundary.
+    if hue % 360.0 == 0.0 && saturation == 0.0 && lightness == 0.0 {
+        return;
+    }
     for px in data.chunks_exact_mut(4) {
         let (r, g, b) = (px[0] as f64 / 255.0, px[1] as f64 / 255.0, px[2] as f64 / 255.0);
         let max = r.max(g).max(b);
@@ -48,6 +54,23 @@ pub(crate) fn apply_brightness_contrast(data: &mut [u8], brightness: f64, contra
         for channel in px.iter_mut().take(3) {
             *channel = crate::clamp(factor * (*channel as f64 + brightness - 128.0) + 128.0);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hsl_whole_rotation_with_zero_sat_light_is_a_noop() {
+        let mut data = vec![100, 150, 200, 255, 10, 20, 30, 128, 250, 240, 230, 64];
+        let original = data.clone();
+        apply_hsl(&mut data, 360.0, 0.0, 0.0);
+        assert_eq!(data, original);
+        apply_hsl(&mut data, -360.0, 0.0, 0.0);
+        assert_eq!(data, original);
+        apply_hsl(&mut data, 720.0, 0.0, 0.0);
+        assert_eq!(data, original);
     }
 }
 
