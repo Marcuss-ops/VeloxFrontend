@@ -6,7 +6,7 @@
 // extractor used by __tests__/apiUtils.test.ts and a handful of
 // components that need to render <img src> or <a href> tags.
 
-import { API_BASE } from './httpClient';
+import { API_BASE, resolveEditorAssetUrl } from './httpClient';
 
 /** Extract the basename from a full URL or path, stripping query
  *  string + hash fragment. Returns '' for empty input. */
@@ -19,10 +19,10 @@ export function extractFilenameFromPath(pathOrUrl: string): string {
 
 /** Absolute URL for a temp-uploaded file (pre-save). */
 export function getTempFileUrl(filename: string): string {
-  return `${API_BASE}/temp/${filename}`;
+  return resolveEditorAssetUrl(`temp/${filename}`);
 }
 
 /** Absolute URL for a file attached to a saved project. */
 export function getProjectFileUrl(projectId: string, filename: string): string {
-  return `${API_BASE}/projects/${projectId}/${filename}`;
+  return `${API_BASE}/api/projects/${projectId}/${filename}`;
 }

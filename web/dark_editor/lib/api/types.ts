@@ -1,13 +1,13 @@
 // Shared API types for the InstaEditor BFF clients.
 //
-// All endpoints route through the InstaEdit BFF at /api/v1/editor
-// which proxies to the Velox master. The browser stays on the same
-// origin so the InstaEdit session cookie + CSRF double-submit are
-// preserved.
+// All endpoints route through the InstaEditor runtime base path (see
+// lib/api/httpClient.ts) which proxies to the Velox master. The browser
+// stays on the same origin so the InstaEdit session cookie + CSRF
+// double-submit are preserved.
 //
 // This module is the single source of truth for wire-level shapes
-// exchanged by mediaClient / projectClient / presetClient /
-// folderClient. Clients import their types from here
+// exchanged by mediaClient / projectClient / driveClient / folderClient /
+// presetClient / translationClient. Clients import their types from here
 // so the barrel in lib/api.ts only has to re-export them once.
 
 // ------------------------------------------------------------------
@@ -69,6 +69,16 @@ export interface UpscaleResponse {
   saved_at?: string;
 }
 
+export interface YouTubeGrabRequest {
+  url: string;
+}
+
+export interface YouTubeGrabResponse {
+  filename: string;
+  video_id: string;
+  url: string;
+}
+
 export interface RemoveBgRequest {
   filename: string;
   model?: string;
@@ -108,6 +118,20 @@ export interface Project {
 }
 
 // ------------------------------------------------------------------
+// Drive assets
+// ------------------------------------------------------------------
+
+export interface DriveAsset {
+  id: string;
+  name: string;
+  mime_type: string;
+  size?: string;
+  modified_time?: string;
+  thumbnail_url?: string;
+  content_url: string;
+}
+
+// ------------------------------------------------------------------
 // Presets
 // ------------------------------------------------------------------
 
@@ -132,4 +156,24 @@ export interface ProjectFolder {
   name: string;
   parent_id: string | null;
   created_at?: string;
+}
+
+// ------------------------------------------------------------------
+// Translation
+// ------------------------------------------------------------------
+
+export interface TranslateRequest {
+  text: string;
+  target_language: string;
+  tone?: string;
+  preserve_hashtags?: boolean;
+  kind?: 'title' | 'description' | 'text';
+}
+
+export interface TranslateResponse {
+  ok: boolean;
+  source_text: string;
+  sanitized_text: string;
+  translated_text: string;
+  target_language: string;
 }
