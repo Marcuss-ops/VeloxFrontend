@@ -13,12 +13,15 @@
 //   - apply-to-videos guards
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { useExportDialog } from '@/hooks/useExportDialog';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { translateText } from '@/lib/api';
+import { captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
+import { downloadBlob } from '@/components/editor/export/helpers';
+import { EXPORT_WIDTH, EXPORT_HEIGHT } from '@/components/editor/export/types';
 import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
 import type { TextObject } from '@/stores/editorStore';
 
@@ -69,6 +72,15 @@ vi.mock('@/lib/canvasPreview', () => ({
   canvasStateSignature: vi.fn(() => 'signature'),
   captureEditorCanvasBlob: vi.fn(async () => null),
   sha256Hex: vi.fn(async () => 'sha256'),
+}));
+
+vi.mock('@/components/editor/export/helpers', () => ({
+  downloadBlob: vi.fn(),
+  convertToPng: vi.fn(async (blob: Blob) => blob),
+  normalizedPlatformAccountId: (video: { platform_account_id?: number | string }) => {
+    const value = Number(video.platform_account_id);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  },
 }));
 
 vi.mock('@/lib/api/bff', () => ({
@@ -133,7 +145,21 @@ function setTargets(videos: GroupVideo[], selectedVideoIds: string[] = []) {
   targetMock.holder.selectedVideoIds = selectedVideoIds;
 }
 
+const pngBlob = new Blob(['png'], { type: 'image/png' });
+
+// A minimal mocked Konva stage: the hook only calls `getStage()` on the
+// canvas ref and hands the result to the (mocked) capture helper.
+function makeCanvasRef() {
+  const stage = {};
+  const getStage = vi.fn(() => stage);
+  return { canvasRef: { current: { getStage } }, getStage, stage };
+}
+
 beforeEach(() => {
+  URL.createObjectURL = vi.fn(() => 'blob:mock-url') as unknown as typeof URL.createObjectURL;
+  URL.revokeObjectURL = vi.fn() as unknown as typeof URL.revokeObjectURL;
+  vi.mocked(captureEditorCanvasBlob).mockResolvedValue(null);
+  vi.mocked(sha256Hex).mockResolvedValue('sha256');
   useEditorStore.getState().clearCanvas();
   useProjectStore.getState().setCurrentProject(null);
   useUIStore.getState().setExportDialog(false);
@@ -260,5 +286,94 @@ describe('useExportDialog', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(useUIStore.getState().showExportDialog).toBe(false);
+  });
+});
+
+describe('useExportDialog.handleExport', () => {
+  it('warns when the canvas cannot produce a blob', async () => {
+    vi.mocked(captureEditorCanvasBlob).mockResolvedValue(null);
+    const { canvasRef, getStage } = makeCanvasRef();
+    const { result } = renderHook(() => useExportDialog({ canvasRef }));
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(getStage).toHaveBeenCalled();
+    expect(downloadBlob).not.toHaveBeenCalled();
+    expect(
+      useUIStore.getState().toasts.some((toast) => toast.message === 'Canvas not found'),
+    ).toBe(true);
+  });
+
+  it('downloads the exported PNG and reports success', async () => {
+    vi.mocked(captureEditorCanvasBlob).mockResolvedValue(pngBlob);
+    const { canvasRef, getStage } = makeCanvasRef();
+    const { result } = renderHook(() => useExportDialog({ canvasRef }));
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(getStage).toHaveBeenCalled();
+    expect(downloadBlob).toHaveBeenCalledWith(pngBlob, 'thumbnail.png');
+    expect(
+      useUIStore.getState().toasts.some((toast) =>
+        toast.message.includes('Export PNG completato'),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('useExportDialog.saveVariantEdit', () => {
+  it('does nothing when there is no editing draft or variant', async () => {
+    vi.mocked(captureEditorCanvasBlob).mockResolvedValue(pngBlob);
+    const { canvasRef } = makeCanvasRef();
+    const { result } = renderHook(() => useExportDialog({ canvasRef }));
+
+    await act(async () => {
+      await result.current.saveVariantEdit();
+    });
+
+    expect(captureEditorCanvasBlob).not.toHaveBeenCalled();
+    expect(useUIStore.getState().toasts).toEqual([]);
+  });
+
+  it('re-renders the cover with the edited text and resets the draft', async () => {
+    vi.mocked(captureEditorCanvasBlob).mockResolvedValue(pngBlob);
+    setTargets([makeVideo({ video_id: 'v1', platform_account_id: 123, language: 'en' })], ['v1']);
+    useEditorStore.getState().loadObjects([makeTextObject()]);
+
+    const { canvasRef, stage } = makeCanvasRef();
+    const { result } = renderHook(() => useExportDialog({ isOpen: true, canvasRef }));
+
+    await waitFor(() => {
+      expect(result.current.variantPreviews['v1']).toBeTruthy();
+    });
+
+    act(() => {
+      result.current.setEditingVideoId('v1');
+      result.current.setEditingDraft({ title: 'New title', description: 'New desc', coverText: 'New cover text' });
+    });
+
+    await act(async () => {
+      await result.current.saveVariantEdit();
+    });
+
+    expect(captureEditorCanvasBlob).toHaveBeenCalledWith(
+      stage,
+      EXPORT_WIDTH,
+      EXPORT_HEIGHT,
+      'image/png',
+      undefined,
+      { textOverrides: { 'text-1': 'New cover text' } },
+    );
+    expect(result.current.editingVideoId).toBeNull();
+    expect(result.current.editingDraft).toBeNull();
+    expect(result.current.variantPreviews['v1'].title).toBe('New title');
+    expect(result.current.variantPreviews['v1'].translatedText).toBe('New cover text');
+    expect(
+      useUIStore.getState().toasts.some((toast) => toast.message === 'Variante aggiornata per il target autorizzato.'),
+    ).toBe(true);
   });
 });
