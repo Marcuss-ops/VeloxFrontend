@@ -100,6 +100,8 @@ export function LegacyExportDialog({ dialog }: { dialog: UseExportDialogReturn }
               </div>
             </div>
             {showCoverPreview && <div className="flex aspect-video items-center justify-center overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+              {/* Runtime blob preview (URL.createObjectURL) — next/image cannot optimize blob: URLs. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               {coverPreviewUrl ? <img src={coverPreviewUrl} alt="Anteprima copertina" className="block h-full w-full object-contain" /> : <div className="flex h-full items-center justify-center text-xs text-slate-500">Anteprima non disponibile</div>}
             </div>}
             {snapshot && <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-400">
@@ -238,6 +240,8 @@ export function LegacyExportDialog({ dialog }: { dialog: UseExportDialogReturn }
                               }}
                               title="Clicca per modificare titolo, descrizione e testo della copertina"
                             >
+                              {/* Runtime blob preview (URL.createObjectURL) — next/image cannot optimize blob: URLs. */}
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               {variant ? <img src={variant.previewUrl} alt={`Copertina ${variant.language}`} className="w-full h-full object-cover" /> : <div className="flex h-full flex-col items-center justify-center gap-1 px-2 text-center text-[10px] text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Generazione anteprima…</div>}
 
                             </div>

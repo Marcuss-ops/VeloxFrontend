@@ -55,6 +55,8 @@ export function BatchVideoCard({ video, selected, previewUrl, variant, localized
         }}
         className="relative aspect-video cursor-pointer overflow-hidden bg-[#efefec] outline-none focus-visible:ring-2 focus-visible:ring-black/30"
       >
+        {/* Runtime blob preview (URL.createObjectURL) — next/image cannot optimize blob: URLs. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         {thumbnail ? <img src={thumbnail} alt={variant?.translatedText ? `Preview cover ${variant.language || ''}: ${variant.translatedText}` : ''} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-[11px] text-[#6e6e73]">Anteprima non disponibile</div>}
         <span className={`absolute left-2.5 top-2.5 grid h-5 w-5 place-items-center rounded-full border text-[11px] ${selected ? 'border-[#111111] bg-[#111111] text-white' : 'border-white/80 bg-white/90 text-transparent shadow-sm'}`}>✓</span>
         {result && <span className={`absolute right-2.5 top-2.5 rounded-md bg-white/95 px-1.5 py-1 text-[10px] font-semibold shadow-sm ${result.status === 'success' ? 'text-[#2f6b3d]' : result.status === 'error' ? 'text-[#a33a31]' : 'text-[#6e6e73]'}`}>{result.status === 'success' ? 'Applicata' : result.status === 'error' ? 'Errore' : 'In corso'}</span>}

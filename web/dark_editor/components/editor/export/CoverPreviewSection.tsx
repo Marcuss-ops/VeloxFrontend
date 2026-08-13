@@ -42,6 +42,8 @@ export function CoverPreviewSection({
         </button>
         {showCoverPreview && (
           <div className="flex aspect-video items-center justify-center overflow-hidden bg-[#111111]">
+            {/* Runtime blob preview (URL.createObjectURL) — next/image cannot optimize blob: URLs. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             {coverPreviewUrl ? <img src={coverPreviewUrl} alt="Anteprima copertina" className="block h-full w-full object-contain" /> : <span className="text-xs text-white/55">Anteprima non disponibile</span>}
           </div>
         )}

@@ -140,14 +140,12 @@ describe('getCanvasObjectCommonProps', () => {
 
 describe('getCanvasObjectShadowProps', () => {
   it('returns an empty object when the object has no drop shadow', () => {
-    const obj = makeObject();
-    expect(getCanvasObjectShadowProps(obj)).toEqual({});
+    expect(getCanvasObjectShadowProps(undefined)).toEqual({});
   });
 
   it('returns shadow props derived from the object drop shadow', () => {
     const dropShadow = { offsetX: 2, offsetY: 4, blur: 8, color: '#000000', spread: 0 };
-    const obj = makeObject({ dropShadow } as any);
-    expect(getCanvasObjectShadowProps(obj)).toEqual({
+    expect(getCanvasObjectShadowProps(dropShadow)).toEqual({
       shadowColor: '#000000',
       shadowBlur: 8,
       shadowOffset: { x: 2, y: 4 },

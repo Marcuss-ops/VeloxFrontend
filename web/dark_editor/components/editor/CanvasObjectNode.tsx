@@ -42,7 +42,7 @@ const CanvasObjectNode = React.memo(function CanvasObjectNode({
     [obj, activeTool, isPanning, isCropEditingObject, selectObject, updateObject, stageRef]
   );
 
-  const shadowProps = useMemo(() => getCanvasObjectShadowProps(obj), [obj.dropShadow]);
+  const shadowProps = useMemo(() => getCanvasObjectShadowProps(obj.dropShadow), [obj.dropShadow]);
 
   return (
     <ObjectRenderer

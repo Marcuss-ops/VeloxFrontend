@@ -143,6 +143,8 @@ export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPr
                   <div className="flex flex-col gap-2 group cursor-pointer border border-primary/20 bg-primary/5 rounded-2xl p-2 shadow-[0_0_20px_rgba(var(--color-primary),0.05)] ring-2 ring-primary/40">
                     <div className="relative aspect-video w-full bg-slate-800 rounded-xl overflow-hidden shadow-md">
                       {previewUrl ? (
+                        // Runtime blob preview (URL.createObjectURL) — next/image cannot optimize blob: URLs.
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={previewUrl} alt="Generated Preview" className="object-cover w-full h-full" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">
@@ -203,6 +205,8 @@ export default function FeedPreviewDialog({ isOpen, onClose, canvasRef }: FeedPr
                   <div className="border-b-4 border-slate-900 bg-primary/5 p-3 flex flex-col gap-2">
                     <div className="relative aspect-video w-full bg-slate-800 rounded-lg overflow-hidden shadow-inner">
                       {previewUrl ? (
+                        // Runtime blob preview (URL.createObjectURL) — next/image cannot optimize blob: URLs.
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={previewUrl} alt="Generated Preview" className="object-cover w-full h-full" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">

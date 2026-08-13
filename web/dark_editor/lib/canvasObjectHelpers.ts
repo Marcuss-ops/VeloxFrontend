@@ -52,12 +52,12 @@ export function getCanvasObjectCommonProps(input: CommonPropsInput) {
   };
 }
 
-export function getCanvasObjectShadowProps(obj: CanvasObject) {
-  return obj.dropShadow
+export function getCanvasObjectShadowProps(dropShadow: CanvasObject['dropShadow']) {
+  return dropShadow
     ? {
-        shadowColor: obj.dropShadow.color,
-        shadowBlur: obj.dropShadow.blur,
-        shadowOffset: { x: obj.dropShadow.offsetX, y: obj.dropShadow.offsetY },
+        shadowColor: dropShadow.color,
+        shadowBlur: dropShadow.blur,
+        shadowOffset: { x: dropShadow.offsetX, y: dropShadow.offsetY },
         shadowOpacity: 0.5,
       }
     : {};

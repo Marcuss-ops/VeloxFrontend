@@ -41,6 +41,8 @@ export function VariantEditModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between"><span className="text-xs font-semibold text-[#6e6e73]">Anteprima cover tradotta</span><span className="rounded-md border border-black/[0.08] bg-[#f7f7f5] px-2 py-1 text-[10px] text-[#6e6e73]">1920 × 1080 · {variantPreviews[editingVideoId]?.language || '—'}</span></div>
             <div className="overflow-hidden rounded-xl border border-black/[0.10] bg-[#111111]">
+              {/* Runtime blob preview (URL.createObjectURL) — next/image cannot optimize blob: URLs. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               {variantPreviews[editingVideoId]?.previewUrl ? <img src={variantPreviews[editingVideoId].previewUrl} alt="Anteprima cover tradotta" className="block aspect-video h-auto w-full object-contain" /> : <div className="flex aspect-video items-center justify-center text-xs text-white/60">Anteprima non disponibile</div>}
             </div>
             <p className="text-[11px] text-[#6e6e73]">Testo renderizzato: <span className="text-[#111111]">{variantPreviews[editingVideoId]?.translatedText || '—'}</span></p>
