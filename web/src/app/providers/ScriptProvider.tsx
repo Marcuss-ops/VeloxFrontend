@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
 import { createDefaultVideoProject, type VideoProject } from '@/types/studioTypes';
 
 export interface GenerationProgress {

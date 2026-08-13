@@ -262,7 +262,7 @@ describe('API Core', () => {
           statusText: 'Too Many Requests',
           headers: {
             get: (name: string) => (name === 'Retry-After' ? '2' : null),
-          } as any,
+          },
         })
         .mockResolvedValueOnce({
           ok: true,
@@ -287,7 +287,7 @@ describe('API Core', () => {
           statusText: 'Too Many Requests',
           headers: {
             get: (name: string) => (name === 'Retry-After' ? future.toUTCString() : null),
-          } as any,
+          },
         })
         .mockResolvedValueOnce({
           ok: true,
@@ -382,7 +382,7 @@ describe('API Core', () => {
         json: () => Promise.resolve({ error: 'Invalid input' }),
       });
 
-      const error = await fetchJSON('/api/v1/test', { retries: 0 }).catch(e => e) as any;
+      const error = (await fetchJSON('/api/v1/test', { retries: 0 }).catch((e) => e)) as ApiError;
       expect(error.status).toBe(400);
       expect(error.message).toBe('Invalid input');
     });
@@ -395,7 +395,7 @@ describe('API Core', () => {
         json: () => Promise.resolve({}),
       });
 
-      const error = await fetchJSON('/api/v1/test', { retries: 0 }).catch(e => e) as any;
+      const error = (await fetchJSON('/api/v1/test', { retries: 0 }).catch((e) => e)) as ApiError;
       expect(error.status).toBe(500);
       expect(error.message).toBe('HTTP 500: Server Error');
     });

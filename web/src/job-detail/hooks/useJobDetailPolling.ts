@@ -161,7 +161,7 @@ export const useJobDetailPolling = ({
 
   // Reset errors when job changes
   useEffect(() => {
-    if (!job) return;
+    if (!job?.job_id) return;
     errorCountRef.current = 0;
     setErrorCount(0);
     updateBackoff(refreshInterval);

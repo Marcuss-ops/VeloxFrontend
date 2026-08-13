@@ -1,14 +1,6 @@
 import React from 'react';
 import { ChevronRight, Home, RefreshCw } from 'lucide-react';
 
-// Types
-interface BundleFile {
-    name: string;
-    size: number;
-    size_formatted: string;
-    compressed: number;
-}
-
 // Breadcrumb Component
 const Breadcrumb: React.FC<{
     path: string;

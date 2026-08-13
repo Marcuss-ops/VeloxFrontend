@@ -191,7 +191,7 @@ export const AnsibleOperationProgress: React.FC<AnsibleOperationProgressProps> =
     useEffect(() => {
         if (!runId) return;
         
-        const currentRun = runs.find(r => r.run_id === runId || (r as any).id === runId);
+        const currentRun = runs.find(r => r.run_id === runId);
         if (!currentRun) return;
 
         const output = stripAnsi((currentRun.preamble || '') + (currentRun.output || ''));

@@ -6,7 +6,6 @@ import React from 'react';
 import { CheckCircle2, ChevronsUp, Clock, Pause, RefreshCw, Timer, XCircle } from 'lucide-react';
 import {
     JobDetailData,
-    statusConfig,
     formatTime,
 } from '../../utils/jobDetail';
 
@@ -27,7 +26,6 @@ export const JobInfoPanel: React.FC<JobInfoPanelProps> = ({
     handlePrioritize,
     handlePause,
 }) => {
-    const statusInfo = statusConfig[job.status] || statusConfig.PENDING;
 
     return (
         <>

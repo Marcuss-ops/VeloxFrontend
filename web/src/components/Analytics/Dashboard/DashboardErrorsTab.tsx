@@ -6,11 +6,10 @@ import { Button } from '../../ui/button';
 
 interface DashboardErrorsTabProps {
     jobs: Job[];
-    onRefresh: () => void;
 }
 
-export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, onRefresh }) => {
-    const handleRetry = async (jobId: string) => {
+export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs }) => {
+    const handleRetry = () => {
         alert('Feature non implementata: retry job non disponibile');
         // Feature not implemented - endpoint /api/v1/jobs/:id/retry non esiste nel backend
     };
@@ -89,7 +88,7 @@ export const DashboardErrorsTab: React.FC<DashboardErrorsTabProps> = ({ jobs, on
                                                 <Button 
                                                     variant="outline" 
                                                     size="sm"
-                                                    onClick={() => handleRetry(jobId)}
+                                                    onClick={handleRetry}
                                                 >
                                                     <RotateCcw className="size-3.5" /> Retry
                                                 </Button>

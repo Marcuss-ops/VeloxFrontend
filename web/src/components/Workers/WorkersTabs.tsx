@@ -29,7 +29,6 @@ interface WorkersTabsProps {
 }
 
 export const WorkersTabs: React.FC<WorkersTabsProps> = ({ activeTab, onTabChange, counts }) => {
-    const Icon = TABS.find(t => t.key === activeTab)?.icon;
     return (
         <div className="mb-8 border-b border bg-black/20">
             <div className="flex gap-8 overflow-x-auto">

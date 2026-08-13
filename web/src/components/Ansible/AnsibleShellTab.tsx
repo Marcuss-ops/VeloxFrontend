@@ -56,7 +56,7 @@ export const AnsibleShellTab: React.FC<AnsibleShellTabProps> = ({ computers: _co
     // Watch for run updates - shows incremental output during execution
     useEffect(() => {
         if (!lastRunId) return;
-        const currentRun = runs.find(r => r.run_id === lastRunId || (r as any).id === lastRunId);
+        const currentRun = runs.find(r => r.run_id === lastRunId);
         
         if (currentRun) {
             // Show incremental output (preamble + run output; backend may embed preamble in output when completed)

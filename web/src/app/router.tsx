@@ -13,7 +13,6 @@ import { createBrowserRouter, RouterProvider, Navigate, Outlet, useParams } from
 // Shell components
 import { Navbar } from './shell/Navbar';
 import { AppProviders } from './providers/AppProviders';
-import { ErrorBoundary } from './providers/ErrorBoundary';
 import { APP_ROUTES, LEGACY_REDIRECTS } from './routes';
 
 // Lazy-loaded views

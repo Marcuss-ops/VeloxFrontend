@@ -213,7 +213,7 @@ export const useDrivePicker = ({
     const openTxtFile = async (file: DriveEntry) => {
         try {
             setTxtViewer({ loading: true, name: file.name, content: '', error: null });
-            const apiBase = ((window as any).API_BASE_URL || '').toString().trim();
+            const apiBase = (window.API_BASE_URL || '').toString().trim();
             const res = await fetch(`${apiBase}/api/drive/read-txt`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

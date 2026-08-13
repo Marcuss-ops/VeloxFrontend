@@ -50,7 +50,7 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
         selectedInitialClipFolderId, setSelectedInitialClipFolderId,
         selectedIntermediateClipFolderId, setSelectedIntermediateClipFolderId,
         selectedFinalClipFolderId, setSelectedFinalClipFolderId,
-        stockFolderCounts, clipPickerOpen, setClipPickerOpen, clipPickerFolderId,
+        stockFolderCounts, clipPickerOpen, setClipPickerOpen,
         clipPickerFolderName, clipPickerType, clipPickerFiles, clipPickerLoading,
         titleSelectionOpen, setTitleSelectionOpen, activeTab, handleTabChange,
         scriptText, setScriptText, youtubeLinks, setYoutubeLinks, newYoutubeLink, setNewYoutubeLink,
@@ -63,9 +63,9 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
         audioPlayerUrl, setAudioPlayerUrl, textContent, setTextContent,
         textContentLoading, setTextContentLoading,
         monthName, clipFolderNameById, stockFolderNameById,
-        handleRemoveClip, handleSave, openClipPicker, scheduleClipPicker,
+        handleRemoveClip, scheduleClipPicker,
         cancelClipPickerHover, addClipFromFile, handleClipHoverPreview,
-        setClipDetailFiles, setClipDetailLoading: setClipDetailLoadingState,
+        setClipDetailFiles,
     } = state;
 
     // Override handleSave to call parent onSave
@@ -189,7 +189,6 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                             setShowYoutubeHistory={setShowYoutubeHistory}
                             selectedCategory={selectedCategory}
                             setSelectedCategory={setSelectedCategory}
-                            titleSelectionOpen={titleSelectionOpen}
                             setTitleSelectionOpen={setTitleSelectionOpen}
                         />
                     )}
@@ -215,7 +214,6 @@ export const CalendarModal: React.FC<CalendarModalProps> = ({
                             finalClips={finalClips}
                             handleRemoveClip={handleRemoveClip}
                             handleClipHoverPreview={handleClipHoverPreview}
-                            openClipPicker={openClipPicker}
                             scheduleClipPicker={scheduleClipPicker}
                             cancelClipPickerHover={cancelClipPickerHover}
                         />

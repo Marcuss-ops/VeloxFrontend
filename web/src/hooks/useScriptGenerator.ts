@@ -355,7 +355,7 @@ export function useScriptGenerator(
         );
         
         return { ok: false, error: errorMsg, results };
-    }, [apiBaseUrl, appendLog, validateProjectDriveFolders]);
+    }, [appendLog, validateProjectDriveFolders]);
     
     // ============ Main Generation Function ============
     

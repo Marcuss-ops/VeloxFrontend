@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useJobDetailPolling } from '@/job-detail/hooks/useJobDetailPolling';
 import type { JobDetailData, JobStatus } from '@/job-detail/types';
 

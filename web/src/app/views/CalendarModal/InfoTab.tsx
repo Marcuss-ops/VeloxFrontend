@@ -29,7 +29,6 @@ interface InfoTabProps {
     setShowYoutubeHistory: (v: boolean) => void;
     selectedCategory: string;
     setSelectedCategory: (v: string) => void;
-    titleSelectionOpen: boolean;
     setTitleSelectionOpen: (v: boolean) => void;
 }
 
@@ -40,7 +39,7 @@ export const InfoTab: React.FC<InfoTabProps> = ({
     voiceoverPaths, setVoiceoverPaths,
     scriptHistory, youtubeHistory, showScriptHistory, setShowScriptHistory,
     showYoutubeHistory, setShowYoutubeHistory,
-    titleSelectionOpen, setTitleSelectionOpen,
+    setTitleSelectionOpen,
 }) => {
     return (
         <>

@@ -27,7 +27,7 @@ function AvailabilityDot({ availability, busy }: { availability: AnsibleComputer
     let status: string = availability;
     if (availability === 'AVAILABLE' && busy) status = 'BUSY';
 
-    const color = colors[status as any] ?? colors.UNKNOWN;
+    const color = colors[status] ?? colors.UNKNOWN;
 
     return (
         <div className="relative flex items-center justify-center">

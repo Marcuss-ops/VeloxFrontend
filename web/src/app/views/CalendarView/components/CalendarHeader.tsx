@@ -19,7 +19,6 @@ interface CalendarHeaderProps {
     onPrevMonth: () => void;
     onNextMonth: () => void;
     onSetDayRange: (range: number | null) => void;
-    onToday?: () => void;
 }
 
 export const CalendarHeader: React.FC<CalendarHeaderProps> = memo(({
@@ -31,7 +30,6 @@ export const CalendarHeader: React.FC<CalendarHeaderProps> = memo(({
     onPrevMonth,
     onNextMonth,
     onSetDayRange,
-    onToday,
 }) => {
     return (
         <div className="h-12 border-b border flex items-center justify-between px-6 bg-white/[0.03] backdrop-blur-xl">

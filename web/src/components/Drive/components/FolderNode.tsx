@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
 import { ChevronRight, Folder, File, CheckCircle2, Circle, Loader2 } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import type { DriveNode } from "../DriveFileExplorer/types"

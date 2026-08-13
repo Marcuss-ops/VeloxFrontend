@@ -31,7 +31,6 @@ interface ClipsTabProps {
     finalClips: VideoClip[];
     handleRemoveClip: (clipId: string, type: 'stock' | 'initial' | 'intermediate' | 'final') => void;
     handleClipHoverPreview: (clip: VideoClip) => void;
-    openClipPicker: (folder: DriveFolderLite, type: ClipType) => void;
     scheduleClipPicker: (folder: DriveFolderLite, type: ClipType) => void;
     cancelClipPickerHover: () => void;
 }
@@ -45,7 +44,7 @@ export const ClipsTab: React.FC<ClipsTabProps> = ({
     stockFolderCounts, stockFolderNameById, clipFolderNameById,
     initialClips, intermediateClips, finalClips,
     handleRemoveClip, handleClipHoverPreview,
-    openClipPicker, scheduleClipPicker, cancelClipPickerHover,
+    scheduleClipPicker, cancelClipPickerHover,
 }) => {
     const renderClipFolderPicker = (selectedId: string, onSelect: (id: string) => void, type: ClipType) => {
         if (loadingClipSubfolders) {

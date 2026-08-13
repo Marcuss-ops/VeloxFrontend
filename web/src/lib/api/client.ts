@@ -117,7 +117,6 @@ export async function apiFetch<T>(
   // can turn into a login redirect. We only warn in development to avoid
   // leaking endpoint information in production consoles.
   if (import.meta.env.DEV && MUTATION_METHODS.has(method) && !finalHeaders['X-CSRF-Token']) {
-    // eslint-disable-next-line no-console
     console.warn(`[API] Missing csrf_token cookie for ${method} ${endpoint}`);
   }
   // Set Content-Type for requests with a body

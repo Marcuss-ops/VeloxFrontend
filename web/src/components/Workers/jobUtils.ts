@@ -1,4 +1,3 @@
-import React from 'react';
 import { HelpCircle, Copy, KeyRound, Hourglass, Scale, Copyright, WifiOff, Tv, AlertCircle } from 'lucide-react';
 import { ErrorInfo, Job, Worker } from './types';
 
