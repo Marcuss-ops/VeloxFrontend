@@ -214,7 +214,11 @@ export function useCalendarSearchState(events: CalendarEvent[], debounceMs: numb
 
     // Build or update search index incrementally
     const searchIndex = useMemo(() => {
-        const hasEventsChanged = eventsRef.current !== events;
+        // Snapshot the previous events BEFORE the ref is updated, otherwise
+        // the incremental diff below would compare the new events against
+        // themselves and never apply add/remove/update changes.
+        const oldEvents = eventsRef.current;
+        const hasEventsChanged = oldEvents !== events;
         eventsRef.current = events;
 
         if (!indexRef.current || events.length === 0) {
@@ -227,7 +231,6 @@ export function useCalendarSearchState(events: CalendarEvent[], debounceMs: numb
         // Check if events array reference changed (new array)
         // If so, do a diff and apply incremental updates
         if (hasEventsChanged) {
-            const oldEvents = eventsRef.current;
             const oldEventIds = new Set(oldEvents.map(e => e.id));
             const newEventIds = new Set(events.map(e => e.id));
 
