@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EditorSessionDetail } from '@/lib/api/bff/youtube';
 import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
-import { editorProjectContextPath } from '@/lib/editor-runtime';
+import { getEditorSessionByProject } from '@/lib/api/bff';
 
 interface UseBatchYouTubeTargetsOptions {
   enabled: boolean;
@@ -101,15 +101,10 @@ export function useBatchYouTubeTargets({
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    void fetch(editorProjectContextPath(currentProjectId), {
-      credentials: 'include',
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`Editor project context unavailable (${response.status})`);
-        return response.json() as Promise<EditorSessionDetail>;
-      })
+    // Use the authenticated BFF client: the plain fetch used here carried
+    // no editor bearer header, so the backend rejected the session lookup
+    // with 401 and the target list never resolved.
+    void getEditorSessionByProject(currentProjectId)
       .then((session) => {
         if (controller.signal.aborted) return;
         const nextTarget = targetFromSession(session, currentProjectName);

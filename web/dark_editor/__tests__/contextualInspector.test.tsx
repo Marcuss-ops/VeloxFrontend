@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, cleanup, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { act, render, cleanup, fireEvent } from '@testing-library/react';
 import ContextualInspector from '@/components/editor/ContextualInspector';
 import { useEditorStore, type CanvasObject } from '@/stores/editorStore';
 
@@ -58,16 +58,46 @@ describe('ContextualInspector shadow expansion', () => {
     expect(expand.style.maxWidth).toBe('0px');
   });
 
-  it('card shows only the controls and the floating close button (no header icon or name)', () => {
+  it('card shows only the controls (no header icon, name or close button)', () => {
     useEditorStore.setState({ objects: [makeImage()], selectedIds: ['img-1'] });
     const { container } = render(
       <ContextualInspector hoveredObjectId={null} dark={false} placement="toolbar" />,
     );
     // The object name must not be rendered as visible text.
     expect(container.textContent).not.toContain('source thumbnail');
-    // Close button present (floating, no header row).
-    expect(container.querySelector('button[aria-label="Chiudi controlli"]')).toBeTruthy();
+    // No close button: the card dismisses itself on pointer leave.
+    expect(container.querySelector('button[aria-label="Chiudi controlli"]')).toBeNull();
     // The core controls are the visible content.
     expect(container.querySelector('input[aria-label="Opacità"]')).toBeTruthy();
+  });
+
+  it('dismisses itself shortly after the pointer leaves the card', () => {
+    vi.useFakeTimers();
+    try {
+      useEditorStore.setState({ objects: [makeImage()], selectedIds: ['img-1'] });
+      const { container } = render(
+        <ContextualInspector hoveredObjectId={null} dark={false} placement="toolbar" />,
+      );
+      const card = container.firstElementChild as HTMLElement;
+      expect(card).toBeTruthy();
+      // Entering the card cancels any pending dismiss.
+      fireEvent.mouseEnter(card);
+      fireEvent.mouseLeave(card);
+      // Re-entering before the grace delay elapses keeps the panel open.
+      fireEvent.mouseEnter(card);
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(useEditorStore.getState().selectedIds).toEqual(['img-1']);
+      // Leaving and waiting past the grace delay clears the selection,
+      // which unmounts the card.
+      fireEvent.mouseLeave(card);
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(useEditorStore.getState().selectedIds).toEqual([]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

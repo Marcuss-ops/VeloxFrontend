@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Check, Gauge, Image as ImageIcon, Palette, Sparkles, Type, X } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { Check, Gauge, Image as ImageIcon, Palette, Sparkles, Type } from 'lucide-react';
 import { useEditorStore, type CanvasObject, type CanvasObjectField } from '@/stores/editorStore';
 
 type ContextualInspectorProps = {
@@ -181,8 +181,42 @@ function getObjectLabel(object: CanvasObject) {
   return 'Forma';
 }
 
+// How long the card stays visible after the pointer leaves it. A short
+// grace delay lets the user move between the strip's tightly-packed
+// controls without the panel flickering shut.
+const DISMISS_AFTER_LEAVE_MS = 250;
+
 export default function ContextualInspector({ hoveredObjectId, dark = false, placement = 'toolbar' }: ContextualInspectorProps) {
   const { objects, selectedIds, updateObjectLive, updateObject, saveToHistory, clearSelection } = useEditorStore();
+  // Dismiss-on-leave: there is no close button anymore — the card hides
+  // itself shortly after the pointer leaves it (re-entering cancels the
+  // pending dismiss).
+  const pointerInsideRef = useRef(false);
+  const hideTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current !== null) window.clearTimeout(hideTimerRef.current);
+    };
+  }, []);
+
+  const cancelHide = useRef(() => {
+    pointerInsideRef.current = true;
+    if (hideTimerRef.current !== null) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }).current;
+
+  const scheduleHide = useRef(() => {
+    pointerInsideRef.current = false;
+    if (hideTimerRef.current !== null) window.clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = window.setTimeout(() => {
+      hideTimerRef.current = null;
+      if (!pointerInsideRef.current) clearSelection();
+    }, DISMISS_AFTER_LEAVE_MS);
+  }).current;
+
   const selectedObject = selectedIds.length === 1 ? objects.find((object) => object.id === selectedIds[0]) : null;
   // Selection is the source of truth: clicking an object directly on the
   // canvas must open these controls without requiring a second trip to the
@@ -225,21 +259,12 @@ export default function ContextualInspector({ hoveredObjectId, dark = false, pla
           : 'relative w-full shrink-0'
       }`}
       onPointerDown={(event) => event.stopPropagation()}
+      onMouseEnter={cancelHide}
+      onMouseLeave={scheduleHide}
       role="toolbar"
       aria-label={`Controlli ${getObjectLabel(selectedObject)}`}
     >
       <div className={`relative overflow-hidden rounded-[18px] border shadow-[0_10px_30px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.03)] backdrop-blur-xl ${surface}`}>
-        {/* Floating close button — the card itself shows only the controls */}
-        <button
-          type="button"
-          onClick={clearSelection}
-          title="Chiudi controlli"
-          aria-label="Chiudi controlli"
-          className={`absolute right-2.5 top-2.5 z-10 flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${dark ? 'text-white/50 hover:bg-white/10 hover:text-white' : 'text-black/45 hover:bg-black/[0.06] hover:text-black'}`}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-
         {/* Controls strip: single horizontally scrollable row, never wraps */}
         <div className="scrollbar-none flex items-center gap-2 overflow-x-auto px-3.5 py-2.5 pr-11">
           <Group icon={<Gauge className="h-3.5 w-3.5" />} label="Opacità">

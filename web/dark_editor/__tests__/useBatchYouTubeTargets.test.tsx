@@ -3,6 +3,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
+import { getEditorSessionByProject } from '@/lib/api/bff';
 
 const session = {
   id: 'session-1',
@@ -18,11 +19,12 @@ const session = {
   updated_at: '2026-08-07T00:00:00Z',
 };
 
-const fetchMock = vi.fn();
-vi.stubGlobal('fetch', fetchMock);
+vi.mock('@/lib/api/bff', () => ({
+  getEditorSessionByProject: vi.fn(),
+}));
 
 beforeEach(() => {
-  fetchMock.mockReset();
+  vi.mocked(getEditorSessionByProject).mockReset();
 });
 
 afterEach(() => {
@@ -31,7 +33,7 @@ afterEach(() => {
 
 describe('useBatchYouTubeTargets project context', () => {
   it('fetches only the authorized InstaEdit project session and selects one target', async () => {
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(session), { status: 200 }));
+    vi.mocked(getEditorSessionByProject).mockResolvedValue(session);
     const { result } = renderHook(() => useBatchYouTubeTargets({
       enabled: true,
       currentProjectId: 've_project-1',
@@ -40,11 +42,8 @@ describe('useBatchYouTubeTargets project context', () => {
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/instaeditor/api/v1/youtube/editor-sessions/by-project/ve_project-1',
-      expect.objectContaining({ credentials: 'include', cache: 'no-store' }),
-    );
+    expect(getEditorSessionByProject).toHaveBeenCalledOnce();
+    expect(getEditorSessionByProject).toHaveBeenCalledWith('ve_project-1');
     expect(result.current.videos).toHaveLength(1);
     expect(result.current.videos[0]).toMatchObject({
       video_id: 'video-1',
@@ -60,21 +59,22 @@ describe('useBatchYouTubeTargets project context', () => {
   it('does not fetch anything without a project context', async () => {
     const { result } = renderHook(() => useBatchYouTubeTargets({ enabled: true }));
     await act(async () => undefined);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(getEditorSessionByProject).not.toHaveBeenCalled();
     expect(result.current.videos).toEqual([]);
     expect(result.current.loading).toBe(false);
   });
 
   it('surfaces an unavailable project context without falling back to groups', async () => {
-    fetchMock.mockResolvedValueOnce(new Response('{}', { status: 404 }));
+    // The real bffFetch surfaces the backend's JSON `error` message.
+    vi.mocked(getEditorSessionByProject).mockRejectedValue(new Error('Editor project context not found'));
     const { result } = renderHook(() => useBatchYouTubeTargets({
       enabled: true,
       currentProjectId: 'missing-project',
     }));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.error).toMatch(/context unavailable/i);
+    expect(result.current.error).toMatch(/context not found/i);
     expect(result.current.videos).toEqual([]);
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(getEditorSessionByProject).toHaveBeenCalledOnce();
   });
 });

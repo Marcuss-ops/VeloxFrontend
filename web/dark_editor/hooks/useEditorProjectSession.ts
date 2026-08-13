@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getProject } from '@/lib/api';
-import { editorProjectContextPath } from '@/lib/editor-runtime';
+import { getEditorSessionByProject } from '@/lib/api/bff';
 import { useProjectStore } from '@/stores/projectStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -62,11 +62,11 @@ export function useEditorProjectSession(projectId: string): UseEditorProjectSess
       let sessionSourceThumbnail = '';
       if (projectId.startsWith('ve_')) {
         try {
-          const sessionResponse = await fetch(editorProjectContextPath(projectId), { cache: 'no-store' });
-          if (sessionResponse.ok) {
-            const session = await sessionResponse.json() as { source_thumbnail_url?: string };
-            sessionSourceThumbnail = String(session.source_thumbnail_url || '').trim();
-          }
+          // Use the authenticated BFF client: the raw fetch previously used
+          // here carried no editor bearer, so the backend rejected it with
+          // 401 and the source-thumbnail refresh silently degraded.
+          const session = await getEditorSessionByProject(projectId);
+          sessionSourceThumbnail = String(session.source_thumbnail_url || '').trim();
         } catch {
           // The persisted project remains usable if the session lookup fails.
         }

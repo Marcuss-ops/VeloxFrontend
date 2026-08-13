@@ -38,6 +38,72 @@ function loadImage(src: string): Promise<{ width: number; height: number }> {
   });
 }
 
+const IMAGE_EXTENSION_PATTERN = /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic)$/i;
+
+/**
+ * A drop is an image when the browser declares an image MIME type, OR the
+ * type is empty / generic octet-stream but the filename looks like an
+ * image. Empty-type and octet-stream files were previously dropped
+ * silently — the filter below is what made a drag "do nothing" for common
+ * cases (webp/avif from some sources, files dragged with an unrecognized
+ * MIME). The upload route re-checks the declared type before saving.
+ */
+function isImageLike(file: File | Blob & { name?: string }): boolean {
+  if (file.type && file.type !== 'application/octet-stream') {
+    return file.type.startsWith('image/');
+  }
+  return IMAGE_EXTENSION_PATTERN.test(file.name ?? '');
+}
+
+/** Collect files from BOTH the legacy `files` list and `items` (deduped). */
+function collectDroppedFiles(e: React.DragEvent): File[] {
+  const seen = new Set<File>();
+  const files: File[] = [];
+  const add = (file: File | null) => {
+    if (!file || seen.has(file)) return;
+    seen.add(file);
+    files.push(file);
+  };
+  for (const file of Array.from(e.dataTransfer?.files ?? [])) add(file);
+  for (const item of Array.from(e.dataTransfer?.items ?? [])) {
+    if (item.kind === 'file') add(item.getAsFile());
+  }
+  return files;
+}
+
+/**
+ * Dragging an <img> element from another page/tab carries NO File — only
+ * the image URL as string drag data. Read the first http(s) URL present so
+ * those drops can be fetched and uploaded instead of being ignored.
+ */
+async function readDroppedImageUrl(dataTransfer: DataTransfer | null): Promise<string | null> {
+  if (!dataTransfer) return null;
+  const texts: string[] = [];
+  const pending: Promise<void>[] = [];
+  for (const item of Array.from(dataTransfer.items ?? [])) {
+    if (item.kind !== 'string') continue;
+    pending.push(
+      new Promise<void>((resolve) => {
+        try {
+          item.getAsString((text) => {
+            if (text) texts.push(text);
+            resolve();
+          });
+        } catch {
+          resolve();
+        }
+      }),
+    );
+  }
+  await Promise.all(pending);
+  for (const text of texts) {
+    const match = text.match(/https?:\/\/[^\s"'<>]+/);
+    const candidate = match ? match[0] : text.trim();
+    if (/^https?:\/\//i.test(candidate)) return candidate;
+  }
+  return null;
+}
+
 export function useDragDropUpload(maxDim = 400): UseDragDropUploadReturn {
   const [isDragging, setIsDragging] = useState(false);
   const { addObject } = useEditorStore();
@@ -68,49 +134,91 @@ export function useDragDropUpload(maxDim = 400): UseDragDropUploadReturn {
       e.stopPropagation();
       setIsDragging(false);
 
-      const files = Array.from(e.dataTransfer.files);
-      const imageFiles = files.filter((file: File) => file.type.startsWith('image/'));
-
-      if (imageFiles.length === 0) return;
-
       const { setUploading } = useUIStore.getState();
-      setUploading(true);
 
-      try {
-        for (const file of imageFiles) {
-          const result = await uploadImage(file);
-          const src = resolveEditorAssetUrl(result.url);
+      const uploadAndAdd = async (file: File) => {
+        const result = await uploadImage(file);
+        const src = resolveEditorAssetUrl(result.url);
 
-          const dimensions = await loadImage(src);
-          const { width, height } = constrainDimensions(dimensions.width, dimensions.height, maxDim);
+        const dimensions = await loadImage(src);
+        const { width, height } = constrainDimensions(dimensions.width, dimensions.height, maxDim);
 
-          addObject({
-            id: uuidv4(),
-            type: 'image',
-            name: file.name,
-            x: 100 + Math.random() * 50,
-            y: 100 + Math.random() * 50,
-            width,
-            height,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-            opacity: 1,
-            visible: true,
-            locked: false,
-            src,
+        addObject({
+          id: uuidv4(),
+          type: 'image',
+          name: file.name,
+          x: 100 + Math.random() * 50,
+          y: 100 + Math.random() * 50,
+          width,
+          height,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          visible: true,
+          locked: false,
+          src,
+        });
+      };
+
+      const dropped = collectDroppedFiles(e);
+      const imageFiles = dropped.filter((file) => isImageLike(file));
+
+      if (imageFiles.length > 0) {
+        setUploading(true);
+        try {
+          for (const file of imageFiles) {
+            await uploadAndAdd(file);
+          }
+          addToast({
+            type: 'success',
+            message: `Aggiunte ${imageFiles.length} ${imageFiles.length === 1 ? 'immagine' : 'immagini'}`,
           });
+        } catch (error) {
+          console.error('Drop upload failed:', error);
+          addToast({ type: 'error', message: 'Caricamento immagine non riuscito. Riprova.' });
+        } finally {
+          setUploading(false);
         }
-
-        addToast({ type: 'success', message: `Added ${imageFiles.length} image(s)` });
-      } catch (error) {
-        console.error('Drop upload failed:', error);
-        addToast({ type: 'error', message: 'Failed to upload one or more images' });
-      } finally {
-        setUploading(false);
+        return;
       }
+
+      // No image file: an <img> dragged from another page/tab only carries
+      // its URL. Fetch it and upload the bytes so the drop still works.
+      const url = await readDroppedImageUrl(e.dataTransfer);
+      if (url) {
+        setUploading(true);
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`fetch ${url} -> ${response.status}`);
+          const blob = await response.blob();
+          if (blob.type && !blob.type.startsWith('image/')) {
+            throw new Error(`dropped URL is not an image (${blob.type})`);
+          }
+          const file = new File([blob], `dragged-${Date.now()}.png`, {
+            type: blob.type || 'image/png',
+          });
+          await uploadAndAdd(file);
+          addToast({ type: 'success', message: 'Immagine aggiunta al canvas' });
+        } catch (error) {
+          console.error('Dropped URL upload failed:', error);
+          addToast({
+            type: 'error',
+            message: "Impossibile caricare l'immagine trascinata da un altro sito. Scaricala e usa il pulsante Upload.",
+          });
+        } finally {
+          setUploading(false);
+        }
+        return;
+      }
+
+      // Nothing image-like was dropped: surface it instead of staying silent.
+      addToast({
+        type: 'warning',
+        message: 'Trascina qui un file immagine (PNG, JPG, WEBP…) per aggiungerlo al canvas.',
+      });
     },
-    [addObject, addToast, maxDim]
+    [addObject, addToast, maxDim],
   );
 
   return {
