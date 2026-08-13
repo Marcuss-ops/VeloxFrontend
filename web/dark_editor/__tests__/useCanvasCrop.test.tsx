@@ -6,7 +6,7 @@
 // commit math (nextCropRect must not stretch the aspect ratio).
 
 import React from 'react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { useCanvasCrop } from '@/hooks/useCanvasCrop';
 import { useEditorStore, type ImageObject } from '@/stores/editorStore';
@@ -129,6 +129,57 @@ describe('useCanvasCrop', () => {
       y: 0.2 + (50 / 200) * 0.5,
       width: (200 / 400) * 0.5,
       height: (100 / 200) * 0.5,
+    });
+  });
+
+  it('discardCrop resets the crop editing state', () => {
+    act(() => {
+      useEditorStore.getState().addObject(makeImage());
+      useUIStore.getState().startCropEditing('img-1', 'square');
+    });
+
+    const { result } = renderHook(() => useCanvasCrop(hookArgs({ current: null })));
+    expect(result.current.cropTarget?.id).toBe('img-1');
+
+    act(() => {
+      result.current.discardCrop();
+    });
+
+    expect(useUIStore.getState().cropEditingId).toBeNull();
+    expect(useUIStore.getState().cropEditingMode).toBeNull();
+    expect(useUIStore.getState().activeTool).toBe('select');
+    expect(result.current.cropDraft).toBeNull();
+  });
+
+  it('commits a lasso crop from the drawn free-hand path', () => {
+    act(() => {
+      useEditorStore.getState().addObject(makeImage());
+      useUIStore.getState().startCropEditing('img-1', 'free');
+    });
+
+    const getPointerPosition = vi.fn()
+      .mockReturnValueOnce({ x: 100, y: 100 }) // → local (0, 0)
+      .mockReturnValueOnce({ x: 300, y: 100 }) // → local (200, 0)
+      .mockReturnValueOnce({ x: 300, y: 200 }) // → local (200, 100)
+      .mockReturnValueOnce({ x: 100, y: 200 }); // → local (0, 100)
+    const stageRef = { current: { getPointerPosition } } as any;
+    const { result } = renderHook(() => useCanvasCrop(hookArgs(stageRef)));
+
+    act(() => { result.current.handleStageMouseDown({} as any); });
+    act(() => { result.current.handleStageMouseMove({} as any); });
+    act(() => { result.current.handleStageMouseMove({} as any); });
+    act(() => { result.current.handleStageMouseMove({} as any); });
+    act(() => { result.current.handleStageMouseUp(); });
+
+    const obj = useEditorStore.getState().objects['img-1'];
+    expect(obj).toMatchObject({
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 100,
+      cropMode: 'lasso',
+      cropRect: { x: 0, y: 0, width: 0.5, height: 0.5 },
+      cropPathPoints: [0, 0, 1, 0, 1, 1, 0, 1],
     });
   });
 });
