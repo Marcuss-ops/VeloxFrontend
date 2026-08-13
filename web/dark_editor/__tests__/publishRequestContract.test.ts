@@ -3,7 +3,7 @@
  * YouTubeEditorSessionPublishRequest (vendored at
  * web/dark_editor/api/openapi.yaml) and the TS interface
  * PublishYouTubeEditorSessionRequest (in
- * web/dark_editor/lib/api/bff/youtube.ts).
+ * web/dark_editor/lib/api/bff/youtube/types.ts).
  *
  * The Go half of this contract lives at:
  *   InstaeditLogin/pkg/api/youtube_editor_sessions_contract_test.go
@@ -54,7 +54,7 @@ const VENDORED_OPENAPI_PATH = path.resolve(
 );
 const TS_INTERFACE_PATH = path.resolve(
   __dirname,
-  '../lib/api/bff/youtube.ts'
+  '../lib/api/bff/youtube/types.ts'
 );
 
 type OpenAPIProperty = {
