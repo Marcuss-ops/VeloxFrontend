@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { Upload } from 'lucide-react';
@@ -12,17 +12,18 @@ import LayersPanel from '@/components/editor/LayersPanel';
 import ExportDialog from '@/components/editor/ExportDialog';
 import YouTubeDialog from '@/components/editor/YouTubeDialog';
 import FeedPreviewDialog from '@/components/editor/FeedPreviewDialog';
-import { useProjectStore } from '@/stores/projectStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useKeyboard } from '@/hooks/useKeyboard';
-import { useSyncDraftTitle } from '@/hooks/useSyncDraftTitle';
 import { useDragDropUpload } from '@/hooks/useDragDropUpload';
 import { useEditorProjectSession } from '@/hooks/useEditorProjectSession';
 import { useEditorAutosave } from '@/hooks/useEditorAutosave';
+import { useEditorFullscreen } from '@/hooks/useEditorFullscreen';
+import { useEditorHover } from '@/hooks/useEditorHover';
+import { useEditorReturnUrl } from '@/hooks/useEditorReturnUrl';
+import { useProjectName } from '@/hooks/useProjectName';
 import { useEditorSidebar, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from '@/hooks/useEditorSidebar';
 import { useEditorTabs } from '@/hooks/useEditorTabs';
 import { clearEditorSession } from '@/lib/editor-session';
-import { editorReturnToUrl } from '@/lib/editor-runtime';
 
 // Dynamically import Canvas to avoid SSR issues with Konva
 const Canvas = dynamic(() => import('@/components/editor/Canvas'), {
@@ -37,9 +38,10 @@ const Canvas = dynamic(() => import('@/components/editor/Canvas'), {
 /**
  * Editor workspace orchestrator (composition root of the editor UI).
  *
- * Wires the extracted editor hooks — session, autosave, assets, sidebar,
- * tabs — into a single render surface. All state and behavior live in the
- * hooks; this component only composes them and renders presentational UI.
+ * Wires the extracted editor hooks — session, autosave, sidebar, tabs,
+ * fullscreen, hover, project name, return URL — into a single render
+ * surface. All state and behavior live in the hooks; this component only
+ * composes them and renders presentational UI.
  */
 export default function EditorWorkspace() {
   const params = useParams();
@@ -48,17 +50,11 @@ export default function EditorWorkspace() {
   const isDarkTheme = theme === 'dark';
   useKeyboard();
 
-  // Destination of the in-editor Home / back pill: the launch URL carries
-  // a relative `return_to` (stamped by the InstaEdit SPA, e.g.
-  // `/app/covers?group=7`) so the user lands back on the exact Copertine
-  // hub of the group they opened the editor from. Read in an effect so
-  // server-rendered markup never differs from the client value.
-  const [returnUrl, setReturnUrl] = useState<string>(editorReturnToUrl);
-  useEffect(() => {
-    setReturnUrl(editorReturnToUrl());
-  }, []);
-
+  const { returnUrl } = useEditorReturnUrl();
   const { sessionGate, loading, error, hydratedRef } = useEditorProjectSession(projectId);
+  const { isFullscreen, toggleFullscreen } = useEditorFullscreen();
+  const { hoveredObjectId, handleObjectHover } = useEditorHover();
+  const { projectName, handleProjectNameChange, handleProjectNameBlur } = useProjectName(projectId);
 
   // Session lost (401 that re-minting could not heal — a stale editor URL
   // or an expired launch token): wipe the stale bearer and hand the user
@@ -78,63 +74,7 @@ export default function EditorWorkspace() {
   const sidebar = useEditorSidebar();
   const dragDrop = useDragDropUpload();
 
-  const { currentProject, updateProjectName } = useProjectStore();
-  const { addToast, showExportDialog, showYouTubeDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
-
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [hoveredObjectId, setHoveredObjectId] = useState<string | null>(null);
-
-  const generateRandomName = () => {
-    const adjectives = ['Vibrant', 'Neon', 'Cosmic', 'Electric', 'Stealth', 'Hyper', 'Sonic', 'Golden', 'Pixel', 'Astro'];
-    const nouns = ['Nebula', 'Blade', 'Vortex', 'Spark', 'Zenith', 'Echo', 'Pulse', 'Wave', 'Grid', 'Forge'];
-    const randomAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
-    const randomNumber = Math.floor(Math.random() * 99) + 1;
-    return `${randomAdj}-${randomNoun}-${randomNumber}`;
-  };
-
-  const handleProjectNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateProjectName(e.target.value);
-  };
-
-  const handleProjectNameBlur = () => {
-    if (!currentProject?.name?.trim()) {
-      const randomName = generateRandomName();
-      updateProjectName(randomName);
-      addToast({ type: 'info', message: `Empty name? Let's call it "${randomName}"! ✨` });
-    }
-  };
-
-  // Sync the rename pill to the InstaEdit draft (partial PUT, title
-  // only, debounced) so the Copertine hub card shows the operator's
-  // real project name instead of the auto-generated draft title.
-  useSyncDraftTitle(projectId, currentProject?.name ?? '');
-
-  const toggleFullscreen = useCallback(async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else {
-        await document.documentElement.requestFullscreen();
-      }
-    } catch (error) {
-      console.warn('Fullscreen is not available', error);
-      addToast({ type: 'warning', message: 'Fullscreen non disponibile in questo browser' });
-    }
-  }, [addToast]);
-
-  useEffect(() => {
-    const syncFullscreenState = () => setIsFullscreen(Boolean(document.fullscreenElement));
-    document.addEventListener('fullscreenchange', syncFullscreenState);
-    return () => document.removeEventListener('fullscreenchange', syncFullscreenState);
-  }, []);
-
-  const handleObjectHover = useCallback((id: string | null) => {
-    // Keep the contextual bar open after leaving the layer row: the user
-    // needs time to move from the right sidebar down to the toolbar above
-    // Text/Image/Shape/Crop and adjust the selected object there.
-    if (id) setHoveredObjectId(id);
-  }, []);
+  const { showExportDialog, showYouTubeDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
 
   if (loading) {
     return (
@@ -194,7 +134,7 @@ export default function EditorWorkspace() {
           <EditorHeader
             tabs={openTabs}
             activeTabId={projectId}
-            projectName={currentProject?.name || ''}
+            projectName={projectName}
             returnUrl={returnUrl}
             isDarkTheme={isDarkTheme}
             isFullscreen={isFullscreen}
