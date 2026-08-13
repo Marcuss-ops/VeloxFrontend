@@ -13,12 +13,12 @@ A modern, feature-rich video editing and YouTube management platform built with 
 ### Installation
 
 ```bash
-# Install dependencies for main app
-npm install
+# Install dependencies for main app (lockfiles are committed, so `npm ci` is reproducible)
+npm ci
 
 # Install dependencies for InstaEditor
 cd dark_editor
-npm install
+npm ci
 ```
 
 ### Development

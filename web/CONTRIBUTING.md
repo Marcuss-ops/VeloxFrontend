@@ -25,10 +25,10 @@ This project follows a standard code of conduct. Please be respectful and constr
    git clone <repository-url>
    cd VeloxEditing/refactored/frontend_standalone/web
    ```
-3. **Install dependencies**:
+3. **Install dependencies** (lockfiles are committed, so `npm ci` gives reproducible builds):
    ```bash
-   npm install
-   cd dark_editor && npm install
+   npm ci
+   cd dark_editor && npm ci
    ```
 4. **Create a branch**:
    ```bash
