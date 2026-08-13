@@ -12,16 +12,17 @@
 #   1. InstaEditor package `npm ci` succeeds against the committed
 #      `web/dark_editor/package-lock.json` (lockfiles are no longer
 #      gitignored — reproducible installs).
-#   2. `npm run validate` (= `tsc --noEmit && vitest run && next lint`,
-#      lint over the WHOLE app, not just lib/) is green. This includes
+#   2. `npm run validate` (= `tsc --noEmit && vitest run && next lint
+#      --max-warnings=0`, lint over the WHOLE app, not just lib/) is
+#      green. This includes
 #      the contract test:
 #        web/dark_editor/__tests__/publishResponseContract.test.ts
 #   3. `npm run build` (`next build`) succeeds — catches production-only
 #      build errors (prerender, server/client boundary, route config)
 #      that `tsc --noEmit` cannot see.
-#   4. Main SPA `web/` package: `npm ci` + `npm run test` + `npm run build`
-#      (the contract test lives in the InstaEditor package, but the main
-#      SPA must also stay green).
+#   4. Main SPA `web/` package: `npm ci` + `npm run test` + `npm run lint`
+#      + `npm run build` (the contract test lives in the InstaEditor
+#      package, but the main SPA must also stay green).
 #
 # The contract test reads:
 #   - web/dark_editor/api/openapi.yaml (vendored copy of InstaeditLogin's
@@ -114,9 +115,10 @@ jobs:
 
       - name: Validate (tsc + vitest + next lint)
         # `npm run validate` runs:
-        #   tsc --noEmit && vitest run && next lint
-        # `next lint` now covers the WHOLE app (app/components/hooks/
-        # stores/lib/api/__tests__), not just lib/. This exercises the
+        #   tsc --noEmit && vitest run && next lint --max-warnings=0
+        # `next lint --max-warnings=0` now covers the WHOLE app
+        # (app/components/hooks/stores/lib/api/__tests__), not just lib/,
+        # and fails on ANY warning. This exercises the
         # contract test along with the rest of the InstaEditor suite. If
         # the vendored OpenAPI drifts from InstaeditLogin's canonical, OR
         # the TS interface drops the `status` field that the SPA's
@@ -151,6 +153,13 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Lint (fail on any warning)
+        # `npm run lint` = `eslint src --max-warnings=0`. The SPA lint
+        # rules that used to be warnings (no-unused-vars, no-explicit-any,
+        # exhaustive-deps, no-console) are now errors, and
+        # --max-warnings=0 turns any remaining warning into a hard failure.
+        run: npm run lint
 
       - name: Build
         run: npm run build
