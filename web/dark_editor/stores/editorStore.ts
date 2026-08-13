@@ -215,12 +215,3 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   },
 }));
 
-/** Ordered projection kept here for callers of the legacy array store. */
-export function getObjectsArrayFromState(
-  objects: Record<string, CanvasObject>,
-  objectIds: string[],
-): CanvasObject[] {
-  return objectIds
-    .map((id) => objects[id])
-    .filter((object): object is CanvasObject => Boolean(object));
-}

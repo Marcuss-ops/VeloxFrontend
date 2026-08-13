@@ -124,9 +124,13 @@ export const createObjectSlice = (
     const { objects, selectedIds } = get();
     if (selectedIds.length === 0) return;
 
+    // O(1) membership via a Set — the previous `selectedIds.includes(obj.id)`
+    // inside the filter made copySelected O(n×m) on large canvases.
+    const selectedSet = new Set(selectedIds);
+
     // Copy the selected objects, decoupling them from the current state
     const copiedObjects = objects
-      .filter((obj) => selectedIds.includes(obj.id))
+      .filter((obj) => selectedSet.has(obj.id))
       .map((obj) => JSON.parse(JSON.stringify(obj)));
 
     set({ clipboard: copiedObjects });

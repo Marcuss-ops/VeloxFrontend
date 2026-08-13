@@ -130,4 +130,21 @@ describe('editorStore composition (slices registry)', () => {
     expect(store.getState().selectedIds).toHaveLength(0);
     expect(store.getState().pastPatches).toHaveLength(0);
   });
+
+  it('copySelected copies only the selected objects (O(1) Set membership)', () => {
+    const store = useEditorStore;
+    store.getState().addObject(makeObject('a'));
+    store.getState().addObject(makeObject('b'));
+    store.getState().addObject(makeObject('c'));
+    store.getState().selectObject('a', true);
+    store.getState().selectObject('c', true);
+
+    store.getState().copySelected();
+
+    expect(store.getState().clipboard.map((o) => o.id).sort()).toEqual(['a', 'c']);
+    // The copied objects are decoupled from live state.
+    expect(store.getState().clipboard[0]).not.toBe(store.getState().objects[0]);
+    // The canvas is untouched by a copy.
+    expect(store.getState().objects.map((o) => o.id)).toEqual(['a', 'b', 'c']);
+  });
 });
