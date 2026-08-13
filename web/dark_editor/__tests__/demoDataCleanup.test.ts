@@ -16,8 +16,11 @@ describe('demo data cleanup', () => {
     expect(existsSync(join(ROOT, 'components/editor/FeedPreview/mockData.ts'))).toBe(false);
   });
 
-  it('keeps the local project seed empty', () => {
-    expect(JSON.parse(read('data/projects.json'))).toEqual([]);
+  it('no longer ships a local projects.json store (SSOT is the InstaEdit BFF)', () => {
+    // The file-backed project catalog was removed: a second owner of
+    // project data must not come back.
+    expect(existsSync(join(ROOT, 'data/projects.json'))).toBe(false);
+    expect(existsSync(join(ROOT, 'lib/projects-store.ts'))).toBe(false);
   });
 
   it('uses the reversible quarantine utility for known demo fingerprints only', () => {
@@ -35,12 +38,12 @@ describe('demo data cleanup', () => {
   });
 
   it('does not weaken ownership protection for real editor projects', () => {
-    const projectRoute = read('app/api/projects/[id]/route.ts');
+    // The per-id local route is gone (the BFF owns scoped projects); the
+    // retired global catalog still rejects with a clear owner signal.
     const catalogRoute = read('app/api/projects/route.ts');
 
-    expect(projectRoute).toContain('authorizeEditorProject');
-    expect(projectRoute).toContain('if (denied) return denied;');
     expect(catalogRoute).toContain("status: 410");
     expect(catalogRoute).toContain("owner: 'instaedit'");
+    expect(existsSync(join(ROOT, 'app/api/projects/[id]/route.ts'))).toBe(false);
   });
 });

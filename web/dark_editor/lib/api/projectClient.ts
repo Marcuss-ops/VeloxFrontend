@@ -14,7 +14,7 @@
 // lives in folderClient (it sets the project's folder pointer and is
 // grouped semantically with the folder management surface).
 
-import { apiDelete, apiGet, API_BASE, editorFetch, editorImageProxyUrl, editorProjectFetch, getCSRFHeaders } from './httpClient';
+import { apiDelete, API_BASE, editorFetch, editorImageProxyUrl, editorProjectFetch } from './httpClient';
 import { isScopedProjectId } from '../project-scope';
 import type { Project } from './types';
 
@@ -37,12 +37,10 @@ function normalizeCanvasImages(canvasJson: Record<string, unknown>): Record<stri
   };
 }
 
-// List projects
-export async function listProjects(type?: string): Promise<Project[]> {
-  const url = type
-    ? `/api/projects?type=${encodeURIComponent(type)}`
-    : '/api/projects';
-  return apiGet<Project[]>(url);
+// List projects — the global project catalog was retired: InstaEdit owns
+// the only real catalog, so there is nothing to list on this side.
+export async function listProjects(_type?: string): Promise<Project[]> {
+  return [];
 }
 
 // Get a project
@@ -117,14 +115,12 @@ export async function getProject(id: string): Promise<Project> {
     };
   }
 
-  const response = await editorFetch(`${API_BASE}/api/projects/${id}`);
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to get project');
-  }
-
-  return response.json();
+  // Non-scoped ids have no owner: the global /api/projects catalog is
+  // retired (410) and the local projects.json store was removed. Fail with
+  // a clear error instead of silently hitting a dead endpoint.
+  throw new Error(
+    `Project ${id} is not an InstaEdit-scoped project: only ve_*/vx_* handles are readable.`,
+  );
 }
 
 // Save an existing editor project. Global project creation is retired:
@@ -150,23 +146,20 @@ export async function saveProject(project: {
     return { id: project.id, message: 'Project saved' };
   }
 
-  const response = await editorFetch(`${API_BASE}/api/projects/${encodeURIComponent(project.id)}`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...getCSRFHeaders() },
-    body: JSON.stringify(project),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to save project');
-  }
-
-  const saved = await response.json() as Project;
-  return { id: saved.id || project.id, message: 'Project saved' };
+  // The legacy global catalog was retired: non-scoped projects have no
+  // owner. Fail with a clear error instead of writing to a dead endpoint.
+  throw new Error(
+    `Project ${project.id} is not an InstaEdit-scoped project: only ve_*/vx_* handles can be saved.`,
+  );
 }
 
-// Delete a project
+// Delete a project — only InstaEdit-scoped projects exist; the legacy
+// global catalog (and its local projects.json store) is gone.
 export async function deleteProject(id: string): Promise<{ success: boolean }> {
+  if (!isScopedProjectId(id)) {
+    throw new Error(
+      `Project ${id} is not an InstaEdit-scoped project: only ve_*/vx_* handles can be deleted.`,
+    );
+  }
   return apiDelete<{ success: boolean }>(`/api/projects/${id}`);
 }

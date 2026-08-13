@@ -37,6 +37,10 @@ export async function deleteFolder(id: string): Promise<{ success: boolean }> {
   return apiDelete<{ success: boolean }>(`${FOLDERS_API_BASE}/${id}`);
 }
 
-export async function assignProjectToFolder(projectId: string, folderId: string | null): Promise<{ success: boolean }> {
-  return apiPut<{ success: boolean }>(`/api/projects/${projectId}/folder`, { folder_id: folderId });
+// Folder binding was retired with the local project catalog: the endpoint
+// returns 410 and projects.json no longer exists. Kept as an explicit
+// failure so a stale caller learns the feature is gone instead of silently
+// writing to a dead route.
+export async function assignProjectToFolder(_projectId: string, _folderId: string | null): Promise<{ success: boolean }> {
+  throw new Error('Folder assignment was retired with the InstaEdit project catalog.');
 }

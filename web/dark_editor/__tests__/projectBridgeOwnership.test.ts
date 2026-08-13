@@ -35,12 +35,13 @@ describe('InstaEdit/Velox project bridge boundary', () => {
   });
 
   it('keeps the bridge minimal and one-way in the API surface', () => {
-    const bridgeRoute = read('app/api/projects/[id]/route.ts');
+    // The per-id local catalog route is gone: the project-scoped BFF owns
+    // ve_/vx_ documents and there is no second project persistence.
     const catalogRoute = read('app/api/projects/route.ts');
     const youtubeRoute = read('app/api/v1/youtube/[...path]/route.ts');
 
-    expect(bridgeRoute).toContain('authorizeEditorProject');
     expect(catalogRoute).toContain('status: 410');
+    expect(catalogRoute).toContain("owner: 'instaedit'");
     expect(youtubeRoute).toContain('velox_youtube_catalog_removed');
     expect(youtubeRoute).toContain("owner: 'instaedit'");
     expect(youtubeRoute.toLowerCase()).not.toContain('sync_groups');
