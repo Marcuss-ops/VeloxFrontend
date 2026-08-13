@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ensureEditorSessionToken } from '@/lib/editor-session';
+import { EditorUnauthorizedError, ensureEditorSessionToken } from '@/lib/editor-session';
 import { editorRuntimePath } from '@/lib/editor-runtime';
 
 // Detail shape returned by GET /api/v1/youtube/editor-sessions/by-project/{projectId}.
@@ -145,6 +145,16 @@ export function useYouTubeSessionGate(projectId: string): SessionGateState {
                 }
             } catch (err) {
                 if (cancelled) return;
+                // A 401 while minting/exchanging the editor session means
+                // the InstaEdit session behind it is gone (or was never
+                // there — e.g. a stale editor URL opened without a valid
+                // launch token). Map it to 'unauthorized' so the caller
+                // hands the user back to the Copertine hub instead of a
+                // dead-end error screen.
+                if (err instanceof EditorUnauthorizedError) {
+                    setGateState({ state: 'unauthorized' });
+                    return;
+                }
                 setGateState({
                     state: 'error',
                     message: err instanceof Error ? err.message : 'Network error',

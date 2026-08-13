@@ -1,5 +1,18 @@
 import { editorRuntimePath, INSTAEDIT_API_URL } from './editor-runtime';
 
+/**
+ * Thrown when the InstaEdit session cannot authenticate the editor
+ * (launch mint or exchange returned 401). The session gate maps this
+ * to its 'unauthorized' state so the editor hands the user back to the
+ * Copertine hub instead of showing a dead-end error screen.
+ */
+export class EditorUnauthorizedError extends Error {
+  constructor(message = 'Sessione InstaEdit scaduta. Riapri il progetto da InstaEdit.') {
+    super(message);
+    this.name = 'EditorUnauthorizedError';
+  }
+}
+
 let sessionToken: string | null = null;
 let sessionProjectId: string | null = null;
 let exchangePromise: Promise<string> | null = null;
@@ -67,6 +80,7 @@ async function mintLaunchToken(projectId: string): Promise<string> {
   });
   const payload = await response.json().catch(() => ({})) as { launch_token?: string; error?: string };
   if (!response.ok || !payload.launch_token) {
+    if (response.status === 401) throw new EditorUnauthorizedError();
     throw new Error(payload.error || 'Editor launch non disponibile. Apri il progetto da InstaEdit.');
   }
   return payload.launch_token;
@@ -111,6 +125,7 @@ export function ensureEditorSessionToken(projectIdOverride?: string): Promise<st
     });
     const payload = await response.json().catch(() => ({})) as { launch_token?: string; expires_at?: number; error?: string };
     if (!response.ok || !payload.launch_token) {
+      if (response.status === 401) throw new EditorUnauthorizedError();
       throw new Error(payload.error || 'Editor sessione non disponibile. Riapri il progetto da InstaEdit.');
     }
     sessionToken = payload.launch_token;
@@ -136,4 +151,24 @@ export function resetEditorSessionToken(): void {
   sessionToken = null;
   sessionProjectId = null;
   exchangePromise = null;
+}
+
+/**
+ * Wipes the stored editor session (in-memory + sessionStorage) after a
+ * 401 so a stale bearer never gets reused by a later open in the same
+ * tab. With no projectId, every `instaeditor:session:*` entry is cleared.
+ */
+export function clearEditorSession(projectId?: string): void {
+  resetEditorSessionToken();
+  if (typeof window === 'undefined' || !window.sessionStorage) return;
+  if (projectId) {
+    window.sessionStorage.removeItem(`${SESSION_STORAGE_PREFIX}${projectId}`);
+    return;
+  }
+  const keys: string[] = [];
+  for (let index = 0; index < window.sessionStorage.length; index += 1) {
+    const key = window.sessionStorage.key(index);
+    if (key?.startsWith(SESSION_STORAGE_PREFIX)) keys.push(key);
+  }
+  for (const key of keys) window.sessionStorage.removeItem(key);
 }

@@ -23,6 +23,7 @@ import { useEditorAutosave } from '@/hooks/useEditorAutosave';
 import { useEditorAssets } from '@/hooks/useEditorAssets';
 import { useEditorSidebar, SIDEBAR_DEFAULT_WIDTH, SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH } from '@/hooks/useEditorSidebar';
 import { useEditorTabs } from '@/hooks/useEditorTabs';
+import { clearEditorSession } from '@/lib/editor-session';
 import { editorReturnToUrl } from '@/lib/editor-runtime';
 
 // Dynamically import Canvas to avoid SSR issues with Konva
@@ -60,6 +61,17 @@ export default function EditorWorkspace() {
   }, []);
 
   const { sessionGate, loading, error, hydratedRef } = useEditorProjectSession(projectId);
+
+  // Session lost (401 that re-minting could not heal — a stale editor URL
+  // or an expired launch token): wipe the stale bearer and hand the user
+  // back to the Copertine hub, the same "session lost → back to where you
+  // came from" behaviour as the InstaEdit SPA. Re-opening the cover from
+  // the hub mints a fresh launch token, so this is never a dead end.
+  useEffect(() => {
+    if (sessionGate.state !== 'unauthorized') return;
+    clearEditorSession(projectId);
+    window.location.assign(returnUrl);
+  }, [projectId, returnUrl, sessionGate.state]);
 
   const canvasRef = useRef<any>(null);
   useEditorAutosave({ canvasRef, sessionGate, hydratedRef });
