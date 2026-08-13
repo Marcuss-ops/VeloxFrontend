@@ -1,19 +1,17 @@
-// SIMD (wasm simd128) implementations of the hot filters, used to evaluate
-// whether the speedup justifies switching the pipeline away from the f64
-// scalar reference. On non-wasm targets (e.g. the host running `cargo test`)
-// these delegate to the scalar implementations, since the simd128 intrinsics
-// only exist on wasm32.
+// SIMD (wasm simd128) implementations of the hot filters. On non-wasm
+// targets (e.g. the host running `cargo test`) they delegate to the scalar
+// implementations, since the simd128 intrinsics only exist on wasm32.
 //
-// Byte-identity: blur is integer-only (i32x4 channel sums), so it is exactly
-// byte-identical to the scalar blur. sharpen, noise and hsl convert the
-// scalar f64 math to f32, so they may differ from the scalar reference by a
-// fraction of an LSB on a small number of pixels — the Node benchmark
-// reports the actual deviation.
+// `blur`, `sharpen` and `noise` are wired into apply_pipeline. Byte-identity
+// vs the scalar reference: blur is integer-only (i32x4 channel sums) so it is
+// exactly byte-identical; sharpen and noise convert the scalar f64 math to
+// f32, so they may differ by a fraction of an LSB on a small number of
+// pixels.
 //
-// These are evaluation-only helpers kept internal to the crate: the public
-// WASM surface is limited to apply_pipeline / blend_layers / process_mask,
-// and the SIMD variants will be wired into the pipeline (and re-exported
-// only if needed for benchmarking) by the dedicated SIMD-adoption step.
+// `hsl` is still an evaluation-only variant: it is measured against the
+// scalar reference by scripts/wasm-simd-eval.mjs (via the temporary
+// wasm_hsl_scalar / wasm_hsl_simd exports) and is not yet wired into the
+// pipeline.
 #![allow(dead_code, unused_imports)]
 
 #[cfg(not(target_arch = "wasm32"))]

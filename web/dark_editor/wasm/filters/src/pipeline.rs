@@ -2,7 +2,7 @@
 // every enabled filter runs here, in the same order the worker previously
 // applied them with separate per-filter crossings.
 
-use crate::{color, curves, noise, pixelate, sharpen, PipelineConfig};
+use crate::{color, curves, pixelate, PipelineConfig};
 
 pub(crate) fn apply_pipeline(
     data: &mut [u8],
@@ -17,10 +17,10 @@ pub(crate) fn apply_pipeline(
         pixelate::apply(data, width, height, config.pixelation as u32);
     }
     if config.blur > 0.0 {
-        crate::blur::apply(data, width, height, config.blur as u32);
+        crate::simd::blur(data, width, height, config.blur as u32);
     }
     if config.sharpen > 0.0 {
-        sharpen::apply(data, width, height, config.sharpen);
+        crate::simd::sharpen(data, width, height, config.sharpen);
     }
     if config.hue != 0.0 || config.saturation != 0.0 || config.lightness != 0.0 {
         color::apply_hsl(data, config.hue, config.saturation, config.lightness);
@@ -32,7 +32,7 @@ pub(crate) fn apply_pipeline(
         color::apply_vignette(data, width, height, config.vignette_radius, config.vignette_softness);
     }
     if config.noise_intensity > 0.0 {
-        noise::apply(data, config.noise_intensity, config.noise_seed);
+        crate::simd::noise(data, config.noise_intensity, config.noise_seed);
     }
     // Empty slices mean "no curves", matching the worker's previous
     // `curveR && curveG && curveB` guard (curves::apply no-ops on empty).

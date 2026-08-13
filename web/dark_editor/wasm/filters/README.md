@@ -34,7 +34,7 @@ src/
 ├── pixelate.rs  # block pixelation
 ├── blend.rs     # blend modes + source-over alpha
 ├── mask.rs      # alpha mask + feathering
-└── simd.rs      # simd128 evaluation variants (internal, not exported)
+└── simd.rs      # simd128 blur/sharpen/noise (pipeline) + HSL eval variant
 ```
 
 ## Profiling notes
