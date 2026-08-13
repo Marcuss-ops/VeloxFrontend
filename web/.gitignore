@@ -2,7 +2,6 @@ node_modules/
 # The editor uses a deployment-provided node_modules symlink.
 dark_editor/node_modules
 dist/
-package-lock.json
 
 # Local env files (never commit — may carry dev overrides)
 .env

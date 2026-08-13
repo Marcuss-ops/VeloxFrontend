@@ -9,14 +9,17 @@
 # repos gate deploys on `go test` / `npm run validate`).
 #
 # Coverage (this file):
-#   1. InstaEditor package `npm install` succeeds (the repo's
-#      `web/.gitignore` excludes `package-lock.json` by design, so
-#      `npm ci` is not available — `npm install` is the cheaper-fail
-#      alternative).
-#   2. `npm run validate` (= `tsc --noEmit && vitest run && next lint --dir lib`)
-#      is green. This includes the contract test:
+#   1. InstaEditor package `npm ci` succeeds against the committed
+#      `web/dark_editor/package-lock.json` (lockfiles are no longer
+#      gitignored — reproducible installs).
+#   2. `npm run validate` (= `tsc --noEmit && vitest run && next lint`,
+#      lint over the WHOLE app, not just lib/) is green. This includes
+#      the contract test:
 #        web/dark_editor/__tests__/publishResponseContract.test.ts
-#   3. Main SPA `web/` package: `npm install` + `npm run test` + `npm run build`
+#   3. `npm run build` (`next build`) succeeds — catches production-only
+#      build errors (prerender, server/client boundary, route config)
+#      that `tsc --noEmit` cannot see.
+#   4. Main SPA `web/` package: `npm ci` + `npm run test` + `npm run build`
 #      (the contract test lives in the InstaEditor package, but the main
 #      SPA must also stay green).
 #
@@ -103,21 +106,29 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install deps (npm install)
-        # web/.gitignore excludes package-lock.json by design, so
-        # `npm ci` is not available. `npm install` is the
-        # cheaper-fail alternative.
-        run: npm install --no-audit --no-fund
+      - name: Install deps (npm ci)
+        # Lockfiles are committed, so `npm ci` gives reproducible
+        # installs and fails fast if package.json and the lockfile
+        # drift apart.
+        run: npm ci --no-audit --no-fund
 
       - name: Validate (tsc + vitest + next lint)
         # `npm run validate` runs:
-        #   tsc --noEmit && vitest run && next lint --dir lib
-        # which exercises the contract test along with the rest of
-        # the InstaEditor suite. If the vendored OpenAPI drifts from
-        # InstaeditLogin's canonical, OR the TS interface drops the
-        # `status` field that the SPA's BroadcastChannel listener
-        # depends on, this step fails.
+        #   tsc --noEmit && vitest run && next lint
+        # `next lint` now covers the WHOLE app (app/components/hooks/
+        # stores/lib/api/__tests__), not just lib/. This exercises the
+        # contract test along with the rest of the InstaEditor suite. If
+        # the vendored OpenAPI drifts from InstaeditLogin's canonical, OR
+        # the TS interface drops the `status` field that the SPA's
+        # BroadcastChannel listener depends on, this step fails.
         run: npm run validate
+
+      - name: Build (next build)
+        # `tsc --noEmit` and vitest do not exercise Next's production
+        # pipeline (page prerendering, route handlers, server/client
+        # boundaries). A failing `next build` here blocks deploys before
+        # they ship a broken editor.
+        run: npm run build
 
   web-spa:
     name: Web SPA (vitest + tsc + vite build)
@@ -132,11 +143,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install deps (npm install)
-        # web/.gitignore excludes package-lock.json by design, so
-        # `npm ci` is not available. `npm install` is the
-        # cheaper-fail alternative.
-        run: npm install --no-audit --no-fund
+      - name: Install deps (npm ci)
+        # Lockfiles are committed, so `npm ci` gives reproducible
+        # installs and fails fast if package.json and the lockfile
+        # drift apart.
+        run: npm ci --no-audit --no-fund
 
       - name: Run tests
         run: npm test
