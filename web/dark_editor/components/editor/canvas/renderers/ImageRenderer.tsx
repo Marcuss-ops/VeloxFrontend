@@ -40,7 +40,7 @@ export function ImageRenderer({
   const { shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY, ...restShadowProps } = shadowProps;
 
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
-  const [processedImage, setProcessedImage] = useState<any>(null);
+  const [processedImage, setProcessedImage] = useState<HTMLImageElement | HTMLCanvasElement | null>(null);
   const [featheredImage, setFeatheredImage] = useState<HTMLCanvasElement | HTMLImageElement | null>(null);
 
   useEffect(() => {
@@ -85,8 +85,8 @@ export function ImageRenderer({
       return;
     }
 
-    const imgWidth = processedImage.naturalWidth || processedImage.width || 0;
-    const imgHeight = processedImage.naturalHeight || processedImage.height || 0;
+    const imgWidth = ('naturalWidth' in processedImage ? processedImage.naturalWidth : undefined) || processedImage.width || 0;
+    const imgHeight = ('naturalHeight' in processedImage ? processedImage.naturalHeight : undefined) || processedImage.height || 0;
     if (imgWidth === 0 || imgHeight === 0) {
       setFeatheredImage(null);
       return;
@@ -206,8 +206,12 @@ export function ImageRenderer({
   const activeCropProps = featheredImage ? {} : cropProps;
   const activeClipFunc = featheredImage ? undefined : clipFunc;
 
+  // Note: shadowOffset/shadowOpacity were previously spread onto the Group
+  // here, but Groups are not Shapes — Konva ignores those attrs on a Group,
+  // so they were inert. They still reach the inner KonvaImage via
+  // shadowColor/shadowBlur and the placeholder Rect via restShadowProps.
   return (
-    <Group {...commonProps} {...restShadowProps} clipFunc={activeClipFunc}>
+    <Group {...commonProps} clipFunc={activeClipFunc}>
       <KonvaImage
         image={activeImage}
         width={width}

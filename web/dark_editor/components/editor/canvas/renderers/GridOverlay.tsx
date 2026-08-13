@@ -3,7 +3,7 @@
 import React from 'react';
 import { Group, Rect } from 'react-konva';
 
-export function GridOverlay({ width, height, gridSize }: any) {
+export function GridOverlay({ width, height, gridSize }: { width: number; height: number; gridSize?: number }) {
   const size = Math.max(4, Math.floor(gridSize || 40));
   const lines: React.ReactNode[] = [];
   const color = 'rgba(0,0,0,0.08)';

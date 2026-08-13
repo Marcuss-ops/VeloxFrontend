@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import type Konva from 'konva';
 import { Group, Line, Rect, Transformer } from 'react-konva';
 
 export function DocumentCropOverlay({
@@ -18,8 +19,8 @@ export function DocumentCropOverlay({
   guidesType?: 'none' | 'thirds' | 'grid';
   ratioPreset?: string;
 }) {
-  const rectRef = useRef<any>(null);
-  const transformerRef = useRef<any>(null);
+  const rectRef = useRef<Konva.Rect>(null);
+  const transformerRef = useRef<Konva.Transformer>(null);
 
   useEffect(() => {
     if (transformerRef.current && rectRef.current) {

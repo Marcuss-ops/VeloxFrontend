@@ -1,5 +1,6 @@
 'use client';
 
+import type Konva from 'konva';
 import type { CanvasObject } from '@/stores/editorStore';
 import type { CommonProps, ShadowProps } from './shared';
 import { ImageRenderer } from './ImageRenderer';
@@ -21,7 +22,7 @@ export function ObjectRenderer({
   commonProps: CommonProps;
   shadowProps: ShadowProps;
   editingId: string | null;
-  handleTextDblClick: any;
+  handleTextDblClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
 }) {
   switch (obj.type) {
     case 'image':

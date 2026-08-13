@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type Konva from 'konva';
+import type { KonvaNodeEvents } from 'react-konva';
 import { fontFamilies, type FontKey } from '@/lib/fonts';
 import { resolveEditorAssetUrl } from '@/lib/api';
 import { thumbnailFallbackDataUrl } from '@/lib/thumbnailFallback';
@@ -46,10 +48,20 @@ export function useImageLoader(src?: string) {
   return image;
 }
 
-/** Konva props shared by every object kind (id, x/y/scale, drag/click handlers...). */
-export type CommonProps = Record<string, any>;
+/**
+ * Konva props shared by every object kind: transform/visibility fields
+ * (id, x/y/scale, opacity, visible, draggable, listening...) plus the
+ * react-konva event handlers. Spread onto Konva nodes via `{...commonProps}`.
+ */
+export type CommonProps = Partial<Konva.NodeConfig> & Partial<KonvaNodeEvents>;
+
 /** Konva drop-shadow props ({} when the object has no dropShadow). */
-export type ShadowProps = Record<string, any>;
+export type ShadowProps = Partial<
+  Pick<
+    Konva.ShapeConfig,
+    'shadowColor' | 'shadowBlur' | 'shadowOffset' | 'shadowOffsetX' | 'shadowOffsetY' | 'shadowOpacity'
+  >
+>;
 
 /**
  * Fill props for an object: an image-fill pattern when `imageFill` is set and
@@ -61,7 +73,7 @@ export function buildFillProps(
   obj: BaseCanvasObject,
   imageFillElement: HTMLImageElement | null,
   fallbackFill = '#ffffff'
-): Record<string, any> {
+): Partial<Konva.ShapeConfig> {
   if (obj.imageFill?.src && imageFillElement) {
     return {
       fillPatternImage: imageFillElement,

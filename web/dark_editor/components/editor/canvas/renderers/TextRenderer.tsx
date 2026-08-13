@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import type Konva from 'konva';
 import { Group, Rect, Text, TextPath } from 'react-konva';
 import { censorText } from '@/lib/textCensorship';
 import type { TextObject } from '@/stores/editorStore';
@@ -25,7 +26,7 @@ export function TextRenderer({
   commonProps: CommonProps;
   shadowProps: ShadowProps;
   editingId: string | null;
-  handleTextDblClick: any;
+  handleTextDblClick: (e: Konva.KonvaEventObject<MouseEvent>, id: string) => void;
 }) {
   const imageFillElement = useImageLoader(obj.imageFill?.src);
   const fillProps = buildFillProps(obj, imageFillElement, '#ffffff');
