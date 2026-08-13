@@ -8,7 +8,8 @@
 // the whole surface so call sites never touch the transport layer.
 //
 // Layout:
-//   lib/api/httpClient.ts        — base URL, auth/CSRF fetch, RequestManager
+//   lib/api/httpClient.ts        — base URL, auth/CSRF fetch, typed helpers
+//   lib/api/requestManager.ts    — AbortController pool for cancel-able calls
 //   lib/api/mediaClient.ts       — upload / filter / transform / export /
 //                                  generate / upscale / remove-bg
 //   lib/api/projectClient.ts     — project CRUD (+ ve_* session documents)

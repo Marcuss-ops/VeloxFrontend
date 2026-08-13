@@ -1,8 +1,9 @@
 // HTTP infrastructure for the InstaEditor API clients.
 //
 // Centralises the runtime base URL, the JWT/session authorization headers,
-// CSRF + cookie handling, JSON encoding and the AbortController-backed
-// RequestManager that backs the cancel-able `removeBackground` call.
+// CSRF + cookie handling, JSON encoding and the typed request helpers.
+// The AbortController-backed RequestManager (cancel-able `removeBackground`)
+// lives in lib/api/requestManager.ts and is re-exported here for back-compat.
 //
 // Clients (media / project / drive / folder / preset / translation)
 // import from here rather than redefining the same helpers — this is the
@@ -191,30 +192,10 @@ export async function apiUpload<T>(path: string, formData: FormData, options?: R
 }
 
 // ------------------------------------------------------------------
-// RequestManager — AbortController pool indexed by a caller-supplied
-// key. Used by mediaClient.removeBackground to cancel in-flight jobs
-// when a new request for the same filename arrives.
+// RequestManager — AbortController pool for cancel-able requests
+// (mediaClient.removeBackground). Extracted to lib/api/requestManager.ts;
+// re-exported here so the existing `./httpClient` and `@/lib/api`
+// import surfaces stay intact.
 // ------------------------------------------------------------------
 
-// Request Manager to handle AbortControllers for concurrent requests
-export class RequestManager {
-  private controllers = new Map<string, AbortController>();
-
-  getSignal(key: string): AbortSignal {
-    if (this.controllers.has(key)) {
-      this.controllers.get(key)!.abort();
-    }
-    const controller = new AbortController();
-    this.controllers.set(key, controller);
-    return controller.signal;
-  }
-
-  clear(key: string) {
-    this.controllers.delete(key);
-  }
-}
-
-// Singleton — kept stable across module boundaries so the
-// AbortController state of in-flight background-removal tasks
-// survives HMR + module reload.
-export const requestManager = new RequestManager();
+export { RequestManager, requestManager } from './requestManager';
