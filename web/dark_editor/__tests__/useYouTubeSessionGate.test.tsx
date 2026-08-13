@@ -7,16 +7,15 @@
 // test match the documented mapping in useYouTubeSessionGate.ts:
 //   loading (initial) | unauthorized (401) | not_found (404) |
 //   editable_editing | editable_failed |
-//   readonly_publishing | readonly_published |
+//   readonly_publishing | readonly_published | readonly_unknown |
 //   error (5xx / network)
 //
-// The `loading` initial state is asserted explicitly. The defensive
-// "out-of-spec 200 status maps to editable_editing" branch is part
-// of the contract: an unknown status must NOT brick the editor's
-// only mount path.
+// The `loading` initial state is asserted explicitly. FAIL-CLOSED
+// contract: an out-of-spec 200 status maps to readonly_unknown and must
+// NEVER enable editing.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 
 import {
     useYouTubeSessionGate,
@@ -123,10 +122,38 @@ describe('useYouTubeSessionGate', () => {
         }
     });
 
-    it('defensively maps an out-of-spec 200 status to editable_editing', async () => {
+    it('FAILS CLOSED on an out-of-spec 200 status (readonly_unknown, never editable)', async () => {
         stubFetch(200, { ...baseSession, status: 'graders_only' });
         const { result } = renderHook(() => useYouTubeSessionGate('proj-test-1'));
-        await waitFor(() => expect(result.current.state).toBe('editable_editing'));
+        await waitFor(() => expect(result.current.state).toBe('readonly_unknown'));
+        if (result.current.state === 'readonly_unknown') {
+            expect(result.current.session.status).toBe('graders_only');
+        }
+    });
+
+    it('re-validates while open: editing → publishing flips the gate to read-only', async () => {
+        // Every fetch returns a fresh publishing row (the backend flips the
+        // session before the editor is even open). The gate must land in
+        // readonly_publishing — never editable — and the poll must keep
+        // re-validating (≥2 fetches with a 50ms interval + real timers).
+        const fetchMock = vi.fn().mockImplementation(() =>
+            Promise.resolve(
+                new Response(
+                    JSON.stringify({ ...baseSession, status: 'publishing' }),
+                    { status: 200, headers: { 'content-type': 'application/json' } },
+                ),
+            ),
+        );
+        vi.stubGlobal('fetch', fetchMock);
+
+        const { result, unmount } = renderHook(() => useYouTubeSessionGate('proj-test-1', 50));
+
+        // The gate never opens the editor in an editable state for a
+        // publishing session, and the poll keeps the read-only state fresh.
+        await waitFor(() => expect(result.current.state).toBe('readonly_publishing'));
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2), { timeout: 2000 });
+
+        unmount();
     });
 
     it('maps a non-401/404 !ok response to error', async () => {

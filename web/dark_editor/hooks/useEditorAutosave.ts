@@ -37,7 +37,7 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
   const performSave = useCallback(async (opts?: { forcePreview?: boolean }) => {
     if (!hydratedRef.current) return;
     if (!currentProject) return;
-    if (sessionGate.state === 'readonly_publishing' || sessionGate.state === 'readonly_published') return;
+    if (sessionGate.state === 'readonly_publishing' || sessionGate.state === 'readonly_published' || sessionGate.state === 'readonly_unknown') return;
     if (sessionGate.state !== 'editable_editing' && sessionGate.state !== 'editable_failed') return;
     const latestEditorState = useEditorStore.getState();
     const latestObjects = latestEditorState.objects;
@@ -87,7 +87,7 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
     if (!hydratedRef.current) return;
     if (!currentProject) return;
     if (!isDirty) return;
-    if (sessionGate.state === 'readonly_publishing' || sessionGate.state === 'readonly_published') return;
+    if (sessionGate.state === 'readonly_publishing' || sessionGate.state === 'readonly_published' || sessionGate.state === 'readonly_unknown') return;
     if (sessionGate.state !== 'editable_editing' && sessionGate.state !== 'editable_failed') return;
 
     if (autosaveTimerRef.current) {

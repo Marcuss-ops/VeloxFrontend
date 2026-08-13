@@ -184,7 +184,7 @@ export function useEditorProjectSession(projectId: string): UseEditorProjectSess
   }, [addToast, loadObjects, openTab, projectId, setCanvasSize, setCurrentProject, setDirty]);
 
   useEffect(() => {
-    if (sessionGate.state === 'editable_editing' || sessionGate.state === 'editable_failed' || sessionGate.state === 'readonly_publishing' || sessionGate.state === 'readonly_published') {
+    if (sessionGate.state === 'editable_editing' || sessionGate.state === 'editable_failed' || sessionGate.state === 'readonly_publishing' || sessionGate.state === 'readonly_published' || sessionGate.state === 'readonly_unknown') {
       loadProject();
     } else if (sessionGate.state === 'not_found' || sessionGate.state === 'unauthorized') {
       setLoading(false);

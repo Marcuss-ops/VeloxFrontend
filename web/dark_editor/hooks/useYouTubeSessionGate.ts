@@ -37,6 +37,8 @@ export interface YouTubeEditorSessionDetail {
  *   editable_failed     → 200 + status='failed'    (canvas mutable, retry path)
  *   readonly_publishing → 200 + status='publishing' (banner read-only + blocked)
  *   readonly_published  → 200 + status='published'  (storic / read-only)
+ *   readonly_unknown    → 200 + status=<out-of-spec> (FAIL-CLOSED: a status
+ *     this frontend does not know must never enable editing)
  *
  * Plus two transient / internal cases kept for the UI plumbing:
  *   loading → initial mount, fetch in flight
@@ -50,6 +52,7 @@ export type SessionGateState =
     | { state: 'editable_failed'; session: YouTubeEditorSessionDetail }
     | { state: 'readonly_publishing'; session: YouTubeEditorSessionDetail }
     | { state: 'readonly_published'; session: YouTubeEditorSessionDetail }
+    | { state: 'readonly_unknown'; session: YouTubeEditorSessionDetail }
     | { state: 'error'; message: string };
 
 const GATE_ENDPOINT = (projectId: string): string =>
@@ -58,6 +61,39 @@ const GATE_ENDPOINT = (projectId: string): string =>
 // Default redirect target on InstaEdit Social when the user opens
 // a session they don't have permission to access.
 const INSTAEDIT_SOCIAL_URL = '/dashboard-channels';
+
+/**
+ * Pure mapping of a backend session row to the gate state. Kept separate
+ * so the fail-closed contract (unknown status → readonly, never editable)
+ * can be unit-tested without exercising the polling/fetch machinery.
+ */
+export function mapSessionStatusToGate(
+  session: YouTubeEditorSessionDetail,
+): Extract<SessionGateState, { session: YouTubeEditorSessionDetail }> {
+  switch (session.status) {
+    case 'editing':
+      return { state: 'editable_editing', session };
+    case 'failed':
+      return { state: 'editable_failed', session };
+    case 'publishing':
+      return { state: 'readonly_publishing', session };
+    case 'published':
+      return { state: 'readonly_published', session };
+    default:
+      // FAIL-CLOSED: an out-of-spec status must never enable editing.
+      return { state: 'readonly_unknown', session };
+  }
+}
+
+// The gate re-validates the session while the editor stays open. There is
+// NO useEditorSessionLiveUpdate in this repo (the old comment referenced a
+// hook that lives in the InstaEdit SPA bundle, not here), so without this
+// poll a session that flips editing → publishing mid-session would keep
+// the editor in the writable state. 10s keeps the window tight enough to
+// matter and the request rate negligible for a single open editor. Polling
+// pauses while the tab is hidden (visibilitychange) and stops entirely on
+// unmount. Overridable for tests.
+export const GATE_REVALIDATE_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_EDITOR_GATE_POLL_MS ?? 10_000);
 
 /**
  * Gate obbligatorio: prima di montare il canvas, verifica che il
@@ -71,18 +107,23 @@ const INSTAEDIT_SOCIAL_URL = '/dashboard-channels';
  *   200 status=failed  → 'editable_failed'     (canvas mutable, retry path)
  *   200 status=publishing → 'readonly_publishing' (banner read-only + blocked)
  *   200 status=published  → 'readonly_published'  (read-only / history)
- *   200 status=<other> → 'editable_editing'    (defensive: an out-of-spec status
- *     must NOT brick the editor's only mount path; treat as editable)
+ *   200 status=<other> → 'readonly_unknown'    (FAIL-CLOSED: an out-of-spec
+ *     status must NOT enable editing — the frontend cannot prove the
+ *     session is writable, so it refuses to allow writes)
  *   !res.ok (5xx/4xx other) → 'error'          (banner + retry)
  *   thrown fetch       → 'error'               (banner + retry)
  *
- * The hook is intentionally minimal — no caching, no retries, no polling.
- * The session row is the source of truth on the backend; re-renders of
- * the page re-fetch it. Status transitions while the editor is open
- * flow through the live-update channel
- * (see useEditorSessionLiveUpdate in the SPA main bundle).
+ * While the editor is open the gate re-validates every
+ * GATE_REVALIDATE_INTERVAL_MS, so a session that transitions
+ * editing → publishing/published mid-edit is picked up and the editor is
+ * switched to read-only instead of silently staying writable. (There is no
+ * useEditorSessionLiveUpdate in this repo — the comment in earlier
+ * versions pointed at a hook living in the InstaEdit SPA bundle.)
  */
-export function useYouTubeSessionGate(projectId: string): SessionGateState {
+export function useYouTubeSessionGate(
+  projectId: string,
+  pollIntervalMs: number = GATE_REVALIDATE_INTERVAL_MS,
+): SessionGateState {
     const [gateState, setGateState] = useState<SessionGateState>({ state: 'loading' });
 
     useEffect(() => {
@@ -122,27 +163,7 @@ export function useYouTubeSessionGate(projectId: string): SessionGateState {
 
                 const session: YouTubeEditorSessionDetail = await res.json();
                 if (cancelled) return;
-
-                switch (session.status) {
-                    case 'editing':
-                        setGateState({ state: 'editable_editing', session });
-                        return;
-                    case 'failed':
-                        setGateState({ state: 'editable_failed', session });
-                        return;
-                    case 'publishing':
-                        setGateState({ state: 'readonly_publishing', session });
-                        return;
-                    case 'published':
-                        setGateState({ state: 'readonly_published', session });
-                        return;
-                    default:
-                        // Defensive fallback: an out-of-spec status
-                        // (e.g. a new column the SPA hasn't shipped
-                        // yet, or a backend bug) must NOT brick the
-                        // editor's only mount path — treat as editable.
-                        setGateState({ state: 'editable_editing', session });
-                }
+                setGateState(mapSessionStatusToGate(session));
             } catch (err) {
                 if (cancelled) return;
                 // A 401 while minting/exchanging the editor session means
@@ -164,8 +185,42 @@ export function useYouTubeSessionGate(projectId: string): SessionGateState {
 
         void validate();
 
+        // Re-validate while the editor stays open so an editing → publishing
+        // (or published) transition is picked up within one interval and the
+        // editor flips to read-only instead of silently remaining writable.
+        // Self-cancelling setTimeout (not setInterval): the next poll is only
+        // scheduled AFTER the current one finishes, and the chain dies on
+        // unmount or when the tab is hidden.
+        let pollTimer: number | null = null;
+        let hidden = document.hidden;
+
+        const scheduleNextPoll = () => {
+            if (cancelled || hidden) return;
+            pollTimer = window.setTimeout(() => {
+                pollTimer = null;
+                void validate().finally(() => {
+                    scheduleNextPoll();
+                });
+            }, pollIntervalMs);
+        };
+
+        const onVisibilityChange = () => {
+            hidden = document.hidden;
+            if (hidden && pollTimer !== null) {
+                window.clearTimeout(pollTimer);
+                pollTimer = null;
+            } else if (!hidden && pollTimer === null && !cancelled) {
+                scheduleNextPoll();
+            }
+        };
+
+        scheduleNextPoll();
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
         return () => {
             cancelled = true;
+            if (pollTimer !== null) window.clearTimeout(pollTimer);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
         };
     }, [projectId]);
 
