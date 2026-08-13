@@ -60,3 +60,45 @@ describe('getProfanityWords', () => {
     expect(words.some((w) => w.toLowerCase() === 'damn')).toBe(true);
   });
 });
+
+describe('preserved semantics (Set lookups + precompiled regexes)', () => {
+  it('keeps counting duplicate dictionary entries across languages', () => {
+    // 'merda' is listed in it and pt
+    expect(getProfanityCount('merda')).toBe(2);
+  });
+
+  it('counts a word and an overlapping phrase separately', () => {
+    // 'fucked' (word) + 'fucked up' (phrase), matching the old per-entry scan
+    expect(getProfanityCount('fucked up')).toBe(2);
+  });
+
+  it('detects multi-word phrases in whole-text scans', () => {
+    expect(hasProfanity('you son of a bitch')).toBe(true);
+    expect(getProfanityWords('you son of a bitch')).toContain('son of a bitch');
+    // 'bitch' matches inside the phrase too, like the old per-entry regexes
+    expect(getProfanityCount('son of a bitch')).toBe(2);
+  });
+
+  it('detects accented entries via whole-text regexes', () => {
+    expect(hasProfanity('cabrón')).toBe(true);
+    expect(getProfanityCount('cabrón')).toBe(1);
+  });
+
+  it('respects word boundaries and does not count substrings', () => {
+    // 'shit' must not count inside 'shitty' (which is its own entry)
+    expect(getProfanityCount('shitty')).toBe(1);
+    expect(hasProfanity('scrap metal')).toBe(false); // contains 'crap'
+  });
+
+  it('is case-insensitive', () => {
+    expect(getProfanityCount('DAMN Damn damn')).toBe(3);
+    expect(hasProfanity('HELL')).toBe(true);
+  });
+
+  it('does not censor words that merely contain profanity', () => {
+    const result = censorText('this is scrap metal', DEFAULT_CENSORSHIP_CONFIG);
+    expect(result).toContain('scrap');
+    const censored = censorText('this is crap metal', { ...DEFAULT_CENSORSHIP_CONFIG, censorThreshold: 100 });
+    expect(censored.toLowerCase()).not.toContain('crap');
+  });
+});

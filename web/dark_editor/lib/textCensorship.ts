@@ -14,9 +14,6 @@ const DEFAULT_CONFIG: CensorshipConfig = {
   censorThreshold: 50,
 };
 
-// Common profanity words to detect and censor from dictionary
-const PROFANITY_LIST = ALL_PROFANITIES;
-
 // Words that should never be censored (false positives)
 const ALLOWED_WORDS = [
   'shift', 'shifting', 'shifter', 'shifty', 'shimmer', 'shimmering',
@@ -24,6 +21,36 @@ const ALLOWED_WORDS = [
   'hello', 'hellish', 'hells', 'helluva',
   'dickens', 'dickinson', 'dickensian'
 ];
+
+// Precomputed lookups, built once at module load instead of constructing a
+// RegExp per profanity entry inside every loop:
+//
+// - Plain word tokens (ASCII [a-z0-9_]+) can be matched with O(1) Set/Map
+//   lookups: a `\bword\b` regex on a single word token matches exactly when
+//   the lowercased token is an entry, so the regex is unnecessary. The Map
+//   keeps the multiplicity so duplicate entries across languages (e.g.
+//   "merda" in it/pt) keep counting like the old per-entry regex scan.
+// - Phrases and accented/non-Latin entries cannot match a single token and
+//   must run against the whole text; their regexes are precompiled once.
+const PROFANITY_TOKEN_MULT = new Map<string, number>();
+const PROFANITY_REGEX_MAP = new Map<string, RegExp>();
+for (const profane of ALL_PROFANITIES) {
+  const lower = profane.toLowerCase();
+  if (/^[a-z0-9_]+$/.test(lower)) {
+    PROFANITY_TOKEN_MULT.set(lower, (PROFANITY_TOKEN_MULT.get(lower) ?? 0) + 1);
+  } else {
+    PROFANITY_REGEX_MAP.set(profane, new RegExp(`\\b${profane}\\b`, 'gi'));
+  }
+}
+const PROFANITY_TOKEN_SET = new Set(PROFANITY_TOKEN_MULT.keys());
+
+const ALLOWED_SET = new Set(ALLOWED_WORDS.map(w => w.toLowerCase()));
+
+// Split text into word tokens (runs of \w), mirroring the boundary semantics
+// of the previous per-entry `\bword\b` regexes.
+function tokenize(text: string): string[] {
+  return text.split(/[^\w]+/).filter(Boolean);
+}
 
 export function censorText(text: string, config: Partial<CensorshipConfig> = {}): string {
   if (!config.enabled && config.enabled !== undefined) {
@@ -41,18 +68,11 @@ export function censorText(text: string, config: Partial<CensorshipConfig> = {})
       return word;
     }
     
-    // Check if word is in profanity list
-    const isProfanity = PROFANITY_LIST.some(profane => {
-      // Check for exact match or word boundaries
-      const regex = new RegExp(`\\b${profane}\\b`, 'i');
-      return regex.test(word);
-    });
-    
-    // Check if word should be allowed (false positives)
-    const isAllowed = ALLOWED_WORDS.some(allowed => {
-      const regex = new RegExp(`\\b${allowed}\\b`, 'i');
-      return regex.test(word);
-    });
+    // Normalize once per word and use exact lookups instead of building a
+    // RegExp for every profanity/allowed entry.
+    const lower = word.toLowerCase();
+    const isProfanity = PROFANITY_TOKEN_SET.has(lower);
+    const isAllowed = ALLOWED_SET.has(lower);
     
     if (isProfanity && !isAllowed) {
       return censorWord(word, finalConfig);
@@ -130,41 +150,60 @@ function getRandomChar(chars: string[]): string {
 // Utility function to check if text contains profanity
 export function hasProfanity(text: string): boolean {
   const lowerText = text.toLowerCase();
-  return PROFANITY_LIST.some(profane => {
-    const regex = new RegExp(`\\b${profane}\\b`, 'i');
-    return regex.test(lowerText);
-  });
+  for (const token of tokenize(lowerText)) {
+    if (PROFANITY_TOKEN_SET.has(token)) {
+      return true;
+    }
+  }
+  for (const regex of PROFANITY_REGEX_MAP.values()) {
+    if (lowerText.match(regex)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // Utility function to get profanity count
 export function getProfanityCount(text: string): number {
   const lowerText = text.toLowerCase();
   let count = 0;
-  
-  PROFANITY_LIST.forEach(profane => {
-    const regex = new RegExp(`\\b${profane}\\b`, 'gi');
+
+  // Token entries: O(tokens) exact lookups, keeping the per-dictionary-entry
+  // multiplicity so counts match the previous per-entry regex scan.
+  for (const token of tokenize(lowerText)) {
+    count += PROFANITY_TOKEN_MULT.get(token) ?? 0;
+  }
+
+  // Phrase/accented entries: precompiled whole-text regexes.
+  for (const regex of PROFANITY_REGEX_MAP.values()) {
     const matches = lowerText.match(regex);
     if (matches) {
       count += matches.length;
     }
-  });
-  
+  }
+
   return count;
 }
 
 // Utility function to get all profanity words found in text
 export function getProfanityWords(text: string): string[] {
   const lowerText = text.toLowerCase();
+  const tokens = new Set(tokenize(lowerText));
   const foundWords: string[] = [];
-  
-  PROFANITY_LIST.forEach(profane => {
-    const regex = new RegExp(`\\b${profane}\\b`, 'gi');
-    const matches = lowerText.match(regex);
-    if (matches) {
-      foundWords.push(...matches);
+
+  // Iterate the dictionary in its original order so duplicates collapse to
+  // their first occurrence, matching the previous per-entry scan.
+  for (const profane of ALL_PROFANITIES) {
+    const lower = profane.toLowerCase();
+    if (PROFANITY_TOKEN_SET.has(lower)) {
+      if (tokens.has(lower)) {
+        foundWords.push(lower);
+      }
+    } else if (lowerText.match(PROFANITY_REGEX_MAP.get(profane)!)) {
+      foundWords.push(lower);
     }
-  });
-  
+  }
+
   return Array.from(new Set(foundWords)); // Remove duplicates
 }
 
