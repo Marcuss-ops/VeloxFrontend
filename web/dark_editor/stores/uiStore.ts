@@ -17,7 +17,6 @@ export interface UIState {
   showRightSidebar: boolean;
   showExportDialog: boolean;
   showAIDialog: boolean;
-  showYouTubeDialog: boolean;
   showFeedPreviewDialog: boolean;
   
   // Toast notifications
@@ -43,7 +42,6 @@ export interface UIState {
   toggleRightSidebar: () => void;
   setExportDialog: (show: boolean) => void;
   setAIDialog: (show: boolean) => void;
-  setYouTubeDialog: (show: boolean) => void;
   setFeedPreviewDialog: (show: boolean) => void;
   setEditingId: (id: string | null) => void;
   startCropEditing: (id: string, mode: CropMode) => void;
@@ -76,7 +74,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   showRightSidebar: true,
   showExportDialog: false,
   showAIDialog: false,
-  showYouTubeDialog: false,
   showFeedPreviewDialog: false,
   toasts: [],
   isGenerating: false,
@@ -116,14 +113,8 @@ export const useUIStore = create<UIState>((set, get) => ({
   
   setExportDialog: (show) => {
     set({ showExportDialog: show });
-  },
-  
-  setAIDialog: (show) => {
+  },  setAIDialog: (show) => {
     set({ showAIDialog: show });
-  },
-  
-  setYouTubeDialog: (show) => {
-    set({ showYouTubeDialog: show });
   },
 
   setFeedPreviewDialog: (show) => {

@@ -10,7 +10,6 @@ import EditorHeader from './EditorHeader';
 import ContextualInspector from '@/components/editor/ContextualInspector';
 import LayersPanel from '@/components/editor/LayersPanel';
 import ExportDialog from '@/components/editor/ExportDialog';
-import YouTubeDialog from '@/components/editor/YouTubeDialog';
 import FeedPreviewDialog from '@/components/editor/FeedPreviewDialog';
 import { useUIStore } from '@/stores/uiStore';
 import { useKeyboard } from '@/hooks/useKeyboard';
@@ -74,7 +73,7 @@ export default function EditorWorkspace() {
   const sidebar = useEditorSidebar();
   const dragDrop = useDragDropUpload();
 
-  const { showExportDialog, showYouTubeDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
+  const { showExportDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
 
   if (loading) {
     return (
@@ -191,7 +190,6 @@ export default function EditorWorkspace() {
 
       {/* Dialogs */}
       {showExportDialog && <ExportDialog canvasRef={canvasRef} />}
-      {showYouTubeDialog && <YouTubeDialog />}
       <FeedPreviewDialog
         isOpen={showFeedPreviewDialog}
         onClose={() => setFeedPreviewDialog(false)}

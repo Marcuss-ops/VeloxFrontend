@@ -10,9 +10,16 @@ const ROOT = process.cwd();
 const REMOVED_FILES = [
   'components/ui/ProjectFolders.tsx',
   'components/editor/CanvasObjectNode.tsx',
+  'components/editor/export/LegacyExportDialog.tsx',
+  'components/editor/YouTubeDialog.tsx',
 ];
 
-const REMOVED_IDENTIFIERS = ['ProjectFolders', 'CanvasObjectNode'];
+const REMOVED_IDENTIFIERS = [
+  'ProjectFolders',
+  'CanvasObjectNode',
+  'LegacyExportDialog',
+  'YouTubeDialog',
+];
 
 function walk(dir: string): string[] {
   const files: string[] = [];
@@ -28,7 +35,7 @@ function walk(dir: string): string[] {
 }
 
 describe('dead code removal guard', () => {
-  it('no longer ships ProjectFolders or CanvasObjectNode', () => {
+  it('no longer ships the removed dead modules', () => {
     for (const file of REMOVED_FILES) {
       expect(existsSync(join(ROOT, file))).toBe(false);
     }

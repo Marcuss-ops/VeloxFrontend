@@ -3,7 +3,7 @@
 // Protection test for the ExportDialog refactor (987 LOC → composition
 // root). Pins the composition contract:
 //   - opening via the uiStore flag renders the live publish-flow panel
-//   - closing swaps to the dormant legacy panel (never visible)
+//   - closing renders nothing (the dormant legacy panel was removed)
 //   - the onClose prop overrides the store close
 //
 // All I/O (translation, canvas capture, BFF uploads) and the YouTube
@@ -82,14 +82,13 @@ describe('ExportDialog composition', () => {
         expect(screen.getByText('Titolo, descrizione e tag')).toBeTruthy();
     });
 
-    it('swaps to the dormant legacy panel (closed dialog) when the store flag drops', async () => {
+    it('renders nothing when the store flag drops', async () => {
         render(<ExportDialog />);
         expect(await screen.findByText('Pubblica copertine')).toBeTruthy();
 
         act(() => useUIStore.getState().setExportDialog(false));
 
-        // Publish panel unmounts; the legacy dialog is closed, so no
-        // publish content remains visible.
+        // The publish panel unmounts and no legacy panel remains.
         expect(screen.queryByText('Pubblica copertine')).toBeNull();
         expect(screen.queryByText('Esporta PNG')).toBeNull();
     });
