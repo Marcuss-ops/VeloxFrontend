@@ -8,10 +8,9 @@
 // f32, so they may differ by a fraction of an LSB on a small number of
 // pixels.
 //
-// `hsl` is still an evaluation-only variant: it is measured against the
-// scalar reference by scripts/wasm-simd-eval.mjs (via the temporary
-// wasm_hsl_scalar / wasm_hsl_simd exports) and is not yet wired into the
-// pipeline.
+// `hsl` is kept internal and is not yet wired into apply_pipeline; it stays
+// behind until HSL SIMD is adopted, at which point apply_pipeline routes
+// through it instead of color::apply_hsl.
 #![allow(dead_code, unused_imports)]
 
 #[cfg(not(target_arch = "wasm32"))]

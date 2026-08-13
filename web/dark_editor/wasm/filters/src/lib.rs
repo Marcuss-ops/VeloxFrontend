@@ -129,17 +129,3 @@ pub fn blend_layers(base: &mut [u8], overlay: &[u8], width: u32, height: u32, mo
 pub fn process_mask(data: &mut [u8], mask: &[u8], width: u32, height: u32, feather: f64) {
     mask::process(data, mask, width as usize, height as usize, feather as usize);
 }
-
-// Evaluation-only exports used by scripts/wasm-simd-eval.mjs to compare the
-// f32/simd128 HSL against the f64 scalar reference (byte-identity + timing).
-// Not part of the public image_core surface: removed once the SIMD HSL is
-// adopted into apply_pipeline.
-#[wasm_bindgen]
-pub fn wasm_hsl_scalar(data: &mut [u8], hue: f64, saturation: f64, lightness: f64) {
-    color::apply_hsl(data, hue, saturation, lightness);
-}
-
-#[wasm_bindgen]
-pub fn wasm_hsl_simd(data: &mut [u8], hue: f64, saturation: f64, lightness: f64) {
-    simd::hsl(data, hue, saturation, lightness);
-}

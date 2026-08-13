@@ -34,13 +34,13 @@ src/
 ├── pixelate.rs  # block pixelation
 ├── blend.rs     # blend modes + source-over alpha
 ├── mask.rs      # alpha mask + feathering
-└── simd.rs      # simd128 blur/sharpen/noise (pipeline) + HSL eval variant
+└── simd.rs      # simd128 blur/sharpen/noise (pipeline) + hsl (not yet wired)
 ```
 
 ## Profiling notes
 
-Measured with the real wasm-bindgen package in Node (`npm run bench:wasm` and
-`node scripts/wasm-simd-eval.mjs`), 1920×1080 RGBA.
+Measured with the real wasm-bindgen package in Node (`npm run bench:wasm`),
+1920×1080 RGBA.
 
 **Content-independence.** Every filter in the heavy path (pixelation, blur,
 sharpen, brightness/contrast, vignette, noise, curves) is content-independent:
