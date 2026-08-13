@@ -12,6 +12,7 @@ const REMOVED_FILES = [
   'components/editor/CanvasObjectNode.tsx',
   'components/editor/export/LegacyExportDialog.tsx',
   'components/editor/YouTubeDialog.tsx',
+  'lib/canvasObjectHelpers.ts',
 ];
 
 const REMOVED_IDENTIFIERS = [
@@ -19,6 +20,9 @@ const REMOVED_IDENTIFIERS = [
   'CanvasObjectNode',
   'LegacyExportDialog',
   'YouTubeDialog',
+  'canvasObjectHelpers',
+  'getCanvasObjectCommonProps',
+  'getCanvasObjectShadowProps',
 ];
 
 function walk(dir: string): string[] {
