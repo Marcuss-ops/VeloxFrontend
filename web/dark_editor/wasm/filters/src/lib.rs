@@ -1,56 +1,25 @@
+mod blend;
+
 use std::cell::RefCell;
 
 use wasm_bindgen::prelude::*;
 
 #[inline]
-fn clamp(value: f64) -> u8 {
+pub(crate) fn clamp(value: f64) -> u8 {
     // Uint8Array assignment in the previous JS implementation truncates
     // positive fractional values; keep that observable behavior.
     value.trunc().clamp(0.0, 255.0) as u8
 }
 
-#[inline]
-fn blend_channel(base: f64, overlay: f64, mode: u32) -> f64 {
-    let b = base / 255.0;
-    let o = overlay / 255.0;
-    match mode {
-        1 => b * o,
-        2 => 1.0 - (1.0 - b) * (1.0 - o),
-        3 => if b < 0.5 { 2.0 * b * o } else { 1.0 - 2.0 * (1.0 - b) * (1.0 - o) },
-        4 => b.min(o),
-        5 => b.max(o),
-        6 => if o >= 1.0 { 1.0 } else { (b / (1.0 - o)).min(1.0) },
-        7 => if o <= 0.0 { 0.0 } else { 1.0 - ((1.0 - b) / o).min(1.0) },
-        8 => if o < 0.5 { 2.0 * b * o } else { 1.0 - 2.0 * (1.0 - b) * (1.0 - o) },
-        9 => (1.0 - 2.0 * o) * b * b + 2.0 * o * b,
-        10 => (b - o).abs(),
-        11 => b + o - 2.0 * b * o,
-        _ => o,
-    }
-}
-
 #[wasm_bindgen]
 pub fn wasm_blend_layers(base: &mut [u8], overlay: &[u8], width: u32, height: u32, mode: u32) {
     if width == 0 || height == 0 { return; }
-    let count = (width as usize).saturating_mul(height as usize).saturating_mul(4);
-    let count = count.min(base.len()).min(overlay.len());
-    for i in (0..count).step_by(4) {
-        let base_a = base[i + 3] as f64 / 255.0;
-        let over_a = overlay[i + 3] as f64 / 255.0;
-        let out_a = over_a + base_a * (1.0 - over_a);
-        if out_a <= 0.0 {
-            base[i..i + 4].fill(0);
-            continue;
-        }
-        let src_weight = over_a;
-        let dst_weight = base_a * (1.0 - over_a);
-        let old = [base[i], base[i + 1], base[i + 2]];
-        for c in 0..3 {
-            let blended = blend_channel(old[c] as f64, overlay[i + c] as f64, mode);
-            base[i + c] = clamp(((blended * src_weight) + (old[c] as f64 / 255.0) * dst_weight) / out_a * 255.0);
-        }
-        base[i + 3] = clamp(out_a * 255.0);
-    }
+    let mut count = (width as usize).saturating_mul(height as usize).saturating_mul(4);
+    count = count.min(base.len()).min(overlay.len());
+    // Keep the loop aligned to 4-byte RGBA pixels: partial trailing bytes
+    // would make the per-pixel reads go out of bounds.
+    count -= count % 4;
+    blend::composite(base, overlay, count, mode);
 }
 
 #[wasm_bindgen]
