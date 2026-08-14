@@ -68,7 +68,9 @@ export function useEditorProjectSession(projectId: string): UseEditorProjectSess
           // here carried no editor bearer, so the backend rejected it with
           // 401 and the source-thumbnail refresh silently degraded.
           const session = await getEditorSessionByProject(projectId);
-          sessionSourceThumbnail = String(session.source_thumbnail_url || '').trim();
+          // Extended contract: thumbnail_url is the canonical wire name,
+          // source_thumbnail_url the legacy fallback.
+          sessionSourceThumbnail = String(session.thumbnail_url || session.source_thumbnail_url || '').trim();
         } catch {
           // The persisted project remains usable if the session lookup fails.
         }

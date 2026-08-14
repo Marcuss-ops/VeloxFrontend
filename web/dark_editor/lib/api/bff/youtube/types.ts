@@ -96,6 +96,15 @@ export interface EditorSessionDetail {
   velox_project_id: string;
   channel_id?: string;
   source_thumbnail_url?: string;
+  // Extended session contract (thumbnail_url, category_id,
+  // privacy_status) — the authoritative YouTube projection the backend
+  // serves from videos.list / the publish read-back. thumbnail_url
+  // mirrors source_thumbnail_url under the contract's wire name;
+  // category_id is stamped at session creation; privacy_status is the
+  // resolved visibility (actual read-back wins, desired fallback).
+  thumbnail_url?: string;
+  category_id?: string;
+  privacy_status?: string;
   thumbnail_media_id?: string | null;
   desired_privacy: string;
   publish_at?: string | null;

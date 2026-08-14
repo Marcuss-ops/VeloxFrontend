@@ -79,12 +79,15 @@ export async function getProject(id: string): Promise<Project> {
     const session = await response.json() as {
       velox_project_id: string;
       youtube_video_id: string;
+      // Extended contract: thumbnail_url is the canonical wire name;
+      // source_thumbnail_url remains as fallback for older rows.
+      thumbnail_url?: string;
       source_thumbnail_url?: string;
       draft_title?: string;
       created_at: string;
       updated_at: string;
     };
-    const thumbnail = editorImageProxyUrl(safeAssetUrl(session.source_thumbnail_url, session.youtube_video_id));
+    const thumbnail = editorImageProxyUrl(safeAssetUrl(session.thumbnail_url || session.source_thumbnail_url, session.youtube_video_id));
     return {
       id: session.velox_project_id || id,
       name: session.draft_title || `YouTube thumbnail ${session.youtube_video_id}`,

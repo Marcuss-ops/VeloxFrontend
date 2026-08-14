@@ -139,7 +139,10 @@ describe('useEditorProjectSession', () => {
         gate.state = { state: 'editable_editing', session: baseSession };
         vi.mocked(getEditorSessionByProject).mockResolvedValue({
             ...baseSession,
-            source_thumbnail_url: 'https://cdn/fresh-thumb.jpg',
+            // Extended contract: thumbnail_url is the canonical wire name
+            // and must win over the legacy source_thumbnail_url.
+            thumbnail_url: 'https://cdn/fresh-thumb.jpg',
+            source_thumbnail_url: 'https://cdn/stale-thumb.jpg',
         });
         vi.mocked(getProject).mockResolvedValue(project('ve_1', {
             width: 1280,

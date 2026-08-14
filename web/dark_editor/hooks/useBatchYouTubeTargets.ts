@@ -21,7 +21,9 @@ export type ProjectEditorTarget = GroupVideo;
 function targetFromSession(session: EditorSessionDetail, projectName?: string): ProjectEditorTarget {
   const videoID = session.youtube_video_id;
   const channelName = session.channel_id || `Account #${session.platform_account_id}`;
-  const thumbnail = session.source_thumbnail_url || '';
+  // Extended contract: thumbnail_url is the canonical wire name,
+  // source_thumbnail_url the legacy fallback.
+  const thumbnail = session.thumbnail_url || session.source_thumbnail_url || '';
   return {
     youtube_video_id: videoID,
     video_id: videoID,
@@ -29,8 +31,12 @@ function targetFromSession(session: EditorSessionDetail, projectName?: string): 
     description: '',
     thumbnail_url: thumbnail,
     thumbnail,
-    privacy_status: session.actual_privacy || session.desired_privacy || 'private',
+    // The backend resolves privacy_status as the authoritative
+    // projection (actual read-back wins, desired fallback) — prefer it
+    // over the local derivation.
+    privacy_status: session.privacy_status || session.actual_privacy || session.desired_privacy || 'private',
     actual_privacy: session.actual_privacy || undefined,
+    category_id: session.category_id,
     processing_status: 'processed',
     platform_account_id: session.platform_account_id,
     channel_name: channelName,

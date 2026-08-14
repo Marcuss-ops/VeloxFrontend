@@ -268,6 +268,13 @@ export async function setupGateMock(
                 platform_account_id: 999,
                 youtube_video_id: 'yt-shared-1',
                 velox_project_id: options.veloxProjectId,
+                // Extended session contract: thumbnail_url/category_id/
+                // privacy_status mirror the backend's authoritative
+                // projection (privacy = actual read-back, desired fallback).
+                thumbnail_url: `https://i.ytimg.com/vi/yt-shared-1/hqdefault.jpg`,
+                source_thumbnail_url: `https://i.ytimg.com/vi/yt-shared-1/hqdefault.jpg`,
+                category_id: '24',
+                privacy_status: v.desiredPrivacy ?? 'private',
                 desired_privacy: v.desiredPrivacy ?? 'private',
                 status: v.status,
                 created_at: '2024-01-01T00:00:00Z',

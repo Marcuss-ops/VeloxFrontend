@@ -19,6 +19,13 @@ export interface YouTubeEditorSessionDetail {
     youtube_video_id: string;
     velox_project_id: string;
     source_thumbnail_url?: string;
+    // Extended session contract (thumbnail_url, category_id,
+    // privacy_status) — the authoritative YouTube projection served by
+    // the backend from videos.list / the publish read-back. Mirrors
+    // EditorSessionDetail in lib/api/bff/youtube/types.ts.
+    thumbnail_url?: string;
+    category_id?: string;
+    privacy_status?: string;
     thumbnail_media_id?: string | null;
     desired_privacy: string;
     publish_at?: string | null;

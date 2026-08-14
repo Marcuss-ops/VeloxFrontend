@@ -108,7 +108,40 @@ describe('getProject routing (ve_/vx_ → project-scoped BFF)', () => {
         );
         expect(project.name).toBe('Draft');
         expect(project.type).toBe('youtube_thumbnail');
-    });  it('never hits the BFF for a non-scoped id — fails with the clear contract error', async () => {
+    });  it('uses the extended thumbnail_url as the initial canvas (source_thumbnail_url fallback)', async () => {
+    mockProjectFetch.mockResolvedValue(okResponse({ document_exists: false }));
+    mockFetch.mockResolvedValue(okResponse({
+      velox_project_id: 'vx_1000',
+      youtube_video_id: 'vid-1',
+      // Extended contract: thumbnail_url must win over the legacy field.
+      thumbnail_url: 'https://i.ytimg.com/vi/vid-1/extended.jpg',
+      source_thumbnail_url: 'https://i.ytimg.com/vi/vid-1/hqdefault.jpg',
+      draft_title: 'Draft',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }));
+
+    const project = await getProject('vx_1000');
+
+    const image = (project.canvas_json.objects as Array<{ src?: string }>).find((o) => o.src);
+    expect(image?.src).toContain('extended.jpg');
+    expect(image?.src).not.toContain('hqdefault.jpg');
+  });  it('falls back to source_thumbnail_url when thumbnail_url is absent', async () => {
+    mockProjectFetch.mockResolvedValue(okResponse({ document_exists: false }));
+    mockFetch.mockResolvedValue(okResponse({
+      velox_project_id: 'vx_1001',
+      youtube_video_id: 'vid-1',
+      source_thumbnail_url: 'https://i.ytimg.com/vi/vid-1/hqdefault.jpg',
+      draft_title: 'Draft',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    }));
+
+    const project = await getProject('vx_1001');
+
+    const image = (project.canvas_json.objects as Array<{ src?: string }>).find((o) => o.src);
+    expect(image?.src).toContain('hqdefault.jpg');
+  });  it('never hits the BFF for a non-scoped id — fails with the clear contract error', async () => {
     await expect(getProject('project_123')).rejects.toThrow(
       /not an InstaEdit-scoped project/,
     );

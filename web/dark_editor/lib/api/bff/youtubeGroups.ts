@@ -14,6 +14,8 @@ export interface GroupVideo {
   thumbnail?: string;
   privacy_status: string;
   actual_privacy?: string;
+  /** YouTube video category (extended session contract). */
+  category_id?: string;
   processing_status?: string;
   platform_account_id: number;
   channel_name: string;
