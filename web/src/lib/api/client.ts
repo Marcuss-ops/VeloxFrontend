@@ -22,6 +22,8 @@
  *     forwards /api/* to the InstaEdit BFF on localhost:8080.
  */
 
+import { withSessionRefresh } from '../session-refresh';
+
 /** Base URL prefix for all API calls. Empty string = same-origin. */
 export const API_BASE_URL: string =
   ((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '').replace(/\/+$/, '');
@@ -124,12 +126,16 @@ export async function apiFetch<T>(
     finalHeaders['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(resolveUrl(endpoint), {
+  // Wrap with session-refresh: on 401, rotate the refresh cookie and
+  // retry the request exactly once. This keeps the session alive across
+  // the 15-minute JWT access TTL without manual re-login.
+  const doFetch = () => fetch(resolveUrl(endpoint), {
     ...fetchOpts,
     method,
     headers: finalHeaders,
     credentials: 'include',
   });
+  const response = await withSessionRefresh(doFetch);
 
   if (!response.ok) {
     let message: string | undefined;

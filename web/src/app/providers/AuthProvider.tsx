@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useCallback, useMemo, useState } from 'react';
 import { authApi, type AuthUser as SessionUser } from '@/lib/api/authApi';
 import { ApiError } from '@/lib/api/client';
+import { maybeRefreshSession, SESSION_REFRESH_INTERVAL_MS } from '@/lib/session-refresh';
 
 /**
  * User shape consumed by the UI. Mirrors the subset of fields the
@@ -64,6 +65,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         void loadSession();
     }, [loadSession]);
+
+    // Heartbeat: proactively refresh the session every 10 minutes
+    // while the tab is visible, so the 15-minute JWT never expires.
+    useEffect(() => {
+        const tick = () => void maybeRefreshSession();
+        // Run immediately on mount (covers the case where the tab
+        // was backgrounded during a refresh window).
+        tick();
+        const interval = setInterval(tick, SESSION_REFRESH_INTERVAL_MS);
+        // Also refresh when the tab becomes visible after being hidden.
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') tick();
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        return () => {
+            clearInterval(interval);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
+    }, []);
 
     const value = useMemo<AuthContextValue>(() => {
         const user: AuthUser = sessionUser

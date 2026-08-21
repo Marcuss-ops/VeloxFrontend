@@ -1,4 +1,5 @@
 import { API_BASE_URL, getCookie } from './client';
+import { withSessionRefresh } from '../session-refresh';
 
 const API_V1 = '/api/v1';
 
@@ -284,13 +285,16 @@ export async function fetchJSON<T>(endpoint: string, options: RequestOptions = {
         ? (rawBody as () => BodyInit | null)()
         : rawBody;
       const body = cloneBody(resolvedBody);
-      const response = await fetch(url, {
+      // Wrap with session-refresh: on 401, rotate the refresh cookie and
+      // retry the request exactly once before falling through to retry logic.
+      const doFetch = () => fetch(url, {
         ...rest,
         body,
         signal,
         credentials: 'include',
         headers,
       });
+      const response = await withSessionRefresh(doFetch);
 
       if (!response.ok) {
         let message: string | undefined;
@@ -326,13 +330,14 @@ export async function fetchVoid(endpoint: string, options: RequestOptions = {}):
         ? (rawBody as () => BodyInit | null)()
         : rawBody;
       const body = cloneBody(resolvedBody);
-      const response = await fetch(url, {
+      const doFetch = () => fetch(url, {
         ...rest,
         body,
         signal,
         credentials: 'include',
         headers,
       });
+      const response = await withSessionRefresh(doFetch);
 
       if (!response.ok) {
         const retryAfter = parseRetryAfter(response.headers?.get?.('Retry-After'));
