@@ -54,7 +54,12 @@ export async function getProject(id: string): Promise<Project> {
     });
     if (persistedResponse.ok) {
       const document = await persistedResponse.json() as Record<string, unknown>;
-      if (document.document_exists !== false) {
+      const documentObjects = Array.isArray(document.objects) ? document.objects : [];
+      // A Velox document row can exist while still containing an empty
+      // canvas (for example after the first metadata autosave). Do not treat
+      // that placeholder as the real cover: continue to the InstaEdit
+      // session fallback, which hydrates the actual standalone media asset.
+      if (document.document_exists !== false && documentObjects.length > 0) {
         const now = new Date().toISOString();
         return {
           id,
