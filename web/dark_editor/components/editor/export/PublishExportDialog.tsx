@@ -10,6 +10,7 @@ import { MetadataSection } from './MetadataSection';
 import { TargetVideosSection } from './TargetVideosSection';
 import { VariantEditModal } from './VariantEditModal';
 import { PublishFooter } from './PublishFooter';
+import { DraftCoverPicker } from './DraftCoverPicker';
 
 /**
  * Live publish-flow UI of the export dialog (light theme). Composition root:
@@ -35,6 +36,10 @@ export function PublishExportDialog({ dialog }: { dialog: UseExportDialogReturn 
     showCoverPreview,
     setShowCoverPreview,
     snapshotStale,
+    draftCovers,
+    selectedDraftId,
+    selectDraft,
+    loadingDraftCovers,
     variantPreviews,
     isGeneratingPreviews,
     allSelectedVariantsReady,
@@ -95,6 +100,8 @@ export function PublishExportDialog({ dialog }: { dialog: UseExportDialogReturn 
                 coverPreviewUrl={coverPreviewUrl}
                 snapshotStale={snapshotStale}
               />
+
+              <DraftCoverPicker drafts={draftCovers} selectedDraftId={selectedDraftId} loading={loadingDraftCovers} onSelect={selectDraft} />
 
               <div className="h-px bg-black/[0.08]" />
 

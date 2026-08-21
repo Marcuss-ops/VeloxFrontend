@@ -5,6 +5,7 @@ import { editorReturnToUrl } from '@/lib/editor-runtime';
 
 export interface UseEditorReturnUrlReturn {
   returnUrl: string;
+  groupId?: number;
 }
 
 /**
@@ -17,10 +18,14 @@ export interface UseEditorReturnUrlReturn {
  */
 export function useEditorReturnUrl(): UseEditorReturnUrlReturn {
   const [returnUrl, setReturnUrl] = useState<string>(editorReturnToUrl);
+  const [groupId, setGroupId] = useState<number | undefined>();
 
   useEffect(() => {
     setReturnUrl(editorReturnToUrl());
+    const raw = new URLSearchParams(window.location.search).get('return_to');
+    const parsed = raw ? Number(new URL(raw, window.location.origin).searchParams.get('group')) : NaN;
+    setGroupId(Number.isInteger(parsed) && parsed > 0 ? parsed : undefined);
   }, []);
 
-  return { returnUrl };
+  return { returnUrl, groupId };
 }

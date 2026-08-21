@@ -148,6 +148,12 @@ export {
 } from './bff/upload';
 
 export {
+  listGroupThumbnailDrafts,
+  getMediaPreview,
+  type ThumbnailProjectDraft,
+} from './bff/thumbnailProjects';
+
+export {
   listSocialDestinations,
   type SocialDestination,
 } from './bff/socialDestinations';

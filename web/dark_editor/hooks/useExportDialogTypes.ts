@@ -7,6 +7,7 @@ import type {
   LocalizedMetadata,
   RenderedVariant,
 } from '@/components/editor/export/types';
+import type { ThumbnailProjectDraft } from '@/lib/api/bff';
 
 /**
  * Public surface returned by useExportDialog. Lives in its own module so the
@@ -36,6 +37,10 @@ export interface UseExportDialogReturn {
   setShowCoverPreview: Dispatch<SetStateAction<boolean>>;
   snapshot: CanvasSnapshot | null;
   snapshotStale: boolean;
+  draftCovers: Array<ThumbnailProjectDraft & { previewUrl?: string }>;
+  selectedDraftId?: string;
+  selectDraft: (draft?: ThumbnailProjectDraft & { previewUrl?: string }) => void;
+  loadingDraftCovers: boolean;
   canvasSignature: string;
   // variants
   variantPreviews: Record<string, RenderedVariant>;

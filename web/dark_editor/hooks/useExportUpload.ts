@@ -13,6 +13,7 @@ interface UseExportUploadOptions {
   variantPreviewsRef: MutableRefObject<Record<string, RenderedVariant>>;
   currentProjectId: string | undefined;
   addToast: UIState['addToast'];
+  selectedDraftMediaId?: string;
 }
 
 export interface UseExportUploadReturn {
@@ -26,7 +27,7 @@ export interface UseExportUploadReturn {
  * targets. Extracted from useExportDialog.
  */
 export function useExportUpload(opts: UseExportUploadOptions): UseExportUploadReturn {
-  const { open, targetVideos, variantPreviewsRef, currentProjectId, addToast } = opts;
+  const { open, targetVideos, variantPreviewsRef, currentProjectId, addToast, selectedDraftMediaId } = opts;
 
   const [uploadResults, setUploadResults] = useState<Record<string, { status: 'pending' | 'success' | 'error'; message?: string }>>({});
   const [isApplyingToVideos, setIsApplyingToVideos] = useState(false);
@@ -43,6 +44,19 @@ export function useExportUpload(opts: UseExportUploadOptions): UseExportUploadRe
       return;
     }
     const variants = variantPreviewsRef.current;
+    if (selectedDraftMediaId && currentProjectId && targetVideos.length === 1) {
+      setIsApplyingToVideos(true);
+      setUploadResults({ [targetVideos[0].video_id]: { status: 'pending' } });
+      try {
+        await updateEditorSessionThumbnail(currentProjectId, selectedDraftMediaId);
+        setUploadResults({ [targetVideos[0].video_id]: { status: 'success', message: 'Bozza inviata.' } });
+        addToast({ type: 'success', message: 'Bozza applicata al video.' });
+      } catch (error) {
+        setUploadResults({ [targetVideos[0].video_id]: { status: 'error', message: error instanceof Error ? error.message : 'Invio non riuscito.' } });
+        addToast({ type: 'error', message: error instanceof Error ? error.message : 'Invio non riuscito.' });
+      } finally { setIsApplyingToVideos(false); }
+      return;
+    }
     const missing = targetVideos.filter((video) => !variants[video.video_id]);
     if (missing.length > 0) {
       addToast({ type: 'warning', message: 'Attendi la generazione delle varianti per lingua.' });
@@ -74,7 +88,7 @@ export function useExportUpload(opts: UseExportUploadOptions): UseExportUploadRe
       type: failed === results.length ? 'error' : failed > 0 ? 'warning' : 'success',
       message: failed > 0 ? `${results.length - failed} copertine inviate, ${failed} con errore.` : `${results.length} copertina/e inviata/e al video selezionato.`,
     });
-  }, [addToast, currentProjectId, targetVideos, variantPreviewsRef]);
+  }, [addToast, currentProjectId, selectedDraftMediaId, targetVideos, variantPreviewsRef]);
 
   return { uploadResults, isApplyingToVideos, handleApplyToSelectedVideos };
 }

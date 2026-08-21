@@ -24,6 +24,9 @@ import { useExportMetadata } from '@/hooks/useExportMetadata';
 import { useExportVariants } from '@/hooks/useExportVariants';
 import { useExportUpload } from '@/hooks/useExportUpload';
 import { useExportVariantEdit } from '@/hooks/useExportVariantEdit';
+import { useEditorReturnUrl } from '@/hooks/useEditorReturnUrl';
+import { getMediaPreview, listGroupThumbnailDrafts, type ThumbnailProjectDraft } from '@/lib/api/bff';
+import { getEditorSessionByProject } from '@/lib/api/bff';
 
 export type { UseExportDialogReturn } from './useExportDialogTypes';
 
@@ -42,6 +45,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
   const { selectedIds, updateObject } = useEditorStore();
   const objects = useObjectsArray();
   const { currentProject } = useProjectStore();
+  const { groupId } = useEditorReturnUrl();
 
   const [selectedOnly, setSelectedOnly] = useState(false);
 
@@ -54,6 +58,9 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
   const [snapshot, setSnapshot] = useState<CanvasSnapshot | null>(null);
   const snapshotRef = useRef<CanvasSnapshot | null>(null);
   const [snapshotStale, setSnapshotStale] = useState(false);
+  const [draftCovers, setDraftCovers] = useState<Array<ThumbnailProjectDraft & { previewUrl?: string }>>([]);
+  const [selectedDraftId, setSelectedDraftId] = useState<string>();
+  const [loadingDraftCovers, setLoadingDraftCovers] = useState(false);
   const [variantPreviews, setVariantPreviews] = useState<Record<string, RenderedVariant>>({});
   const variantPreviewsRef = useRef<Record<string, RenderedVariant>>({});
   const snapshotVersionRef = useRef(0);
@@ -94,6 +101,33 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     currentProjectId: isEditorSession ? currentProject?.id : undefined,
     currentProjectName: currentProject?.name,
   });
+
+  const selectDraft = useCallback((draft?: ThumbnailProjectDraft & { previewUrl?: string }) => {
+    setSelectedDraftId(draft?.id);
+    if (draft?.previewUrl) setCoverPreviewUrl(draft.previewUrl);
+  }, []);
+
+  useEffect(() => {
+    if (!open || !isEditorSession || !groupId || !currentProject?.id) {
+      setDraftCovers([]);
+      setSelectedDraftId(undefined);
+      return;
+    }
+    let cancelled = false;
+    setLoadingDraftCovers(true);
+    void getEditorSessionByProject(currentProject.id)
+      .then((session) => listGroupThumbnailDrafts(session.workspace_id, groupId))
+      .then(async (drafts) => {
+        const hydrated = await Promise.all(drafts.filter((draft) => draft.preview_media_id).map(async (draft) => ({
+          ...draft,
+          previewUrl: draft.preview_media_id ? await getMediaPreview(draft.preview_media_id) : undefined,
+        })));
+        if (!cancelled) setDraftCovers(hydrated);
+      })
+      .catch(() => { if (!cancelled) setDraftCovers([]); })
+      .finally(() => { if (!cancelled) setLoadingDraftCovers(false); });
+    return () => { cancelled = true; };
+  }, [currentProject?.id, groupId, isEditorSession, open]);
   const sortedVideos = visiblePrivateVideos;
   const canvasSignature = useMemo(
     () => canvasStateSignature(objects, EXPORT_WIDTH, EXPORT_HEIGHT),
@@ -173,6 +207,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     variantPreviewsRef,
     currentProjectId: currentProject?.id,
     addToast,
+    selectedDraftMediaId: draftCovers.find((draft) => draft.id === selectedDraftId)?.preview_media_id || undefined,
   });
 
   const variantEdit = useExportVariantEdit({
@@ -315,6 +350,10 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     setShowCoverPreview,
     snapshot,
     snapshotStale,
+    draftCovers,
+    selectedDraftId,
+    selectDraft,
+    loadingDraftCovers,
     canvasSignature,
     variantPreviews,
     isGeneratingPreviews: variants.isGeneratingPreviews,
