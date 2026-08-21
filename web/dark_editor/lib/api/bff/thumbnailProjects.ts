@@ -15,9 +15,18 @@ interface MediaDetail { preview_url?: string; filename?: string }
 
 export async function listGroupThumbnailDrafts(workspaceId: number, groupId: number): Promise<ThumbnailProjectDraft[]> {
   const response = await bffFetch<ThumbnailProjectListResponse>(`/api/v1/thumbnail-projects?workspace_id=${workspaceId}`);
-  return response.items
+  const drafts = response.items
     .filter((project) => project.status !== 'archived' && project.status !== 'deleted')
     .filter((project) => project.description?.includes(`[instaedit-group:${groupId}]`));
+  await Promise.all(drafts.filter((project) => !project.preview_media_id).map(async (project) => {
+    try {
+      const assets = await bffFetch<{ items?: Array<{ media_id?: string }> }>(`/api/v1/thumbnail-projects/${encodeURIComponent(project.id)}/assets?workspace_id=${workspaceId}`);
+      project.preview_media_id = assets.items?.find((asset) => asset.media_id)?.media_id || null;
+    } catch {
+      // Keep the draft selectable even when its preview is not available.
+    }
+  }));
+  return drafts;
 }
 
 export async function getMediaPreview(mediaId: string): Promise<string> {
