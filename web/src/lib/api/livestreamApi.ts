@@ -1,197 +1,142 @@
-import { fetchJSON, fetchVoid, ApiError } from './core';
+import { fetchJSON, fetchVoid } from './core';
 
+export type LivestreamState =
+  | 'draft'
+  | 'preparing'
+  | 'ready'
+  | 'scheduled'
+  | 'starting'
+  | 'waiting_for_ingest'
+  | 'testing'
+  | 'live'
+  | 'degraded'
+  | 'reconnecting'
+  | 'stopping'
+  | 'completed'
+  | 'failed'
+  | 'cancelled';
+
+export type LivestreamPrivacy = 'private' | 'unlisted' | 'public';
+export type LivestreamPlaybackMode = 'loop_continuous' | 'play_once';
+export type LivestreamScheduleType = 'manual' | 'now' | 'scheduled' | 'recurring';
 export type LivestreamLatencyPreference = 'normal' | 'low' | 'ultraLow';
-export type LivestreamStatus = 'created' | 'testing' | 'live' | 'complete' | 'revoked';
-export type LivestreamHealthStatus = 'good' | 'ok' | 'bad' | 'error';
-export type LivestreamProtocol = 'rtmp' | 'hls';
 
-export interface LivestreamHealth {
-  status: LivestreamHealthStatus;
-  bitrate: number;
-  framerate: number;
-  resolution: string;
-  packets_lost?: number;
-  message?: string;
-}
-
+/** Wire shape returned by InstaeditLogin/pkg/api/livestreams_types.go. */
 export interface Livestream {
   id: string;
-  name: string;
-  thumbnail?: string;
-  platform: 'youtube' | 'twitch' | 'facebook' | 'custom';
-  status: LivestreamStatus;
-  health?: LivestreamHealth;
-  stream_url: string;
-  stream_key: string;
-  description?: string;
-  is_for_kids: boolean;
-  latency_preference: LivestreamLatencyPreference;
-  protocol: LivestreamProtocol;
+  workspace_id: number;
+  platform_account_id: number;
+  channel_name: string;
+  title: string;
+  description: string;
+  privacy_status: LivestreamPrivacy;
+  playback_mode: LivestreamPlaybackMode;
+  schedule_type: LivestreamScheduleType;
+  scheduled_start_at?: string;
+  desired_state: LivestreamState;
+  actual_state: LivestreamState;
+  resolution: string;
+  frame_rate: number;
+  auto_restart: boolean;
+  category: string;
+  made_for_kids: boolean;
+  language: string;
+  thumbnail_media_id?: string;
+  dvr_enabled: boolean;
   auto_start: boolean;
   auto_stop: boolean;
-  video_bitrate: number;
-  audio_bitrate: number;
-  stream_type: 'video' | 'image';
-  video_order: 'loop' | 'shuffle';
-  audio_order: 'loop' | 'shuffle';
-  main_channel_volume: number;
-  secondary_channel_volume: number;
-  scheduled_start_time?: string;
-  scheduled_end_time?: string;
-  viewers: number;
-  max_viewers: number;
-  duration: number;
+  latency_preference: LivestreamLatencyPreference;
   created_at: string;
   updated_at: string;
-  started_at?: string;
-  ended_at?: string;
 }
 
+/** Body accepted by POST /api/v1/livestreams. */
 export interface LivestreamConfig {
-  name: string;
-  platform: 'youtube' | 'twitch' | 'facebook' | 'custom';
-  stream_key: string;
-  stream_url: string;
+  workspace_id: number;
+  platform_account_id: number;
+  title: string;
   description?: string;
-  is_for_kids?: boolean;
-  video_bitrate?: number;
-  audio_bitrate?: number;
-  stream_type?: 'video' | 'image';
-  video_order?: 'loop' | 'shuffle';
-  audio_order?: 'loop' | 'shuffle';
-  main_channel_volume?: number;
-  secondary_channel_volume?: number;
-  latency_preference?: LivestreamLatencyPreference;
-  protocol?: LivestreamProtocol;
+  privacy_status: LivestreamPrivacy;
+  playback_mode: LivestreamPlaybackMode;
+  schedule_type: LivestreamScheduleType;
+  scheduled_start_at?: string;
+  resolution?: string;
+  frame_rate?: number;
+  auto_restart?: boolean;
+  category?: string;
+  made_for_kids?: boolean;
+  language?: string;
+  thumbnail_media_id?: string;
+  dvr_enabled?: boolean;
   auto_start?: boolean;
   auto_stop?: boolean;
-  scheduled_start_time?: string;
-  scheduled_end_time?: string;
+  latency_preference?: LivestreamLatencyPreference;
 }
 
-export interface LivestreamStatusResponse {
-  active: boolean;
-  status: LivestreamStatus;
-  duration?: string;
-  current_video?: string;
-  viewers?: number;
-  health?: LivestreamHealth;
+export interface LivestreamPatch extends Partial<Omit<LivestreamConfig, 'workspace_id' | 'platform_account_id'>> {
+  /** Empty string clears the scheduled start time or thumbnail. */
+  scheduled_start_at?: string;
+  thumbnail_media_id?: string;
+}
+
+export interface LivestreamChannel {
+  platform_account_id: number;
+  username: string;
+  platform_user_id: string;
+  account_state: string;
+  oauth_ready: boolean;
+  live_enabled: boolean;
+  last_verified_at?: string;
+  active_lives: number;
+}
+
+export interface LivestreamListResponse {
+  items: Livestream[];
+  next_cursor?: string;
+  has_more: boolean;
+}
+
+export interface LivestreamChannelsResponse {
+  channels: LivestreamChannel[];
+}
+
+export interface LivestreamListOptions {
+  cursor?: string;
+  limit?: number;
 }
 
 export const livestreamApi = {
-  /** List all livestreams */
-  list: () =>
-    fetchJSON<{ streams: Livestream[]; total: number }>('/api/v1/livestreams'),
-
-  /** Get a specific livestream */
-  get: (streamId: string) =>
-    fetchJSON<{ stream: Livestream }>(`/api/v1/livestreams/${streamId}`),
-
-  /** Create a new livestream */
-  create: (config: LivestreamConfig) =>
-    fetchJSON<{ ok: boolean; stream: Livestream }>('/api/v1/livestreams', {
-      method: 'POST',
-      body: JSON.stringify(config),
-    }),
-
-  /** Update a livestream */
-  update: (streamId: string, config: Partial<LivestreamConfig>) =>
-    fetchJSON<{ ok: boolean; stream: Livestream }>(`/api/v1/livestreams/${streamId}`, {
-      method: 'PUT',
-      body: JSON.stringify(config),
-    }),
-
-  /** Delete a livestream */
-  delete: (streamId: string) =>
-    fetchVoid(`/api/v1/livestreams/${streamId}`, { method: 'DELETE' }),
-
-  /** Get livestream status */
-  status: (streamId?: string) =>
-    fetchJSON<LivestreamStatusResponse>(`/api/v1/livestreams/status${streamId ? `?stream_id=${streamId}` : ''}`),
-
-  /** Get livestream health */
-  health: (streamId: string) =>
-    fetchJSON<{ health: LivestreamHealth }>(`/api/v1/livestreams/${streamId}/health`),
-
-  // ============================================
-  // Lifecycle Transitions
-  // ============================================
-
-  /** Start testing (preview mode) */
-  startTesting: (streamId: string) =>
-    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestreams/${streamId}/testing`, {
-      method: 'POST',
-    }),
-
-  /** Go live (from testing) */
-  goLive: (streamId: string) =>
-    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestreams/${streamId}/live`, {
-      method: 'POST',
-    }),
-
-  /** End stream (complete) */
-  endStream: (streamId: string) =>
-    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestreams/${streamId}/complete`, {
-      method: 'POST',
-    }),
-
-  /** Generic transition (testing, live, complete) */
-  transition: (streamId: string, action: 'testing' | 'live' | 'complete') =>
-    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestreams/${streamId}/transition`, {
-      method: 'POST',
-      body: JSON.stringify({ action }),
-    }),
-
-  // ============================================
-  // Video Management
-  // ============================================
-
-  /** Add video to livestream playlist */
-  addVideo: (streamId: string, videoData: { file?: File; drive_id?: string; duration?: number }) => {
-    if (videoData.file) {
-      const formData = new FormData();
-      formData.append('video', videoData.file);
-      if (videoData.duration) formData.append('duration', String(videoData.duration));
-
-      return fetch(`/api/v1/livestreams/${streamId}/videos`, {
-        method: 'POST',
-        body: formData,
-      }).then(res => {
-        if (!res.ok) throw new ApiError(res.status, res.statusText);
-        return res.json() as Promise<{ ok: boolean; video_id: string }>;
-      });
-    }
-
-    return fetchJSON<{ ok: boolean; video_id: string }>(`/api/v1/livestreams/${streamId}/videos`, {
-      method: 'POST',
-      body: JSON.stringify({ drive_id: videoData.drive_id, duration: videoData.duration }),
-    });
+  /** GET /api/v1/livestreams?workspace_id=N */
+  list: (workspaceId: number, options: LivestreamListOptions = {}) => {
+    const params = new URLSearchParams({ workspace_id: String(workspaceId) });
+    if (options.cursor) params.set('cursor', options.cursor);
+    if (options.limit !== undefined) params.set('limit', String(options.limit));
+    return fetchJSON<LivestreamListResponse>(`/api/v1/livestreams?${params.toString()}`);
   },
 
-  /** Remove video from playlist */
-  removeVideo: (streamId: string, videoId: string) =>
-    fetchVoid(`/api/v1/livestreams/${streamId}/videos/${videoId}`, { method: 'DELETE' }),
+  /** GET /api/v1/livestreams/channels?workspace_id=N */
+  listChannels: (workspaceId: number) =>
+    fetchJSON<LivestreamChannelsResponse>(`/api/v1/livestreams/channels?workspace_id=${encodeURIComponent(String(workspaceId))}`),
 
-  /** Reorder playlist */
-  reorderPlaylist: (streamId: string, videoIds: string[]) =>
-    fetchJSON<{ ok: boolean }>(`/api/v1/livestreams/${streamId}/playlist/reorder`, {
+  /** GET /api/v1/livestreams/{id} */
+  get: (streamId: string) =>
+    fetchJSON<Livestream>(`/api/v1/livestreams/${encodeURIComponent(streamId)}`),
+
+  /** POST /api/v1/livestreams */
+  create: (config: LivestreamConfig) =>
+    fetchJSON<Livestream>('/api/v1/livestreams', {
       method: 'POST',
-      body: JSON.stringify({ video_ids: videoIds }),
+      body: JSON.stringify(config),
     }),
 
-  /** Get playlist */
-  getPlaylist: (streamId: string) =>
-    fetchJSON<{ videos: Array<{ id: string; name: string; duration: number; thumbnail?: string }> }>(`/api/v1/livestreams/${streamId}/playlist`),
+  /** PATCH /api/v1/livestreams/{id} */
+  update: (streamId: string, config: LivestreamPatch) =>
+    fetchJSON<Livestream>(`/api/v1/livestreams/${encodeURIComponent(streamId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(config),
+    }),
 
-  // ============================================
-  // Statistics & Monitoring
-  // ============================================
-
-  /** Get stream statistics */
-  getStats: (streamId: string) =>
-    fetchJSON<{ viewers: number; max_viewers: number; duration: number; started_at?: string }>(`/api/v1/livestreams/${streamId}/stats`),
-
-  /** Get stream logs */
-  getLogs: (streamId: string, lines = 100) =>
-    fetchJSON<{ logs: string[] }>(`/api/v1/livestreams/${streamId}/logs?lines=${lines}`),
+  /** DELETE /api/v1/livestreams/{id} */
+  delete: (streamId: string) =>
+    fetchVoid(`/api/v1/livestreams/${encodeURIComponent(streamId)}`, { method: 'DELETE' }),
 };

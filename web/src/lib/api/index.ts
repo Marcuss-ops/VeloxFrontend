@@ -77,7 +77,20 @@ export { utilApi } from './utilApi';
 export { queueApi } from './queueApi';
 
 export { livestreamApi } from './livestreamApi';
-export type { Livestream, LivestreamConfig, LivestreamStatus, LivestreamHealth, LivestreamProtocol, LivestreamLatencyPreference, LivestreamHealthStatus, LivestreamStatusResponse } from './livestreamApi';
+export type {
+  Livestream,
+  LivestreamConfig,
+  LivestreamPatch,
+  LivestreamState,
+  LivestreamPrivacy,
+  LivestreamPlaybackMode,
+  LivestreamScheduleType,
+  LivestreamLatencyPreference,
+  LivestreamChannel,
+  LivestreamListResponse,
+  LivestreamChannelsResponse,
+  LivestreamListOptions,
+} from './livestreamApi';
 
 export { driveLinksApi } from './driveLinksApi';
 export type { DriveLink } from './driveLinksApi';
