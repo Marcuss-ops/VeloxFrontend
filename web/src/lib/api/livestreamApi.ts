@@ -81,37 +81,37 @@ export interface LivestreamStatusResponse {
 export const livestreamApi = {
   /** List all livestreams */
   list: () =>
-    fetchJSON<{ streams: Livestream[]; total: number }>('/api/v1/livestream'),
+    fetchJSON<{ streams: Livestream[]; total: number }>('/api/v1/livestreams'),
 
   /** Get a specific livestream */
   get: (streamId: string) =>
-    fetchJSON<{ stream: Livestream }>(`/api/v1/livestream/${streamId}`),
+    fetchJSON<{ stream: Livestream }>(`/api/v1/livestreams/${streamId}`),
 
   /** Create a new livestream */
   create: (config: LivestreamConfig) =>
-    fetchJSON<{ ok: boolean; stream: Livestream }>('/api/v1/livestream', {
+    fetchJSON<{ ok: boolean; stream: Livestream }>('/api/v1/livestreams', {
       method: 'POST',
       body: JSON.stringify(config),
     }),
 
   /** Update a livestream */
   update: (streamId: string, config: Partial<LivestreamConfig>) =>
-    fetchJSON<{ ok: boolean; stream: Livestream }>(`/api/v1/livestream/${streamId}`, {
+    fetchJSON<{ ok: boolean; stream: Livestream }>(`/api/v1/livestreams/${streamId}`, {
       method: 'PUT',
       body: JSON.stringify(config),
     }),
 
   /** Delete a livestream */
   delete: (streamId: string) =>
-    fetchVoid(`/api/v1/livestream/${streamId}`, { method: 'DELETE' }),
+    fetchVoid(`/api/v1/livestreams/${streamId}`, { method: 'DELETE' }),
 
   /** Get livestream status */
   status: (streamId?: string) =>
-    fetchJSON<LivestreamStatusResponse>(`/api/v1/livestream/status${streamId ? `?stream_id=${streamId}` : ''}`),
+    fetchJSON<LivestreamStatusResponse>(`/api/v1/livestreams/status${streamId ? `?stream_id=${streamId}` : ''}`),
 
   /** Get livestream health */
   health: (streamId: string) =>
-    fetchJSON<{ health: LivestreamHealth }>(`/api/v1/livestream/${streamId}/health`),
+    fetchJSON<{ health: LivestreamHealth }>(`/api/v1/livestreams/${streamId}/health`),
 
   // ============================================
   // Lifecycle Transitions
@@ -119,25 +119,25 @@ export const livestreamApi = {
 
   /** Start testing (preview mode) */
   startTesting: (streamId: string) =>
-    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestream/${streamId}/testing`, {
+    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestreams/${streamId}/testing`, {
       method: 'POST',
     }),
 
   /** Go live (from testing) */
   goLive: (streamId: string) =>
-    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestream/${streamId}/live`, {
+    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestreams/${streamId}/live`, {
       method: 'POST',
     }),
 
   /** End stream (complete) */
   endStream: (streamId: string) =>
-    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestream/${streamId}/complete`, {
+    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestreams/${streamId}/complete`, {
       method: 'POST',
     }),
 
   /** Generic transition (testing, live, complete) */
   transition: (streamId: string, action: 'testing' | 'live' | 'complete') =>
-    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestream/${streamId}/transition`, {
+    fetchJSON<{ ok: boolean; status: LivestreamStatus }>(`/api/v1/livestreams/${streamId}/transition`, {
       method: 'POST',
       body: JSON.stringify({ action }),
     }),
@@ -153,7 +153,7 @@ export const livestreamApi = {
       formData.append('video', videoData.file);
       if (videoData.duration) formData.append('duration', String(videoData.duration));
 
-      return fetch(`/api/v1/livestream/${streamId}/videos`, {
+      return fetch(`/api/v1/livestreams/${streamId}/videos`, {
         method: 'POST',
         body: formData,
       }).then(res => {
@@ -162,7 +162,7 @@ export const livestreamApi = {
       });
     }
 
-    return fetchJSON<{ ok: boolean; video_id: string }>(`/api/v1/livestream/${streamId}/videos`, {
+    return fetchJSON<{ ok: boolean; video_id: string }>(`/api/v1/livestreams/${streamId}/videos`, {
       method: 'POST',
       body: JSON.stringify({ drive_id: videoData.drive_id, duration: videoData.duration }),
     });
@@ -170,18 +170,18 @@ export const livestreamApi = {
 
   /** Remove video from playlist */
   removeVideo: (streamId: string, videoId: string) =>
-    fetchVoid(`/api/v1/livestream/${streamId}/videos/${videoId}`, { method: 'DELETE' }),
+    fetchVoid(`/api/v1/livestreams/${streamId}/videos/${videoId}`, { method: 'DELETE' }),
 
   /** Reorder playlist */
   reorderPlaylist: (streamId: string, videoIds: string[]) =>
-    fetchJSON<{ ok: boolean }>(`/api/v1/livestream/${streamId}/playlist/reorder`, {
+    fetchJSON<{ ok: boolean }>(`/api/v1/livestreams/${streamId}/playlist/reorder`, {
       method: 'POST',
       body: JSON.stringify({ video_ids: videoIds }),
     }),
 
   /** Get playlist */
   getPlaylist: (streamId: string) =>
-    fetchJSON<{ videos: Array<{ id: string; name: string; duration: number; thumbnail?: string }> }>(`/api/v1/livestream/${streamId}/playlist`),
+    fetchJSON<{ videos: Array<{ id: string; name: string; duration: number; thumbnail?: string }> }>(`/api/v1/livestreams/${streamId}/playlist`),
 
   // ============================================
   // Statistics & Monitoring
@@ -189,9 +189,9 @@ export const livestreamApi = {
 
   /** Get stream statistics */
   getStats: (streamId: string) =>
-    fetchJSON<{ viewers: number; max_viewers: number; duration: number; started_at?: string }>(`/api/v1/livestream/${streamId}/stats`),
+    fetchJSON<{ viewers: number; max_viewers: number; duration: number; started_at?: string }>(`/api/v1/livestreams/${streamId}/stats`),
 
   /** Get stream logs */
   getLogs: (streamId: string, lines = 100) =>
-    fetchJSON<{ logs: string[] }>(`/api/v1/livestream/${streamId}/logs?lines=${lines}`),
+    fetchJSON<{ logs: string[] }>(`/api/v1/livestreams/${streamId}/logs?lines=${lines}`),
 };
