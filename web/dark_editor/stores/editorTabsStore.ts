@@ -27,7 +27,11 @@ export const useEditorTabsStore = create<EditorTabsState>((set, get) => ({
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const tabs = raw ? JSON.parse(raw) as EditorTab[] : [];
-      if (Array.isArray(tabs)) set({ tabs: tabs.filter((tab) => tab?.id && tab?.name) });
+      if (Array.isArray(tabs)) {
+        const unique = new Map<string, EditorTab>();
+        tabs.filter((tab) => tab?.id && tab?.name).forEach((tab) => unique.set(tab.id, tab));
+        set({ tabs: Array.from(unique.values()) });
+      }
     } catch { /* ignore corrupt browser state */ }
   },
   openTab: ({ id, name }) => {
