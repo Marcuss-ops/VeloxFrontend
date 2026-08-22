@@ -135,7 +135,11 @@ export function useEditorProjectSession(projectId: string): UseEditorProjectSess
       loadProject();
     } else if (sessionGate.state === 'not_found' || sessionGate.state === 'unauthorized') {
       setLoading(false);
-      setError(sessionGate.state === 'unauthorized' ? 'Authentication required' : 'Editor project context not available');
+      setError(
+        sessionGate.state === 'unauthorized'
+          ? 'Your InstaEdit session has expired. Reopen this cover from InstaEdit to create a fresh editor link.'
+          : 'This editor link has expired or the project was removed. Reopen the cover from InstaEdit to continue.',
+      );
     } else if (sessionGate.state === 'error') {
       setLoading(false);
       setError(sessionErrorMessage ?? 'Failed to validate editor session');
