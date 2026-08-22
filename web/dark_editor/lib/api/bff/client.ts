@@ -53,6 +53,10 @@ export async function bffFetch<T>(
   const url = typeof window === 'undefined' ? rawEndpoint : editorRuntimePath(rawEndpoint);
   const projectMatch = endpoint.match(/\/by-project\/([^/?]+)/);
   const projectId = projectMatch ? decodeURIComponent(projectMatch[1]) : undefined;
+  // Group catalogs and media previews do not contain a `by-project` segment,
+  // but they still run inside the same editor launch session. Resolve the
+  // current project from the editor URL when no explicit project id exists;
+  // otherwise anonymous editor tabs receive a 401 for video/cover previews.
   const authorization = typeof window === 'undefined'
     ? {}
     : await editorAuthorizationHeaders(projectId);
