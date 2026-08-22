@@ -45,3 +45,12 @@
 - [x] Mostrare il comportamento sicuro per clipboard vuoto o incompatibile.
 - [x] Aggiungere test unitari per serializzazione, ID, ordine e versione.
 - [x] Rendere il clipboard disponibile tra due copertine tramite storage browser.
+
+## Pubblicazione copertine in bozza
+
+- [x] Quando la copertina arriva da un gruppo, caricare i video YouTube privati autorizzati del gruppo.
+- [x] Mostrare i video privati con anteprima, canale e selezione multipla.
+- [x] Permettere seleziona tutti, deseleziona tutti e ultimo video per canale.
+- [x] Applicare la copertina direttamente ai video selezionati tramite l'endpoint InstaEdit autorizzato.
+- [x] Eliminare dal dialogo i comandi di esportazione PNG e download di tutte le lingue.
+- [ ] Aggiungere un riepilogo persistente nella pagina Copertine dopo l'applicazione multipla.

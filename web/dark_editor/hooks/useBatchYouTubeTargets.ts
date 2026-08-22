@@ -3,18 +3,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { EditorSessionDetail } from '@/lib/api/bff/youtube';
 import type { GroupVideo } from '@/lib/api/bff/youtubeGroups';
+import { listGroupPrivateVideos } from '@/lib/api/bff/youtubeGroups';
 import { getEditorSessionByProject } from '@/lib/api/bff';
 
 interface UseBatchYouTubeTargetsOptions {
   enabled: boolean;
   currentProjectId?: string;
   currentProjectName?: string;
+  groupId?: number;
 }
 
 /**
- * The editor receives one already-authorized target from InstaEdit.
- * Groups, channel catalogs, and group-channel membership are deliberately
- * absent from this state machine; those domains remain InstaEdit-owned.
+ * Draft covers opened from a group receive the group's private-video catalog
+ * from InstaEdit. Without a group handoff, keep the single-session fallback.
  */
 export type ProjectEditorTarget = GroupVideo;
 
@@ -65,40 +66,45 @@ export function useBatchYouTubeTargets({
   enabled,
   currentProjectId,
   currentProjectName,
+  groupId,
 }: UseBatchYouTubeTargetsOptions) {
-  const [target, setTarget] = useState<ProjectEditorTarget | null>(null);
+  const [targets, setTargets] = useState<ProjectEditorTarget[]>([]);
   const [selectedVideoIds, setSelectedVideoIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
-  const videos = useMemo(() => target ? [target] : [], [target]);
-  const selectedAccountId: number | 'all' = target?.platform_account_id ?? 'all';
+  const videos = targets;
+  const selectedAccountId: number | 'all' = 'all';
   const accounts = useMemo(
-    () => target ? [{ id: target.platform_account_id, name: target.channel_name }] : [],
-    [target],
+    () => Array.from(new Map(targets.map((video) => [video.platform_account_id, { id: video.platform_account_id, name: video.channel_name }])).values()),
+    [targets],
   );
 
   const resetSelection = useCallback(() => {
-    setSelectedVideoIds(target ? [target.video_id] : []);
-  }, [target]);
+    setSelectedVideoIds((targets[0] ? [targets[0].video_id] : []));
+  }, [targets]);
 
   const selectAllVisible = useCallback(() => {
-    setSelectedVideoIds(target ? [target.video_id] : []);
-  }, [target]);
+    setSelectedVideoIds(targets.map((video) => video.video_id));
+  }, [targets]);
 
   const deselectAll = useCallback(() => setSelectedVideoIds([]), []);
 
   const selectLatest = useCallback(() => {
-    setSelectedVideoIds(target ? [target.video_id] : []);
-  }, [target]);
+    const latest = Array.from(new Map(targets.map((video) => [video.platform_account_id, video])).values());
+    setSelectedVideoIds(latest.map((video) => video.video_id));
+  }, [targets]);
 
   const toggleVideo = useCallback((video: ProjectEditorTarget) => {
-    setSelectedVideoIds((current) => current.includes(video.video_id) ? [] : [video.video_id]);
+    setSelectedVideoIds((current) => current.includes(video.video_id)
+      ? current.filter((id) => id !== video.video_id)
+      : [...current, video.video_id]);
   }, []);
 
   useEffect(() => {
     if (!enabled || !currentProjectId) {
-      setTarget(null);
+      setTargets([]);
       setSelectedVideoIds([]);
       setLoading(false);
       return;
@@ -107,19 +113,27 @@ export function useBatchYouTubeTargets({
     const controller = new AbortController();
     setLoading(true);
     setError(null);
+    setWarnings([]);
     // Use the authenticated BFF client: the plain fetch used here carried
     // no editor bearer header, so the backend rejected the session lookup
     // with 401 and the target list never resolved.
-    void getEditorSessionByProject(currentProjectId)
-      .then((session) => {
+    const sessionPromise = getEditorSessionByProject(currentProjectId);
+    const videosPromise = groupId ? listGroupPrivateVideos(groupId) : Promise.resolve(null);
+    void Promise.all([sessionPromise, videosPromise])
+      .then(([session, groupResponse]) => {
         if (controller.signal.aborted) return;
         const nextTarget = targetFromSession(session, currentProjectName);
-        setTarget(nextTarget);
+        const groupTargets = groupResponse?.videos || [];
+        const nextTargets = groupTargets.length > 0
+          ? (groupTargets.some((video) => video.video_id === nextTarget.video_id) ? groupTargets : [nextTarget, ...groupTargets])
+          : [nextTarget];
+        setTargets(nextTargets);
         setSelectedVideoIds([nextTarget.video_id]);
+        setWarnings(groupResponse?.warnings || []);
       })
       .catch((reason: unknown) => {
         if (controller.signal.aborted) return;
-        setTarget(null);
+        setTargets([]);
         setSelectedVideoIds([]);
         setError(reason instanceof Error ? reason.message : 'Editor project context unavailable');
       })
@@ -128,7 +142,7 @@ export function useBatchYouTubeTargets({
       });
 
     return () => controller.abort();
-  }, [currentProjectId, currentProjectName, enabled]);
+  }, [currentProjectId, currentProjectName, enabled, groupId]);
 
   return {
     accounts,
@@ -149,6 +163,6 @@ export function useBatchYouTubeTargets({
     loadingVideos: loading,
     loading,
     error,
-    warnings: [],
+    warnings,
   };
 }

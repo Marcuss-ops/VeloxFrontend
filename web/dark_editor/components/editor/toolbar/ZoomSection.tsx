@@ -1,25 +1,25 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore } from '@/stores/editorStore';
 import {
   Grid3x3,
   Magnet,
-  ZoomIn,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { DockItem } from './DockItem';
 
 /**
  * ZoomSection — view controls of the toolbar dock: grid toggle, snap toggle
- * and the zoom indicator/step. Undo/redo intentionally use the keyboard
+ * and fit-to-screen. Undo/redo intentionally use the keyboard
  * shortcuts Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z instead of dock buttons.
  * Extracted from
  * ToolbarDock.tsx.
  */
 export function ZoomSection() {
   const {
-    zoom,
     setZoom,
   } = useEditorStore();
   const {
@@ -28,6 +28,28 @@ export function ZoomSection() {
     toggleGrid,
     toggleSnapToGrid,
   } = useUIStore();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    syncFullscreen();
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+
+  const handleFitToScreen = async () => {
+    setZoom(1);
+    useEditorStore.getState().setOffset(0, 0);
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {
+      // Some embedded browsers deny fullscreen; the fit/reset still applies.
+    }
+  };
 
   return (
     <div className="flex items-center gap-0.5 rounded-xl bg-white p-1 ring-1 ring-black/[0.05] dark:bg-[#242832] dark:ring-white/10">
@@ -51,10 +73,12 @@ export function ZoomSection() {
         active={snapToGrid}
       />
       <DockItem
-        icon={<ZoomIn className="h-[18px] w-[18px]" strokeWidth={1.8} />}
-        label={`${Math.round(zoom * 100)}%`}
-        onClick={() => setZoom(zoom >= 1.5 ? 1 : Math.min(5, zoom * 1.25))}
-        active={zoom !== 1}
+        icon={isFullscreen
+          ? <Minimize2 className="h-[18px] w-[18px]" strokeWidth={1.8} />
+          : <Maximize2 className="h-[18px] w-[18px]" strokeWidth={1.8} />}
+        label={isFullscreen ? 'Esci schermo intero' : 'Copertina a schermo intero'}
+        onClick={() => void handleFitToScreen()}
+        active={isFullscreen}
       />
     </div>
   );

@@ -127,6 +127,14 @@ body {
   background: #f7f7f5;
 }
 
+/* The fit-to-screen dock action uses browser fullscreen. Keep the cover
+   maximized without cropping its 16:9 document while the toolbar remains
+   reachable at the bottom. */
+.editor-app:fullscreen .editor-canvas {
+  width: min(calc(100vw - 3rem), calc((100vh - 3rem) * 16 / 9));
+  max-width: none;
+}
+
 html.dark,
 html.dark body {
   background: #111318;

@@ -65,9 +65,6 @@ export function PublishExportDialog({ dialog }: { dialog: UseExportDialogReturn 
     youtubeTargetError,
     youtubeTargetWarnings,
     targetVideos,
-    isExporting,
-    handleExport,
-    handleDownloadAllLanguages,
     handleApplyToSelectedVideos,
   } = dialog;
 
@@ -151,15 +148,12 @@ export function PublishExportDialog({ dialog }: { dialog: UseExportDialogReturn 
 
         <PublishFooter
           handleClose={handleClose}
-          handleDownloadAllLanguages={handleDownloadAllLanguages}
           isGeneratingPreviews={isGeneratingPreviews}
           isApplyingToVideos={isApplyingToVideos}
-          variantPreviews={variantPreviews}
           targetVideos={targetVideos}
           handleApplyToSelectedVideos={handleApplyToSelectedVideos}
           allSelectedVariantsReady={allSelectedVariantsReady}
-          handleExport={handleExport}
-          isExporting={isExporting}
+          selectedDraftId={selectedDraftId}
         />
       </DialogContent>
     </Dialog>

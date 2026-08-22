@@ -100,6 +100,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     enabled: open,
     currentProjectId: isEditorSession ? currentProject?.id : undefined,
     currentProjectName: currentProject?.name,
+    groupId,
   });
 
   const selectDraft = useCallback((draft?: ThumbnailProjectDraft & { previewUrl?: string }) => {
@@ -208,6 +209,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     currentProjectId: currentProject?.id,
     addToast,
     selectedDraftMediaId: draftCovers.find((draft) => draft.id === selectedDraftId)?.preview_media_id || undefined,
+    groupId,
   });
 
   const variantEdit = useExportVariantEdit({
