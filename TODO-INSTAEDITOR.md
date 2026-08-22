@@ -54,3 +54,9 @@
 - [x] Applicare la copertina direttamente ai video selezionati tramite l'endpoint InstaEdit autorizzato.
 - [x] Eliminare dal dialogo i comandi di esportazione PNG e download di tutte le lingue.
 - [ ] Aggiungere un riepilogo persistente nella pagina Copertine dopo l'applicazione multipla.
+
+## Cronologia versioni
+
+- [x] Salvare automaticamente fino a 20 snapshot locali per ogni copertina.
+- [x] Mostrare data e numero della versione nella cronologia.
+- [x] Ripristinare una versione precedente senza sovrascrivere il file fino al successivo salvataggio.

@@ -9,6 +9,7 @@ import EditorHeader from './EditorHeader';
 import DragDropOverlay from './workspace/DragDropOverlay';
 import { EditorErrorState, EditorLoadingState } from './workspace/EditorStates';
 import ContextualInspector from '@/components/editor/ContextualInspector';
+import VersionHistoryPanel from './VersionHistoryPanel';
 import ExportDialog from '@/components/editor/ExportDialog';
 import FeedPreviewDialog from '@/components/editor/FeedPreviewDialog';
 import { useUIStore } from '@/stores/uiStore';
@@ -20,6 +21,7 @@ import { useEditorFullscreen } from '@/hooks/useEditorFullscreen';
 import { useEditorReturnUrl } from '@/hooks/useEditorReturnUrl';
 import { useProjectName } from '@/hooks/useProjectName';
 import { useEditorTabs } from '@/hooks/useEditorTabs';
+import { useEditorVersionHistory } from '@/hooks/useEditorVersionHistory';
 import { clearEditorSession } from '@/lib/editor-session';
 import type { CanvasHandle } from '@/lib/canvasHandle';
 
@@ -69,6 +71,8 @@ export default function EditorWorkspace() {
   useEditorAutosave({ canvasRef, sessionGate, hydratedRef });
 
   const { openTabs, switchEditorTab, closeEditorTab } = useEditorTabs(projectId, returnUrl);
+  const { versions, restoreVersion } = useEditorVersionHistory(projectId);
+  const [showVersionHistory, setShowVersionHistory] = React.useState(false);
   const dragDrop = useDragDropUpload();
 
   const { showExportDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
@@ -106,7 +110,9 @@ export default function EditorWorkspace() {
             onNameChange={handleProjectNameChange}
             onNameBlur={handleProjectNameBlur}
             onToggleFullscreen={() => void toggleFullscreen()}
+            onToggleVersionHistory={() => setShowVersionHistory((visible) => !visible)}
           />
+          {showVersionHistory && <VersionHistoryPanel versions={versions} onRestore={restoreVersion} onClose={() => setShowVersionHistory(false)} isDarkTheme={isDarkTheme} />}
 
           {/* Canvas wrapper */}
           <div className={`editor-canvas relative z-10 aspect-video w-full max-w-4xl overflow-visible rounded-[3px] border shadow-[0_12px_36px_rgba(0,0,0,0.055)] ${isDarkTheme ? 'border-white/10 bg-white' : 'border-black/[0.10] bg-white'}`}>

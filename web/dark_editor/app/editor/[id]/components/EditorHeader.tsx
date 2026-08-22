@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Home, Maximize2, Minimize2, X } from 'lucide-react';
+import { History, Home, Maximize2, Minimize2, X } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeProvider';
 import type { EditorTab } from '@/stores/editorTabsStore';
 
@@ -17,6 +17,7 @@ export interface EditorHeaderProps {
   onNameChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onNameBlur: () => void;
   onToggleFullscreen: () => void;
+  onToggleVersionHistory: () => void;
 }
 
 /**
@@ -36,6 +37,7 @@ export default function EditorHeader({
   onNameChange,
   onNameBlur,
   onToggleFullscreen,
+  onToggleVersionHistory,
 }: EditorHeaderProps) {
   return (
     <div
@@ -83,6 +85,7 @@ export default function EditorHeader({
       >
         {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
       </button>
+      <button type="button" onClick={onToggleVersionHistory} className={isDarkTheme ? 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white/70 hover:bg-white/10 hover:text-white' : 'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-black/55 hover:bg-black/[0.06] hover:text-black'} title="Cronologia versioni" aria-label="Cronologia versioni"><History className="h-4 w-4" /></button>
       <ThemeToggle />
     </div>
   );
