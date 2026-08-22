@@ -43,7 +43,11 @@ export function useKeyboard() {
       const shift = e.shiftKey;
 
       // Undo/Redo
-      if (ctrl && e.key === 'z') {
+      // `KeyboardEvent.key` becomes uppercase `Z` when Shift is held,
+      // so normalize before matching. This keeps Ctrl/Cmd+Shift+Z
+      // reliable across Chromium, Safari and Firefox.
+      const key = e.key.toLowerCase();
+      if (ctrl && key === 'z') {
         e.preventDefault();
         if (shift) {
           if (canRedo) redo();
@@ -53,7 +57,7 @@ export function useKeyboard() {
         return;
       }
 
-      if (ctrl && e.key === 'y') {
+      if (ctrl && key === 'y') {
         e.preventDefault();
         if (canRedo) redo();
         return;

@@ -1,7 +1,7 @@
 'use client';
 
 // Composition root: the editor's behavior lives in the extracted hooks
-// (useEditorProjectSession, useEditorAutosave,
+// (useEditorProjectSession, useEditorAutosave, useEditorSidebar,
 // useEditorTabs) and its UI lives in EditorWorkspace.
 // This file only mounts the workspace.
 import EditorWorkspace from './components/EditorWorkspace';

@@ -74,15 +74,6 @@ export default function EditorHeader({
           }}
         />
       </div>
-      <span
-        className={isDarkTheme
-          ? 'inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/[0.06] px-2 py-1 text-[10px] font-semibold tracking-wide text-white/55'
-          : 'inline-flex shrink-0 items-center rounded-full border border-black/[0.08] bg-black/[0.035] px-2 py-1 text-[10px] font-semibold tracking-wide text-black/50'}
-        aria-label="Versione InstaEdit"
-        title="Versione InstaEdit"
-      >
-        InstaEdit 1.0
-      </span>
       <button
         type="button"
         onClick={onToggleFullscreen}

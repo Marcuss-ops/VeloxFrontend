@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { useTheme } from '@/components/ui/ThemeProvider';
 import ToolbarDock from './ToolbarDock';
 import EditorHeader from './EditorHeader';
+import EditorSidebar from './workspace/EditorSidebar';
 import DragDropOverlay from './workspace/DragDropOverlay';
 import { EditorErrorState, EditorLoadingState } from './workspace/EditorStates';
 import ContextualInspector from '@/components/editor/ContextualInspector';
@@ -20,6 +21,7 @@ import { useEditorFullscreen } from '@/hooks/useEditorFullscreen';
 import { useEditorHover } from '@/hooks/useEditorHover';
 import { useEditorReturnUrl } from '@/hooks/useEditorReturnUrl';
 import { useProjectName } from '@/hooks/useProjectName';
+import { useEditorSidebar } from '@/hooks/useEditorSidebar';
 import { useEditorTabs } from '@/hooks/useEditorTabs';
 import { clearEditorSession } from '@/lib/editor-session';
 import type { CanvasHandle } from '@/lib/canvasHandle';
@@ -53,7 +55,7 @@ export default function EditorWorkspace() {
   const { returnUrl } = useEditorReturnUrl();
   const { sessionGate, loading, error, hydratedRef } = useEditorProjectSession(projectId);
   const { isFullscreen, toggleFullscreen } = useEditorFullscreen();
-  const { hoveredObjectId } = useEditorHover();
+  const { hoveredObjectId, handleObjectHover } = useEditorHover();
   const { projectName, handleProjectNameChange, handleProjectNameBlur } = useProjectName(projectId);
 
   // Session lost (401 that re-minting could not heal — a stale editor URL
@@ -71,6 +73,7 @@ export default function EditorWorkspace() {
   useEditorAutosave({ canvasRef, sessionGate, hydratedRef });
 
   const { openTabs, switchEditorTab, closeEditorTab } = useEditorTabs(projectId, returnUrl);
+  const sidebar = useEditorSidebar();
   const dragDrop = useDragDropUpload();
 
   const { showExportDialog, showFeedPreviewDialog, setFeedPreviewDialog } = useUIStore();
@@ -94,7 +97,7 @@ export default function EditorWorkspace() {
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden relative h-screen">
         {/* Main Canvas Area */}
-        <main className={`editor-workspace relative flex-1 overflow-hidden p-6 sm:p-10 flex items-center justify-center ${isDarkTheme ? 'bg-[#111318]' : 'bg-[#f7f7f5]'}`}>
+        <main className={`editor-workspace relative flex-1 overflow-hidden p-6 sm:p-10 flex items-center justify-center ${isDarkTheme ? 'bg-[#111318]' : 'bg-[#f7f7f5]'}`} style={{ marginRight: sidebar.isSidebarVisible ? sidebar.sidebarWidth : 0 }}>
           {/* Floating Top-Left Navigation Pill */}
           <EditorHeader
             tabs={openTabs}
@@ -119,6 +122,8 @@ export default function EditorWorkspace() {
           <ContextualInspector hoveredObjectId={hoveredObjectId} dark={isDarkTheme} placement="toolbar" />
           <ToolbarDock />
         </main>
+
+        <EditorSidebar sidebar={sidebar} isDarkTheme={isDarkTheme} onLayerHover={handleObjectHover} />
 
       </div>
 

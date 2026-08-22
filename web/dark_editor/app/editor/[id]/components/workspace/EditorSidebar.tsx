@@ -25,7 +25,7 @@ export default function EditorSidebar({ sidebar, isDarkTheme, onLayerHover }: Ed
     <aside
       onMouseEnter={sidebar.handleSidebarEnter}
       onMouseLeave={sidebar.handleSidebarLeave}
-      className="sidebar-shell fixed bottom-0 right-0 top-0 z-30 flex translate-x-0 flex-col"
+      className={`sidebar-shell fixed bottom-0 right-0 top-0 z-30 flex flex-col transition-transform duration-300 ease-out ${sidebar.isSidebarVisible ? 'translate-x-0' : 'translate-x-[calc(100%-28px)]'}`}
       style={{ width: sidebar.sidebarWidth } as React.CSSProperties}
     >
       {/* Trigger handle bar on the left edge of the sidebar */}

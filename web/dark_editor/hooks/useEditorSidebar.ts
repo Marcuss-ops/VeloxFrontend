@@ -13,6 +13,7 @@ export type EditorSidebarTab = 'design' | 'assets';
 export interface UseEditorSidebarReturn {
   sidebarTab: EditorSidebarTab;
   setSidebarTab: React.Dispatch<React.SetStateAction<EditorSidebarTab>>;
+  isSidebarVisible: boolean;
   sidebarWidth: number;
   updateSidebarWidth: (width: number) => void;
   handleSidebarResizeStart: (event: React.PointerEvent<HTMLDivElement>) => void;
@@ -31,7 +32,7 @@ export interface UseEditorSidebarReturn {
  */
 export function useEditorSidebar(): UseEditorSidebarReturn {
   const selectedIds = useEditorStore((state) => state.selectedIds);
-  const [, setSidebarPinned] = useState(false);
+  const [sidebarPinned, setSidebarPinned] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const sidebarTimerRef = useRef<number | null>(null);
   const sidebarResizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -146,6 +147,7 @@ export function useEditorSidebar(): UseEditorSidebarReturn {
   return {
     sidebarTab,
     setSidebarTab,
+    isSidebarVisible: sidebarPinned,
     sidebarWidth,
     updateSidebarWidth,
     handleSidebarResizeStart,
