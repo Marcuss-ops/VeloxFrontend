@@ -1,4 +1,4 @@
-import { fetchJSON } from './core';
+import { fetchJSON } from './client';
 
 export const analyticsApi = {
   realtime: () => fetchJSON('/api/v1/analytics/realtime'),

@@ -1,12 +1,12 @@
 /**
  * API module exports - Modularized
  */
-export { fetchJSON, fetchVoid, ApiError } from './core';
-export type { RequestOptions } from './core';
-
-// Session-aware BFF client + new modules (InstaEdit session-based auth)
+// Single transport engine (core.ts was folded into client.ts).
+// RequestOptions is kept as an alias so legacy imports of the old
+// core.ts type name keep resolving.
+export { fetchJSON, fetchVoid, ApiError } from './client';
 export { apiFetch, apiGet, apiPost, apiPut, apiPatch, apiDelete, ApiError as ClientApiError, API_BASE_URL } from './client';
-export type { ClientOptions } from './client';
+export type { ClientOptions, ClientOptions as RequestOptions } from './client';
 
 export { authApi, getMe } from './authApi';
 export type { AuthUser, MeResponse } from './authApi';
@@ -101,7 +101,7 @@ export { calendarApi, PROJECT_STATUSES } from './calendarApi';
 export type { CalendarEvent, VideoClip, CalendarEventFilter, CalendarEventsResponse, ProjectStatus, StatusConfig } from './calendarApi';
 
 // Default export combining them all for backwards compatibility
-import { fetchJSON, fetchVoid, ApiError } from './core';
+import { fetchJSON, fetchVoid, ApiError } from './client';
 import { jobsApi } from './jobsApi';
 import { workersApi } from './workersApi';
 

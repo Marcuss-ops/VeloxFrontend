@@ -63,6 +63,9 @@ describe('accountsApi', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Server Error',
+      // Unified client retries GETs; Retry-After: 0 keeps the retry
+      // loop instantaneous instead of sleeping real backoff delays.
+      headers: new Headers({ 'Retry-After': '0' }),
       json: () => Promise.resolve({ error: 'database unavailable' }),
     });
 

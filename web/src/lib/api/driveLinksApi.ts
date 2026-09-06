@@ -1,4 +1,4 @@
-import { fetchJSON, fetchVoid } from './core';
+import { fetchJSON, fetchVoid } from './client';
 import type { DriveFile } from './driveApi';
 
 export interface DriveLink {

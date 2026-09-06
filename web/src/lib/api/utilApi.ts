@@ -1,4 +1,4 @@
-import { fetchJSON } from './core';
+import { fetchJSON } from './client';
 
 export const utilApi = {
   /** Fetch URL content */

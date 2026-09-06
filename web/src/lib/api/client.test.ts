@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchJSON, fetchVoid, ApiError } from '@/lib/api/core';
+import { fetchJSON, fetchVoid, ApiError } from './client';
 
-describe('API Core', () => {
+describe('API Client', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -39,11 +39,13 @@ describe('API Core', () => {
 
       await fetchJSON('/api/v1/test');
 
+      // Merged engine always passes method explicitly and a timeout
+      // AbortSignal; Content-Type is only set for bodied requests.
       expect(global.fetch).toHaveBeenCalledWith('/api/v1/test', {
         signal: expect.any(AbortSignal),
         credentials: 'include',
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: null,

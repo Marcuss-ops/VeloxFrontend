@@ -1,4 +1,4 @@
-import { fetchJSON, fetchVoid } from './core';
+import { fetchJSON, fetchVoid } from './client';
 import { CapabilitiesResponse } from '../../components/Ansible/types';
 
 const ADMIN = '/api/v1/admin/ansible';

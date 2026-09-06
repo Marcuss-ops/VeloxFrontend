@@ -4,7 +4,7 @@
  * Video Production Calendar - CRUD operations for calendar events
  */
 
-import { fetchJSON, fetchVoid } from './core';
+import { fetchJSON, fetchVoid } from './client';
 
 // Project status types
 export type ProjectStatus = 'draft' | 'in_progress' | 'in_review' | 'complete' | 'published';

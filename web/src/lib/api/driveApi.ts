@@ -1,4 +1,4 @@
-import { fetchJSON, fetchVoid, ApiError } from './core';
+import { fetchJSON, fetchVoid, ApiError } from './client';
 
 export interface DriveFile {
   id: string;

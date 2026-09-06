@@ -1,4 +1,4 @@
-import { fetchJSON, fetchVoid } from './core';
+import { fetchJSON, fetchVoid } from './client';
 
 export type JobStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'ERROR' | 'FAILED' | 'CANCELED';
 

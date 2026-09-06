@@ -326,13 +326,15 @@ describe('channelAnalyticsApi', () => {
   });
 
   it('rejects with ApiError(status=500) on backend failure', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(
-      mockJsonResponse(
-        { error: 'metric history store not configured' },
-        500,
-        'Internal Server Error',
-      ),
-    );
+    const response = mockJsonResponse(
+      { error: 'metric history store not configured' },
+      500,
+      'Internal Server Error',
+    ) as Partial<Response> & { headers: Headers };
+    // Unified client retries GETs; Retry-After: 0 keeps the retry
+    // loop instantaneous instead of sleeping real backoff delays.
+    response.headers = new Headers({ 'Retry-After': '0' });
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue(response);
     try {
       await channelAnalyticsApi.getAccountPerformance(381, 7);
       throw new Error('unexpected resolution');
