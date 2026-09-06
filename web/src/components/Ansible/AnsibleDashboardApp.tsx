@@ -3,7 +3,6 @@ import { Terminal } from 'lucide-react';
 import { useAnsibleComputers } from './AnsibleComputersTab/hooks/useAnsibleComputers';
 import { AnsibleComputersTab } from './AnsibleComputersTab/AnsibleComputersTab';
 import { AnsibleShellTab } from './AnsibleShellTab';
-import { BundleExplorer } from './BundleExplorer';
 import { AnsibleOperationProgress } from './AnsibleOperationProgress';
 
 // Skeleton
@@ -60,25 +59,10 @@ export const AnsibleDashboardApp: React.FC = () => {
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [externalRun, setExternalRun] = useState<{ runId: string; action: string; targets: string[] } | null>(null);
 
-    // Tab state: 'bundle' | 'computers' - read from URL path or default to 'bundle'
-    const getInitialTab = (): 'bundle' | 'computers' => {
-        if (typeof window !== 'undefined') {
-            const path = window.location.pathname;
-            if (path.includes('/ansible_computers/bundle')) return 'bundle';
-            if (path.includes('/ansible_computers/computers')) return 'computers';
-        }
-        return 'bundle';
-    };
-    const [activeTab, setActiveTab] = useState<'bundle' | 'computers'>(getInitialTab());
-
-    // Update URL when tab changes
-    const handleTabChange = (tab: 'bundle' | 'computers') => {
-        setActiveTab(tab);
-        if (typeof window !== 'undefined') {
-            const newUrl = tab === 'bundle' ? '/ansible_computers/bundle' : '/ansible_computers/computers';
-            window.history.pushState({}, '', newUrl);
-        }
-    };
+    // Tab state: 'computers' — the bundle tab was removed: its data
+    // source (bundleApi) targeted bundle endpoints that were never
+    // mounted server-side (docs/api/bundle.md retires the surface).
+    const [activeTab] = useState<'computers'>('computers');
 
     const handleRunStarted = (runId: string, action: string, targets: string[]) => {
         setExternalRun({ runId, action, targets });
@@ -144,21 +128,7 @@ export const AnsibleDashboardApp: React.FC = () => {
             {/* Tab Navigation */}
             <div className="flex items-center gap-2 mb-6 border-b border pb-4">
                 <button
-                    onClick={() => handleTabChange('bundle')}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'bundle'
-                            ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                        }`}
-                >
-                    <span className="material-symbols-rounded">inventory_2</span>
-                    <span>Bundle Ansible</span>
-                </button>
-                <button
-                    onClick={() => handleTabChange('computers')}
-                    className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all ${activeTab === 'computers'
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-white/5'
-                        }`}
+                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                 >
                     <span className="material-symbols-rounded">dns</span>
                     <span>Ansible Computers</span>
@@ -175,19 +145,7 @@ export const AnsibleDashboardApp: React.FC = () => {
                 ) : (
                     <>
                         {/* ================================ */}
-                        {/* TAB 1: BUNDLE ANSIBLE */}
-                        {/* ================================ */}
-                        {activeTab === 'bundle' && (
-                            <section className="animate-fadeIn space-y-4">
-                                <p className="text-sm text-muted-foreground">
-                                    Il <strong className="text-white">bundle</strong> è il pacchetto (ZIP) distribuito ai computer Ansible per eseguire i job. Qui puoi esplorarne il contenuto e rigenerarlo se necessario.
-                                </p>
-                                <BundleExplorer />
-                            </section>
-                        )}
-
-                        {/* ================================ */}
-                        {/* TAB 2: ANSIBLE COMPUTERS */}
+                        {/* TAB: ANSIBLE COMPUTERS */}
                         {/* ================================ */}
                         {activeTab === 'computers' && (
                             <section className="space-y-8 animate-fadeIn">

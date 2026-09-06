@@ -27,17 +27,8 @@ export const workersApi = {
   logs: (workerId: string, lines = 100) =>
     fetchJSON<{ logs: string }>(`/workers/${workerId}/logs?tail=${lines}`),
 
-  /** Update all workers */
-  updateAll: (excludeLocal = true) =>
-    fetchJSON<{ updated_workers: string[] }>('/workers/update_all', {
-      method: 'POST',
-      body: JSON.stringify({ exclude_local: excludeLocal }),
-    }),
-
-  /** Restart all workers */
-  restartAll: (excludeLocal = true) =>
-    fetchJSON<{ restarted_workers: string[] }>('/workers/restart_all', {
-      method: 'POST',
-      body: JSON.stringify({ exclude_local: excludeLocal }),
-    }),
+  // NOTE: no updateAll/restartAll wrappers — POST /workers/update_all and
+  // /workers/restart_all are retired, never-mounted routes (see
+  // docs/api/bundle.md). Worker mutations go through the canonical admin
+  // namespace: POST /api/v1/admin/workers/:worker_id/{update,restart,...}.
 };

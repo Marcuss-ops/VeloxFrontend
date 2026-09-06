@@ -68,9 +68,6 @@ export type { DriveFile, DriveFolder } from './driveApi';
 
 export { ansibleApi } from './ansibleApi';
 
-export { bundleApi } from './bundleApi';
-export type { BundleInfo, BundleDir, BundleFilesResponse, BundleFile } from './bundleApi';
-
 export { serverApi } from './serverApi';
 export { scriptApi } from './scriptApi';
 export { utilApi } from './utilApi';
@@ -108,7 +105,6 @@ import { workersApi } from './workersApi';
 import { analyticsApi } from './analyticsApi';
 import { driveApi } from './driveApi';
 import { ansibleApi } from './ansibleApi';
-import { bundleApi } from './bundleApi';
 import { serverApi } from './serverApi';
 import { scriptApi } from './scriptApi';
 import { utilApi } from './utilApi';
@@ -127,7 +123,6 @@ const apiClient = {
   analytics: analyticsApi,
   drive: driveApi,
   ansible: ansibleApi,
-  bundle: bundleApi,
   server: serverApi,
   script: scriptApi,
   util: utilApi,
