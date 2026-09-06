@@ -62,14 +62,14 @@ export default defineConfig(() => ({
             input: {
                 index: './index.html',
             },
-            output: {
-                manualChunks: {
-                    'vendor': ['react', 'react-dom'],
-                    'query': ['@tanstack/react-query'],
-                    'ui': ['clsx', 'tailwind-merge', 'class-variance-authority'],
-                    'radix': ['@radix-ui/react-dialog', '@radix-ui/react-select']
-                }
+        output: {
+            manualChunks: {
+                'vendor': ['react', 'react-dom'],
+                'query': ['@tanstack/react-query'],
+                'ui': ['clsx', 'tailwind-merge', 'class-variance-authority'],
+                'motion': ['framer-motion']
             }
+        }
         }
     }
 }));

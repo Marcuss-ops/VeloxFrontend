@@ -22,6 +22,7 @@
  *     forwards /api/* to the InstaEdit BFF on localhost:8080.
  */
 
+import { ApiError } from './core';
 import { withSessionRefresh } from '../session-refresh';
 
 /** Base URL prefix for all API calls. Empty string = same-origin. */
@@ -159,20 +160,15 @@ export async function apiFetch<T>(
 }
 
 /**
- * API error class with HTTP status. Mirrors the legacy core.ts
- * ApiError so callers can use instanceof ApiError uniformly.
+ * Canonical ApiError — re-exported from core.ts so there is exactly ONE
+ * ApiError identity in the app. Historically this module declared its own
+ * class, which made `err instanceof ApiError` checks fail for errors thrown
+ * by fetchJSON (the legacy client) and vice versa: error handling in
+ * authApi/AuthProvider silently diverged depending on which module threw.
+ * core.ts holds the richer definition (adds retryAfter), so it is the
+ * single source of truth and every import path resolves to the same class.
  */
-export class ApiError extends Error {
-  status: number;
-  statusText: string;
-
-  constructor(status: number, statusText: string, message?: string) {
-    super(message ?? `HTTP ${status}: ${statusText}`);
-    this.name = 'ApiError';
-    this.status = status;
-    this.statusText = statusText;
-  }
-}
+export { ApiError };
 
 // --- Convenience verbs --------------------------------------------------
 

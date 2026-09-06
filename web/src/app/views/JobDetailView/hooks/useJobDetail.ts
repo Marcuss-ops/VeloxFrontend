@@ -118,10 +118,15 @@ export const useJobDetail = () => {
         }
     }, [job?.status, fetchJob, refreshInterval]);
 
+    // Wall-clock ticker for the elapsed-time display. `now` feeds
+    // calculateElapsedTime (rendered in JobInfoPanel); the value is only
+    // consumed at minute-ish display granularity (human-readable elapsed
+    // string), so a 1s tick re-rendered the whole detail view 60×/min for
+    // no visible change. 30s keeps the clock honest without the churn.
     useEffect(() => {
         const timer = window.setInterval(() => {
             setNow(new Date());
-        }, 1000);
+        }, 30_000);
         return () => window.clearInterval(timer);
     }, []);
 
