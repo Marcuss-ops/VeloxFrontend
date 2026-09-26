@@ -1,7 +1,8 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import type { DriveNode, SelectedItem } from "../types"
+import { driveApi } from '../../../../lib/api/driveApi'
 
 // Helper inline functions (also available in utils/driveFileExplorer.ts)
 const isVideoFile = (f: DriveNode) => {
@@ -62,9 +63,6 @@ export function useDriveFileExplorer({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Get API base URL
-  const apiBase = useMemo(() => ((window as Window & { API_BASE_URL?: string }).API_BASE_URL || '').toString().trim(), [])
-
   // Default file filter based on mode
   const defaultFileFilter = useCallback((file: DriveNode) => {
     switch (mode) {
@@ -83,16 +81,8 @@ export function useDriveFileExplorer({
     setError(null)
 
     try {
-      const res = await fetch(`${apiBase}/api/drive/files`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ parent_id: folderId }),
-      })
-      const data = await res.json()
-
-      if (!res.ok || !data?.ok) {
-        throw new Error(data?.error || `Errore ${res.status}`)
-      }
+      // Canonical driveApi wrapper (single transport authority).
+      const data = await driveApi.filesOf(folderId)
 
       const files: DriveNode[] = Array.isArray(data.files) ? data.files : []
 
@@ -113,7 +103,7 @@ export function useDriveFileExplorer({
         return next
       })
     }
-  }, [apiBase])
+  }, [])
 
   // Load root folder on mount
   useEffect(() => {

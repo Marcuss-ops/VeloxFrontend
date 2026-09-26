@@ -1,5 +1,12 @@
 # REFACTOR_PLAN.md
 
+> ⚠️ **DOCUMENTO STORICO (2026-07-28) — IN GRAN PARTE SUPERATO.**
+> Questo piano è stato in larga parte eseguito: `stores/slices/*`, `lib/api/*`
+> modulari, i barrel `lib/api.ts`/`api/bff.ts` e la rimozione di
+> `components/Script/` (vedi `STUDIO_CLEANUP_INVENTORY.md`) sono già su `main`.
+> I riferimenti a file/LOC qui sotto possono non corrispondere più alla realtà:
+> per l'audit aggiornato fare riferimento ai documenti in `docs/` e al codice.
+
 > **Piano di refactor dettagliato per i 19 file più lunghi in LOC del workspace `company`.**
 >
 > - **Data generazione**: 2026-07-28

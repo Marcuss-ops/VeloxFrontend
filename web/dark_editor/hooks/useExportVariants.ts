@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import { useEditorStore, type TextObject } from '@/stores/editorStore';
-import { selectOrderedObjects } from '@/lib/editorSelectors';
 import { translateText } from '@/lib/api';
-import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
+import { captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
 import type { CanvasHandle } from '@/lib/canvasHandle';
 import type { UIState } from '@/stores/uiStore';
 import {
@@ -84,10 +83,9 @@ export function useExportVariants(opts: UseExportVariantsOptions): UseExportVari
     }
     setIsGeneratingPreviews(true);
     try {
-      const liveState = useEditorStore.getState();
-      const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
+      const liveVersion = useEditorStore.getState().mutationVersion;
       const currentSnapshot = !snapshotStale
-        && snapshotRef.current?.signature === liveSignature
+        && snapshotRef.current?.signature === `mutation:${liveVersion}`
         ? snapshotRef.current
         : await captureSnapshot();
       if (!currentSnapshot) throw new Error('Impossibile creare lo snapshot del canvas.');

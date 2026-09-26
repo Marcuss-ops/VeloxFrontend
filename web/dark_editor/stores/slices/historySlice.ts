@@ -27,6 +27,11 @@ export interface CanvasDraftState {
 }
 
 export interface HistorySlice {
+  // Monotone counter bumped on EVERY commit that changes the canvas
+  // (mutations, undo/redo, live mutations, history saves). Staleness
+  // checks (export snapshot vs live canvas) compare this integer instead
+  // of JSON.stringify-ing the whole object array.
+  mutationVersion: number;
   // History patches (capped at 50 entries — pastPatches[0] is dropped on overflow)
   pastPatches: { patches: Patch[]; inversePatches: Patch[] }[];
   futurePatches: { patches: Patch[]; inversePatches: Patch[] }[];
@@ -57,6 +62,7 @@ export const createHistorySlice = (
   set: StoreApi<EditorState>['setState'],
   get: StoreApi<EditorState>['getState']
 ): HistorySlice => ({
+  mutationVersion: 0,
   pastPatches: [],
   futurePatches: [],
   pendingPatches: [],
@@ -77,6 +83,7 @@ export const createHistorySlice = (
     set({
       objects: nextState.objects,
       objectIds: nextState.objectIds,
+      mutationVersion: get().mutationVersion + 1,
       pastPatches: newPast,
       futurePatches: [],
       pendingPatches: [],
@@ -93,6 +100,7 @@ export const createHistorySlice = (
     set({
       objects: nextState.objects,
       objectIds: nextState.objectIds,
+      mutationVersion: get().mutationVersion + 1,
       pendingPatches: [...pendingPatches, ...patches],
       pendingInversePatches: [...inversePatches, ...pendingInversePatches],
     });
@@ -107,6 +115,7 @@ export const createHistorySlice = (
       set({
         objects: nextState.objects,
         objectIds: nextState.objectIds,
+        mutationVersion: get().mutationVersion + 1,
         pendingPatches: [],
         pendingInversePatches: [],
       });
@@ -121,6 +130,7 @@ export const createHistorySlice = (
     set({
       objects: prevState.objects,
       objectIds: prevState.objectIds,
+      mutationVersion: get().mutationVersion + 1,
       pastPatches: pastPatches.slice(0, -1),
       futurePatches: [lastEntry, ...futurePatches],
       selectedIds: [],
@@ -138,6 +148,7 @@ export const createHistorySlice = (
     set({
       objects: nextState.objects,
       objectIds: nextState.objectIds,
+      mutationVersion: get().mutationVersion + 1,
       pastPatches: [...pastPatches, nextEntry],
       futurePatches: futurePatches.slice(1),
     });

@@ -8,6 +8,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { ProjectStatus } from '@/lib/api';
 import { loadCategories } from '@/lib/api/titleCategories';
+import { driveApi } from '@/lib/api/driveApi';
 import type { CalendarProjectFolderContext, VideoClip, DriveFolderLite, DriveFile, ClipType } from './types';
 import { fetchDriveFiles } from './types';
 
@@ -191,32 +192,20 @@ export function useCalendarState({ selectedDay, selectedMonth, selectedYear, ini
             setLoadingStockSubfolders(Boolean(projectContext?.stockFolderId));
             setLoadingClipSubfolders(Boolean(projectContext?.clipFolderId));
             try {
+                // Canonical driveApi wrappers (single transport authority);
+                // AbortController aborts via the client's signal plumbing.
                 const [stockResponse, clipResponse] = await Promise.all([
                     projectContext?.stockFolderId
-                        ? fetch(`/api/drive/folders`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ parent_id: projectContext.stockFolderId }),
-                            signal: controller.signal,
-                        })
+                        ? driveApi.subfolders(projectContext.stockFolderId)
                         : null,
                     projectContext?.clipFolderId
-                        ? fetch(`/api/drive/folders`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ parent_id: projectContext.clipFolderId }),
-                            signal: controller.signal,
-                        })
+                        ? driveApi.subfolders(projectContext.clipFolderId)
                         : null,
                 ]);
 
-                const parseFolders = async (response: Response | null) => {
-                    if (!response || !response.ok) return [] as DriveFolderLite[];
-                    const data = await response.json().catch(() => null) as { folders?: DriveFolderLite[] } | null;
-                    return Array.isArray(data?.folders) ? data.folders : [];
-                };
-                const stockFolders = await parseFolders(stockResponse);
-                const clipFolders = await parseFolders(clipResponse);
+                const toLite = (result: { folders: DriveFolderLite[] } | null): DriveFolderLite[] => result?.folders ?? [];
+                const stockFolders = toLite(stockResponse);
+                const clipFolders = toLite(clipResponse);
                 setStockSubfolders(stockFolders);
                 setClipSubfolders(clipFolders);
                 setSelectedStockFolderId(stockFolders[0]?.id || '');

@@ -16,9 +16,20 @@ export interface Worker {
   [key: string]: unknown;
 }
 
+/**
+ * Normalize the wire shape: the endpoint historically answered both a bare
+ * array and `{ workers: [...] }` depending on the backend version. One
+ * normalizer here so call sites never re-implement the tolerance.
+ */
+function normalizeWorkerList(result: Worker[] | { workers?: Worker[] } | null | undefined): Worker[] {
+  if (Array.isArray(result)) return result;
+  return result?.workers ?? [];
+}
+
 export const workersApi = {
-  /** Get all workers */
-  list: () => fetchJSON<Worker[]>('/workers'),
+  /** Get all workers (shape-tolerant: array or { workers }). */
+  list: async (): Promise<Worker[]> =>
+    normalizeWorkerList(await fetchJSON<Worker[] | { workers?: Worker[] }>('/workers')),
 
   /** Get workers status */
   status: () => fetchJSON<Record<string, unknown>>('/workers_status'),

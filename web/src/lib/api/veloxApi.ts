@@ -40,14 +40,16 @@ export interface VeloxDeliveryEvent {
   icon: React.ElementType;
 }
 
-/** Build a synthetic timeline of delivery events from the current status.
+/**
+ * Derive the pipeline STEP indicator from the CURRENT status.
  *
- * The backend does not yet store per-delivery event history, so we
- * derive a timeline from the current `status` value. All non-terminal
- * statuses are mapped to the canonical pipeline:
- *   artifact_verified → queued → publishing → published
+ * ⚠️ NOT an event history: the backend does not store per-delivery event
+ * history, so every step position here is DERIVED from the single current
+ * `status` value (SSOT: one status in, one step marked active). Callers
+ * must present this as "where the delivery is now", never as a log of
+ * what happened.
  */
-export function getDeliveryEventTimeline(status: string): VeloxDeliveryEvent[] {
+export function deriveDeliveryStatusSteps(status: string): VeloxDeliveryEvent[] {
   const normalized = (status || 'UNKNOWN').toUpperCase();
 
   const pipeline: VeloxDeliveryEvent[] = [

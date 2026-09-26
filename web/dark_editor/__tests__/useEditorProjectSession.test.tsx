@@ -217,13 +217,15 @@ describe('useEditorProjectSession', () => {
         expect(useEditorStore.getState().canvasWidth).toBe(1920);
     });
 
-    it('maps unauthorized gate state to an error and never loads the project', async () => {
+    it('maps unauthorized gate state to the expired-session error and never loads the project', async () => {
         gate.state = { state: 'unauthorized' };
 
         const { result } = renderHook(() => useEditorProjectSession('ve_1'));
 
         await waitFor(() => expect(result.current.loading).toBe(false));
-        expect(result.current.error).toBe('Authentication required');
+        // The extended session contract maps 401 to the actionable
+        // expired-session message instead of a bare 'Authentication required'.
+        expect(result.current.error).toBe('Your InstaEdit session has expired. Reopen this cover from InstaEdit to create a fresh editor link.');
         expect(getProject).not.toHaveBeenCalled();
     });
 

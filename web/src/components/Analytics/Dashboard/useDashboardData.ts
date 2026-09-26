@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Job, Worker } from '../../Workers/types';
 import { buildWorkersMap, filterJobsByStatus } from '../../Workers/jobUtils';
 import { ApiSubmission, DashboardTab } from './types';
+import { fetchJSON } from '../../../lib/api';
+import { usePolling } from '../../../hooks/usePolling';
 
 interface DashboardData {
     jobs: Job[];
@@ -20,12 +22,6 @@ interface DashboardData {
     errors: Job[];
 }
 
-async function fetchJSON<T>(url: string): Promise<T> {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-}
-
 export function useDashboardData(intervalMs = 10000, initialTab: DashboardTab = 'coda'): DashboardData {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [workers, setWorkers] = useState<Worker[]>([]);
@@ -34,15 +30,16 @@ export function useDashboardData(intervalMs = 10000, initialTab: DashboardTab = 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<DashboardTab>(initialTab);
-    const intervalRef = useRef<number | null>(null);
 
-    const fetchAll = useCallback(async () => {
+    const fetchAll = useCallback(async (signal: AbortSignal) => {
         try {
             const [jobsRes, workersRes, submissionsRes] = await Promise.all([
                 fetchJSON<{ jobs: Job[] }>('/api/v1/jobs'),
                 fetchJSON<{ workers?: Worker[] }>('/api/v1/workers').catch(() => ({ workers: [] })),
                 fetchJSON<{ items: ApiSubmission[] }>('/api/v1/submissions?limit=200').catch(() => ({ items: [] })),
             ]);
+
+            if (signal.aborted) return;
 
             const jobsList = jobsRes?.jobs ?? [];
             const workersList = Array.isArray(workersRes?.workers) ? workersRes.workers : [];
@@ -54,19 +51,16 @@ export function useDashboardData(intervalMs = 10000, initialTab: DashboardTab = 
             setApiSubmissions(submissions.reverse());
             setError(null);
         } catch (e: unknown) {
+            if (signal.aborted) return;
             setError(e instanceof Error ? e.message : 'Fetch error');
         } finally {
-            setLoading(false);
+            if (!signal.aborted) setLoading(false);
         }
     }, []);
 
-    useEffect(() => {
-        fetchAll();
-        intervalRef.current = window.setInterval(fetchAll, intervalMs);
-        return () => {
-            if (intervalRef.current !== null) clearInterval(intervalRef.current);
-        };
-    }, [fetchAll, intervalMs]);
+    // Unified polling authority: single-flight, visibility-gated, abortable
+    // (replaces the raw setInterval that could overlap slow responses).
+    const { refresh } = usePolling(fetchAll, intervalMs);
 
     const pending = filterJobsByStatus(jobs, 'PENDING');
     const running = filterJobsByStatus(jobs, 'PROCESSING');
@@ -86,7 +80,7 @@ export function useDashboardData(intervalMs = 10000, initialTab: DashboardTab = 
         error,
         activeTab,
         setActiveTab,
-        refresh: fetchAll,
+        refresh,
         pending,
         running,
         completed,

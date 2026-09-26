@@ -25,22 +25,40 @@ export interface FilterOptions {
   curveB?: Uint8Array;  // 256 values
 }
 
+// ----------------------------------------------------------------
+// Scratch canvas pool: the READ canvas (image → ImageData) and the
+// feather MASK canvas are used synchronously — getImageData already
+// copies the bytes — so they can be recycled immediately. The OUTPUT
+// canvas is NOT pooled: callers (useImagePipeline → ImageRenderer)
+// hold the returned canvas across frames, so pooling it would let two
+// images paint into the same surface.
+// ----------------------------------------------------------------
+const scratchCanvases: (HTMLCanvasElement | OffscreenCanvas)[] = [];
+
+export function acquireScratchCanvas(): HTMLCanvasElement | OffscreenCanvas {
+  return scratchCanvases.pop() ?? (
+    typeof OffscreenCanvas !== 'undefined'
+      ? new OffscreenCanvas(1, 1)
+      : document.createElement('canvas')
+  );
+}
+
+export function releaseScratchCanvas(canvas: HTMLCanvasElement | OffscreenCanvas): void {
+  // Cap the pool: thumbnails are 1920x1080, a handful of slots covers
+  // realistic per-frame usage without pinning unbounded memory.
+  if (scratchCanvases.length < 4) scratchCanvases.push(canvas);
+}
+
 export class ImageFilterProcessor {
-  private canvas: HTMLCanvasElement | OffscreenCanvas;
-  private ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  private scratch: HTMLCanvasElement | OffscreenCanvas;
+  private scratchCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   private worker: Worker | null = null;
   private pendingJobs: Map<string, { resolve: (data: ImageData) => void, reject: (err: Error) => void }> = new Map();
   private jobIdCounter = 0;
 
   constructor() {
-    // Try to use OffscreenCanvas for performance, fallback to regular canvas
-    if (typeof OffscreenCanvas !== 'undefined') {
-      this.canvas = new OffscreenCanvas(1, 1);
-      this.ctx = this.canvas.getContext('2d', { willReadFrequently: true }) as OffscreenCanvasRenderingContext2D;
-    } else {
-      this.canvas = document.createElement('canvas');
-      this.ctx = this.canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
-    }
+    this.scratch = acquireScratchCanvas();
+    this.scratchCtx = this.scratch.getContext('2d', { willReadFrequently: true }) as OffscreenCanvasRenderingContext2D;
     this.initWorker();
   }
 
@@ -87,27 +105,38 @@ export class ImageFilterProcessor {
     options: FilterOptions
   ): Promise<HTMLCanvasElement> {
     const { width, height } = this.getImageDimensions(image);
-    
-    // Set canvas size
-    this.canvas.width = width;
-    this.canvas.height = height;
-    
-    // Draw original image to extract ImageData
-    this.ctx.drawImage(image, 0, 0, width, height);
-    
+
+    // Size the pooled scratch canvas and draw the source into it.
+    this.scratch.width = width;
+    this.scratch.height = height;
+    this.scratchCtx.drawImage(image, 0, 0, width, height);
+
     // If no filters to apply, return immediately
     if (!this.hasFilters(options)) {
       return this.getResultCanvas(width, height);
     }
 
-    const imageData = this.ctx.getImageData(0, 0, width, height);
+    // getImageData COPIES the pixels, so the scratch surface can go
+    // straight back into the pool — it is never referenced after this
+    // point (the worker result is putImageData'd into the OUTPUT canvas
+    // below, not into the scratch).
+    const imageData = this.scratchCtx.getImageData(0, 0, width, height);
+    releaseScratchCanvas(this.scratch);
     const jobId = `job_${this.jobIdCounter++}`;
 
     return new Promise((resolve, reject) => {
       this.pendingJobs.set(jobId, {
         resolve: (processedData: ImageData) => {
-          this.ctx.putImageData(processedData, 0, 0);
-          resolve(this.getResultCanvas(width, height));
+          // Fresh scratch for the result blit (the previous one may already
+          // be recycled); then copy into a caller-owned output canvas.
+          const outScratch = acquireScratchCanvas();
+          const outScratchCtx = outScratch.getContext('2d', { willReadFrequently: true }) as OffscreenCanvasRenderingContext2D;
+          outScratch.width = width;
+          outScratch.height = height;
+          outScratchCtx.putImageData(processedData, 0, 0);
+          const out = this.getResultCanvas(width, height, outScratch);
+          releaseScratchCanvas(outScratch);
+          resolve(out);
         },
         reject
       });
@@ -124,12 +153,17 @@ export class ImageFilterProcessor {
     });
   }
 
-  private getResultCanvas(width: number, height: number): HTMLCanvasElement {
+  /** Caller-owned (never pooled) output canvas, copied from `source`. */
+  private getResultCanvas(
+    width: number,
+    height: number,
+    source: HTMLCanvasElement | OffscreenCanvas = this.scratch,
+  ): HTMLCanvasElement {
     const outCanvas = document.createElement('canvas');
     outCanvas.width = width;
     outCanvas.height = height;
     const outCtx = outCanvas.getContext('2d')!;
-    outCtx.drawImage(this.canvas, 0, 0);
+    outCtx.drawImage(source, 0, 0);
     return outCanvas;
   }
 
@@ -145,62 +179,10 @@ export class ImageFilterProcessor {
 // Singleton instance
 export const imageFilterProcessor = new ImageFilterProcessor();
 
-// Convenience functions for basic filters
-export async function applyBlur(image: HTMLImageElement | HTMLCanvasElement, radius: number): Promise<HTMLCanvasElement> {
-  return imageFilterProcessor.applyFilters(image, { blur: radius });
-}
-
-export async function applySharpen(image: HTMLImageElement | HTMLCanvasElement, intensity: number): Promise<HTMLCanvasElement> {
-  return imageFilterProcessor.applyFilters(image, { sharpen: intensity });
-}
-
-export async function applyPixelation(image: HTMLImageElement | HTMLCanvasElement, pixelSize: number): Promise<HTMLCanvasElement> {
-  return imageFilterProcessor.applyFilters(image, { pixelation: pixelSize });
-}
-
-// Convenience functions for new filters
-export async function applyHSL(
-  image: HTMLImageElement | HTMLCanvasElement, 
-  hue: number, 
-  saturation: number, 
-  lightness: number
-): Promise<HTMLCanvasElement> {
-  return imageFilterProcessor.applyFilters(image, { hue, saturation, lightness });
-}
-
-export async function applyBrightnessContrast(
-  image: HTMLImageElement | HTMLCanvasElement, 
-  brightness: number, 
-  contrast: number
-): Promise<HTMLCanvasElement> {
-  return imageFilterProcessor.applyFilters(image, { brightness, contrast });
-}
-
-export async function applyVignette(
-  image: HTMLImageElement | HTMLCanvasElement, 
-  radius: number, 
-  softness: number
-): Promise<HTMLCanvasElement> {
-  return imageFilterProcessor.applyFilters(image, { vignetteRadius: radius, vignetteSoftness: softness });
-}
-
-export async function applyNoise(
-  image: HTMLImageElement | HTMLCanvasElement, 
-  intensity: number, 
-  seed?: number
-): Promise<HTMLCanvasElement> {
-  return imageFilterProcessor.applyFilters(image, { noiseIntensity: intensity, noiseSeed: seed });
-}
-
-export async function applyCurves(
-  image: HTMLImageElement | HTMLCanvasElement, 
-  curveR: Uint8Array, 
-  curveG: Uint8Array, 
-  curveB: Uint8Array
-): Promise<HTMLCanvasElement> {
-  return imageFilterProcessor.applyFilters(image, { curveR, curveG, curveB });
-}
-
+// Single public entry point: every production caller (useImagePipeline)
+// applies the whole option set at once so the image crosses to the filter
+// worker exactly once. Per-filter wrappers (applyBlur, applyHSL, ...) were
+// removed with the panels that consumed them.
 export async function applyAllFilters(
   image: HTMLImageElement | HTMLCanvasElement,
   options: FilterOptions

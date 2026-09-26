@@ -23,6 +23,8 @@ export interface ProjectBatch {
 }
 
 export interface UseScriptGeneratorOptions {
+    /** @deprecated No longer read: all traffic goes through the canonical
+     *  client.ts transport (the old multi-candidate fallback is gone). */
     apiBaseUrl?: string;
     onGenerationComplete?: (results: GenerationResult[]) => void;
     onError?: (error: Error) => void;

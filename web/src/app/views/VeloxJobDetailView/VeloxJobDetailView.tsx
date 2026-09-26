@@ -11,7 +11,7 @@ import React, { useMemo } from 'react';
 import { AlertCircle, ArrowLeft, Bell, ChevronRight, ExternalLink, Film, Home, Loader2, RefreshCw, Share2, Hourglass, CheckCircle2, Upload, ListOrdered, KeyRound, BadgeCheck, HelpCircle, XCircle, Flag } from 'lucide-react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useVeloxJobDetail } from './hooks/useVeloxJobDetail';
-import { getDeliveryEventTimeline } from '@/lib/api/veloxApi';
+import { deriveDeliveryStatusSteps } from '@/lib/api/veloxApi';
 import type { VeloxDelivery } from '@/lib/api/veloxApi';
 import { useSocialDestinations } from '@/hooks/useSocialDestinations';
 import type { SocialDestination } from '@/lib/api/socialDestinationsApi';
@@ -98,14 +98,15 @@ const DeliveryRow: React.FC<{ delivery: VeloxDelivery; index: number; destinatio
 
       {/* Delivery event timeline */}
       <div className="mt-2 pt-3 border-t border/50">
-        <DeliveryEventTimeline status={delivery.status} />
+        {/* Status steps derived from the current status — not an event history. */}
+        <DeliveryStatusSteps status={delivery.status} />
       </div>
     </div>
   );
 };
 
-const DeliveryEventTimeline: React.FC<{ status: string }> = ({ status }) => {
-  const events = getDeliveryEventTimeline(status);
+const DeliveryStatusSteps: React.FC<{ status: string }> = ({ status }) => {
+  const events = deriveDeliveryStatusSteps(status);
 
   return (
     <div className="flex flex-wrap items-center gap-2">

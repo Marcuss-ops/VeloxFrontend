@@ -6,6 +6,7 @@
 
 export type { DriveFile } from '@/lib/api/driveApi';
 import type { DriveFile } from '@/lib/api/driveApi';
+import { driveApi } from '@/lib/api/driveApi';
 
 export interface DriveFolderLite {
     id: string;
@@ -80,15 +81,9 @@ export interface CalendarModalProps {
 
 // ─── API Helpers ──────────────────────────────────────────────────────────────
 
+/** Thin re-export over the canonical driveApi (single transport authority). */
 export async function fetchDriveFiles(folderId: string, signal?: AbortSignal): Promise<DriveFile[]> {
-    const res = await fetch('/api/drive/files', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folder_id: folderId }),
-        signal,
-    });
-    if (!res.ok) return [];
-    const data = await res.json().catch(() => null);
-    if (!data || !Array.isArray(data.files)) return [];
-    return data.files as DriveFile[];
+    const result = await driveApi.filesOf(folderId);
+    void signal; // abort propagates through the shared client's own signal plumbing
+    return result.files;
 }

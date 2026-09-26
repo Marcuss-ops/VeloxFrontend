@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { Job, Worker } from './types';
 import { buildWorkersMap } from './jobUtils';
 import { jobsApi, workersApi } from '../../lib/api';
+import { usePolling } from '../../hooks/usePolling';
 
 interface JobsData {
     jobs: Job[];
@@ -18,14 +19,14 @@ export function useJobsData(intervalMs = 10000): JobsData {
     const [workersMap, setWorkersMap] = useState<Record<string, Worker>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const intervalRef = useRef<number | null>(null);
 
-    const fetchAll = useCallback(async () => {
+    const fetchAll = useCallback(async (signal: AbortSignal) => {
         try {
             const [jobsRes, workersRes] = await Promise.all([
                 jobsApi.list(),
                 workersApi.list().catch(() => [] as Worker[]),
             ]);
+            if (signal.aborted) return;
             const jobsList = jobsRes?.jobs ?? [];
             const workersList = Array.isArray(workersRes) ? workersRes : [];
             setJobs(jobsList);
@@ -33,19 +34,16 @@ export function useJobsData(intervalMs = 10000): JobsData {
             setWorkersMap(buildWorkersMap(workersList));
             setError(null);
         } catch (e: unknown) {
+            if (signal.aborted) return;
             setError(e instanceof Error ? e.message : 'Fetch error');
         } finally {
-            setLoading(false);
+            if (!signal.aborted) setLoading(false);
         }
     }, []);
 
-    useEffect(() => {
-        fetchAll();
-        intervalRef.current = window.setInterval(fetchAll, intervalMs);
-        return () => {
-            if (intervalRef.current !== null) clearInterval(intervalRef.current);
-        };
-    }, [fetchAll, intervalMs]);
+    // Unified polling authority: single-flight, visibility-gated, abortable
+    // (replaces the raw setInterval that could overlap slow responses).
+    const { refresh } = usePolling(fetchAll, intervalMs);
 
-    return { jobs, workers, workersMap, loading, error, refresh: fetchAll };
+    return { jobs, workers, workersMap, loading, error, refresh };
 }

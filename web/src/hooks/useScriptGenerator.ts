@@ -34,6 +34,7 @@ export type {
     BatchGenerationOptions,
 } from './useScriptGenerator/types';
 import { veloxApi } from '@/lib/api/veloxApi';
+import { apiPost } from '@/lib/api/client';
 
 // Import shared utilities from scriptGenerator.ts (Agent 1A)
 import {
@@ -45,7 +46,6 @@ import {
     collectProjectVoiceLangs,
     hasQueueConfirmation,
     extractDriveId,
-    getApiCandidates,
     getBackendErrorMessage,
 } from '../utils/scriptGenerator';
 
@@ -56,8 +56,9 @@ import {
 export function useScriptGenerator(
     options: UseScriptGeneratorOptions = {}
 ): UseScriptGeneratorReturn {
+    // apiBaseUrl is no longer destructured: the canonical client.ts
+    // transport owns base-URL resolution now.
     const {
-        apiBaseUrl,
         onGenerationComplete,
         onError,
         onProgress,
@@ -70,7 +71,6 @@ export function useScriptGenerator(
     
     // Refs
     const abortRef = useRef(false);
-    const inFlightRef = useRef(new Map<string, Promise<{ status: number; body: unknown; rawText: string }>>());
     
     // ============ Internal Helpers ============
     
@@ -114,47 +114,35 @@ export function useScriptGenerator(
         if (!folderId) {
             return { ok: false, error: `${label}: folder_id mancante` };
         }
-        
-        const candidates = getApiCandidates('/api/drive/folder-info', apiBaseUrl);
-        let lastError = '';
-        
-        for (const endpoint of candidates) {
-            try {
-                const resp = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ folder_id: folderId }),
-                });
-                
-                const rawText = await resp.text();
-                let body: unknown = null;
-                try {
-                    body = rawText ? JSON.parse(rawText) : null;
-                } catch {
-                    body = null;
-                }
-                
-                const bodyObj = body as { ok?: boolean; folder?: { id?: string; name?: string } };
-                if (resp.ok && bodyObj?.ok && bodyObj?.folder?.id) {
-                    return {
-                        ok: true,
-                        folderId: bodyObj.folder.id,
-                        folderName: bodyObj.folder.name || '',
-                    };
-                }
-                
-                const backendError = getBackendErrorMessage(body, rawText || `HTTP ${resp.status}`);
-                lastError = `${label} non valida (${folderId}): ${backendError}`;
-                appendLog(`❌ ${lastError}`);
-            } catch (e: unknown) {
-                const errorMessage = e instanceof Error ? e.message : String(e);
-                lastError = `${label} non raggiungibile (${folderId}): ${errorMessage}`;
-                appendLog(`❌ ${lastError}`);
+
+        // Canonical transport only (client.ts: CSRF, session credentials,
+        // unified ApiError). The old multi-candidate fetch loop silently
+        // fell back to whichever endpoint answered, so a misconfigured
+        // apiBaseUrl never failed; apiPost resolves through ONE authority
+        // and the resolved URL is logged for diagnosability.
+        try {
+            const body = await apiPost<{ ok?: boolean; folder?: { id?: string; name?: string } }>(
+                '/api/drive/folder-info',
+                { folder_id: folderId },
+            );
+            if (body?.ok && body?.folder?.id) {
+                return {
+                    ok: true,
+                    folderId: body.folder.id,
+                    folderName: body.folder.name || '',
+                };
             }
+            const backendError = getBackendErrorMessage(body, 'risposta non valida dal backend');
+            const lastError = `${label} non valida (${folderId}): ${backendError}`;
+            appendLog(`❌ ${lastError}`);
+            return { ok: false, error: lastError };
+        } catch (e: unknown) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            const lastError = `${label} non raggiungibile (${folderId}): ${errorMessage}`;
+            appendLog(`❌ ${lastError}`);
+            return { ok: false, error: lastError };
         }
-        
-        return { ok: false, error: lastError || `${label} non valida (${folderId})` };
-    }, [apiBaseUrl, appendLog]);
+    }, [appendLog]);
     
     const validateProjectDriveFolders = useCallback(async (
         projectRef: ProjectRef | null,
@@ -296,39 +284,23 @@ export function useScriptGenerator(
 
             appendLog(`📤 Payload titolo ${titleIndex + 1}/${sanitizedTitles.length}: ${title}`);
 
-            const dedupeKey = `velox-job:${JSON.stringify(payload)}`;
-
+            // Straight create: the payload embeds `project-<Date.now()>-<i>`,
+            // so the previous in-flight dedupe (keyed on JSON.stringify)
+            // could never collide and only simulated idempotency. Real
+            // protection belongs at the command boundary (server-side
+            // idempotency key), not in a per-render Map.
             let status: number;
             let body: unknown;
-
-            const existingPromise = inFlightRef.current.get(dedupeKey);
-            if (existingPromise) {
-                appendLog('️ Richiesta duplicata rilevata: riuso risposta in-flight');
-                const sharedResult = await existingPromise;
-                status = sharedResult.status;
-                body = sharedResult.body;
-            } else {
-                const requestPromise = (async () => {
-                    try {
-                        const job = await veloxApi.createJob(payload);
-                        appendLog(`🌐 Job InstaEdit creato: ${job.id}`);
-                        return { status: 200, body: { ok: true, job_id: job.id }, rawText: '' };
-                    } catch (e: unknown) {
-                        const message = e instanceof Error ? e.message : 'Errore durante la creazione del job InstaEdit';
-                        appendLog(`⚠️ Creazione job InstaEdit fallita: ${message}`);
-                        return { status: 500, body: { ok: false, error: message }, rawText: message };
-                    }
-                })();
-
-                inFlightRef.current.set(dedupeKey, requestPromise);
-
-                try {
-                    const uniqueResult = await requestPromise;
-                    status = uniqueResult.status;
-                    body = uniqueResult.body;
-                } finally {
-                    inFlightRef.current.delete(dedupeKey);
-                }
+            try {
+                const job = await veloxApi.createJob(payload);
+                appendLog(`🌐 Job InstaEdit creato: ${job.id}`);
+                status = 200;
+                body = { ok: true, job_id: job.id };
+            } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : 'Errore durante la creazione del job InstaEdit';
+                appendLog(`⚠️ Creazione job InstaEdit fallita: ${message}`);
+                status = 500;
+                body = { ok: false, error: message };
             }
 
             results.push({

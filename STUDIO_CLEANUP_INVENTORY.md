@@ -1,5 +1,9 @@
 # Studio Cleanup Inventory
 
+> ⚠️ **DOCUMENTO STORICO — RIMOZIONE COMPLETATA.** `web/src/components/Script/`
+> e i riferimenti elencati sotto sono stati eliminati da `main`. Il file resta
+> come traccia della classificazione; non usarlo come mappa attuale del repo.
+
 Generated: 2026-07-30
 Purpose: Classify every file in `web/src/components/Script/` and every reference to the old Creator Studio before removing the legacy UI.
 

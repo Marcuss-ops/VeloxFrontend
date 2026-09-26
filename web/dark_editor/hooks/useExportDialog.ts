@@ -4,11 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useUIStore } from '@/stores/uiStore';
 import { useEditorStore, type ImageObject, type TextObject } from '@/stores/editorStore';
 import { useObjectsArray } from '@/hooks/useObjectsArray';
-import { selectOrderedObjects } from '@/lib/editorSelectors';
 import { useProjectStore } from '@/stores/projectStore';
 import { useBatchYouTubeTargets } from '@/hooks/useBatchYouTubeTargets';
 import { isScopedProjectId } from '@/lib/project-scope';
-import { canvasStateSignature, captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
+import { captureEditorCanvasBlob, sha256Hex } from '@/lib/canvasPreview';
 import { requestEditorFlush } from '@/lib/editorEvents';
 import type { UseExportDialogReturn } from './useExportDialogTypes';
 import {
@@ -125,15 +124,29 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
         })));
         if (!cancelled) setDraftCovers(hydrated);
       })
-      .catch(() => { if (!cancelled) setDraftCovers([]); })
+      .catch((error: unknown) => {
+        // Surface the failure: an empty list is a valid state, a network/
+        // authorization failure masquerading as "no drafts" is not.
+        if (!cancelled) {
+          setDraftCovers([]);
+          addToast({
+            type: 'error',
+            message: error instanceof Error
+              ? `Bozze copertine non disponibili: ${error.message}`
+              : 'Bozze copertine non disponibili.',
+          });
+        }
+      })
       .finally(() => { if (!cancelled) setLoadingDraftCovers(false); });
     return () => { cancelled = true; };
-  }, [currentProject?.id, groupId, isEditorSession, open]);
+  }, [addToast, currentProject?.id, groupId, isEditorSession, open]);
   const sortedVideos = visiblePrivateVideos;
-  const canvasSignature = useMemo(
-    () => canvasStateSignature(objects, EXPORT_WIDTH, EXPORT_HEIGHT),
-    [objects],
-  );
+
+  // Re-render trigger for the staleness check: subscribe to the monotone
+  // mutation counter instead of JSON.stringify-ing the whole object array
+  // (the old canvasStateSignature allocated a canvas-sized string per
+  // commit just to compare it).
+  const liveMutationVersion = useEditorStore((state) => state.mutationVersion);
 
   const targetVideos = useMemo(() => selectedVideoIds
     .map((videoId) => privateVideos.find((video) => video.video_id === videoId))
@@ -143,9 +156,18 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     // Read the store at capture time. Do not rely on the render that created
     // the dialog: a text edit/transform can land between that render and the
     // click on Export.
-    const liveState = useEditorStore.getState();
-    const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
-    const blob = await captureEditorCanvasBlob(canvasRef?.current?.getStage?.() ?? undefined, EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png');
+    const liveVersion = useEditorStore.getState().mutationVersion;
+    let blob: Blob | null;
+    try {
+      blob = await captureEditorCanvasBlob(canvasRef?.current?.getStage?.() ?? undefined, EXPORT_WIDTH, EXPORT_HEIGHT, 'image/png');
+    } catch (error) {
+      // waitForCanvasAssets rejected: an image asset failed to load or timed
+      // out. Fail the capture loudly instead of fixing an incomplete frame
+      // as a 'valid' snapshot.
+      const message = error instanceof Error ? error.message : 'Asset immagine non caricato';
+      addToast({ type: 'error', message: `Snapshot non creato: ${message}` });
+      return null;
+    }
     if (!blob) return null;
     const sha256 = await sha256Hex(blob);
     const version = snapshotVersionRef.current + 1;
@@ -153,13 +175,13 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     const next: CanvasSnapshot = {
       id: `snapshot_${version}_${sha256.slice(0, 12)}`,
       version,
-      signature: liveSignature,
+      signature: `mutation:${liveVersion}`,
       width: EXPORT_WIDTH,
       height: EXPORT_HEIGHT,
       blob,
       previewUrl: URL.createObjectURL(blob),
       sha256,
-      editorSignature: liveSignature,
+      editorSignature: `mutation:${liveVersion}`,
     };
     snapshotRef.current = next;
     setSnapshot(next);
@@ -167,7 +189,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     setVariantPreviews({});
     setCoverPreviewUrl(next.previewUrl);
     return next;
-  }, [canvasRef]);
+  }, [addToast, canvasRef]);
 
   const captureSnapshotRef = useRef(captureSnapshot);
   useEffect(() => {
@@ -252,13 +274,12 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
   // Mark the snapshot stale (and drop variants) when the live canvas diverges.
   useEffect(() => {
     if (!open || !snapshotRef.current) return;
-    const liveState = useEditorStore.getState();
-    const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
-    if (snapshotRef.current.signature !== liveSignature) {
+    const liveVersion = useEditorStore.getState().mutationVersion;
+    if (snapshotRef.current.signature !== `mutation:${liveVersion}`) {
       setSnapshotStale(true);
       setVariantPreviews({});
     }
-  }, [canvasSignature, open]);
+  }, [liveMutationVersion, open]);
 
   // Load only the YouTube target data when the export dialog opens.
   useEffect(() => {
@@ -288,10 +309,9 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
   }, [open, resetSelection]);
 
   const handleExport = useCallback(async () => {
-    const liveState = useEditorStore.getState();
-    const liveSignature = canvasStateSignature(selectOrderedObjects(liveState), EXPORT_WIDTH, EXPORT_HEIGHT);
+    const liveVersion = useEditorStore.getState().mutationVersion;
     let currentSnapshot = snapshotRef.current;
-    if (!currentSnapshot || currentSnapshot.signature !== liveSignature) {
+    if (!currentSnapshot || currentSnapshot.signature !== `mutation:${liveVersion}`) {
       currentSnapshot = await captureSnapshot();
     }
     const stage = canvasRef?.current?.getStage?.() ?? undefined;
@@ -356,7 +376,7 @@ export function useExportDialog({ isOpen, onClose, canvasRef }: ExportDialogProp
     selectedDraftId,
     selectDraft,
     loadingDraftCovers,
-    canvasSignature,
+    canvasSignature: `mutation:${liveMutationVersion}`,
     variantPreviews,
     isGeneratingPreviews: variants.isGeneratingPreviews,
     allSelectedVariantsReady: variants.allSelectedVariantsReady,

@@ -8,6 +8,8 @@ import React from 'react';
 import { ExternalLink, Eye, FileText, Film, RefreshCw, Trash2, Video, X } from 'lucide-react';
 import type { VideoClip, DriveFile } from './types';
 import { fetchDriveFiles } from './types';
+import { driveApi } from '@/lib/api/driveApi';
+import { fetchJSON } from '@/lib/api/client';
 
 interface ClipDetailModalProps {
     open: boolean;
@@ -91,15 +93,10 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                                     <button
                                         onClick={async () => {
                                             try {
-                                                const res = await fetch(`/api/drive/file/${clip.driveId}/audio`);
-                                                if (res.ok) {
-                                                    const data = await res.json();
-                                                    setAudioPlayerUrl(data.audioUrl || `/api/drive/file/${clip.driveId}/download`);
-                                                } else {
-                                                    setAudioPlayerUrl(`/api/drive/file/${clip.driveId}/download`);
-                                                }
-                                            } catch (err) {
-                                                console.error('Failed to load audio:', err);
+                                                const data = await driveApi.fileAudio(clip.driveId);
+                                                setAudioPlayerUrl(data.audioUrl || `/api/drive/file/${clip.driveId}/download`);
+                                            } catch {
+                                                setAudioPlayerUrl(`/api/drive/file/${clip.driveId}/download`);
                                             }
                                         }}
                                         className="flex items-center gap-2 px-4 py-3 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 rounded-lg text-xs font-bold transition-colors w-full justify-center"
@@ -124,16 +121,10 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                                         onClick={async () => {
                                             setTextContentLoading(true);
                                             try {
-                                                const res = await fetch(`/api/drive/file/${clip.driveId}/text`);
-                                                if (res.ok) {
-                                                    const data = await res.json();
-                                                    setTextContent(data.textContent || 'Nessun contenuto testuale disponibile');
-                                                } else {
-                                                    setTextContent('File di testo non trovato per questo clip.');
-                                                }
-                                            } catch (err) {
-                                                console.error('Failed to load text:', err);
-                                                setTextContent('Errore nel caricamento del file di testo.');
+                                                const data = await driveApi.fileText(clip.driveId);
+                                                setTextContent(data.text || data.content || 'Nessun contenuto testuale disponibile');
+                                            } catch {
+                                                setTextContent('File di testo non trovato per questo clip.');
                                             } finally {
                                                 setTextContentLoading(false);
                                             }
@@ -181,14 +172,13 @@ export const ClipDetailModal: React.FC<ClipDetailModalProps> = ({
                                 if (!clip.driveId) return;
                                 setClipDetailLoading(true);
                                 try {
-                                    const fileRes = await fetch(`/api/drive/file/${clip.driveId}`);
-                                    if (fileRes.ok) {
-                                        const fileData = await fileRes.json();
-                                        const parentId = fileData.parents?.[0];
-                                        if (parentId) {
-                                            const folderFiles = await fetchDriveFiles(parentId);
-                                            setClipDetailFiles(folderFiles.filter(f => f.id !== clip.driveId));
-                                        }
+                                    // Wire contract: this endpoint returns the file metadata
+                                    // (with parents[]) as JSON, not raw bytes.
+                                    const fileData = await fetchJSON<{ parents?: string[] }>(`/api/drive/file/${encodeURIComponent(clip.driveId)}`);
+                                    const parentId = fileData.parents?.[0];
+                                    if (parentId) {
+                                        const folderFiles = await fetchDriveFiles(parentId);
+                                        setClipDetailFiles(folderFiles.filter(f => f.id !== clip.driveId));
                                     }
                                 } catch (err) {
                                     console.error('Failed to load folder files:', err);

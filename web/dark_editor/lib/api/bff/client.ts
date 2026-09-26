@@ -9,23 +9,16 @@
 
 import { editorAuthorizationHeaders } from '../../editor-session';
 import { editorRuntimePath } from '../../editor-runtime';
+import { sha256Hex } from '../../hash';
+import { getCookie } from '../authHeaders';
+
+export { sha256Hex, getCookie };
 
 /** Same-origin; production deployments should host the editor under the BFF domain. */
 export const BFF_BASE = '';
 
-/** Read a cookie by name. Returns '' outside the DOM (Node / Vitest). */
-export function getCookie(name: string): string {
-  if (typeof document === 'undefined') return '';
-  const prefix = name + '=';
-  const entries = document.cookie.split(';');
-  for (const entry of entries) {
-    const trimmed = entry.trim();
-    if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length));
-    }
-  }
-  return '';
-}
+// getCookie is re-exported from lib/api/authHeaders.ts — one cookie-parsing
+// authority across the editor (previously duplicated here).
 
 /** CSRF-aware JSON fetch. Honours same-origin session cookie + CSRF double-submit. */
 export async function bffFetch<T>(
@@ -91,15 +84,6 @@ export function bffPost<T>(endpoint: string, body?: unknown): Promise<T> {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-}
-
-/** SHA-256 hash of a Blob as lowercase hex (used by upload-presign). */
-export async function sha256Hex(blob: Blob): Promise<string> {
-  const buffer = await blob.arrayBuffer();
-  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
 }
 
 /** 5-second cadence for the post-publish short-poll loop. */

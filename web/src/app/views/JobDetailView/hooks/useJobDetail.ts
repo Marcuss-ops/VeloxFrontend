@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { jobsApi } from '../../../../lib/api/jobsApi';
+import { fetchJSON } from '../../../../lib/api/client';
 import {
     JobDetailData,
     JobEvent,
@@ -54,12 +55,11 @@ export const useJobDetail = () => {
 
             let aggregatedLogs: JobEvent[] = [];
             try {
-                const response = await fetch(`/job_events?job_id=${encodeURIComponent(jobId)}&limit=200`);
-                if (response.ok) {
-                    const payload = await response.json();
-                    if (payload?.ok && Array.isArray(payload.events)) {
-                        aggregatedLogs = mapJobEventsToLogs(payload.events);
-                    }
+                // /job_events is a non-/api server route: fetchJSON keeps it on
+                // the canonical transport (retry + session credentials).
+                const payload = await fetchJSON<{ ok?: boolean; events?: unknown[] }>(`/job_events?job_id=${encodeURIComponent(jobId)}&limit=200`);
+                if (payload?.ok && Array.isArray(payload.events)) {
+                    aggregatedLogs = mapJobEventsToLogs(payload.events);
                 }
             } catch (err) {
                 console.error('Error fetching job_events:', err);
@@ -72,12 +72,9 @@ export const useJobDetail = () => {
             const workerId = asString(data.assigned_to || data.worker_id);
             if (workerId && (aggregatedLogs.length === 0 || data.status === 'PROCESSING')) {
                 try {
-                    const workerResp = await fetch(`/api/v1/workers/${encodeURIComponent(workerId)}/logs?tail=200`);
-                    if (workerResp.ok) {
-                        const workerPayload = await workerResp.json();
-                        const workerEvents = mapShowlogToEvents(workerPayload?.logs);
-                        aggregatedLogs = [...aggregatedLogs, ...workerEvents];
-                    }
+                    const workerPayload = await fetchJSON<{ logs?: unknown }>(`/api/v1/workers/${encodeURIComponent(workerId)}/logs?tail=200`);
+                    const workerEvents = mapShowlogToEvents(workerPayload?.logs);
+                    aggregatedLogs = [...aggregatedLogs, ...workerEvents];
                 } catch (err) {
                     console.error('Error fetching worker logs:', err);
                 }

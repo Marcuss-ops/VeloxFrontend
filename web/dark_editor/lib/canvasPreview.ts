@@ -1,4 +1,10 @@
 import { exportStageToBlob } from '@/lib/canvasExport';
+import { isImageSrcFailed } from '@/lib/imageLoadTracker';
+import { sha256Hex } from '@/lib/hash';
+
+// Single hashing authority (lib/hash.ts); this module keeps re-exporting
+// the name for the export hooks and their test mocks.
+export { sha256Hex };
 import {
   neutralizeStageTransforms,
   restoreStageTransforms,
@@ -40,32 +46,64 @@ export function canvasStateSignature(
   return JSON.stringify({ width, height, objects });
 }
 
-export async function sha256Hex(blob: Blob): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer());
-  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
+/**
+ * Wait for every Image node's bitmap to be decodable before capturing.
+ *
+ * Failure semantics (the previous implementation resolved on `error` AND
+ * on timeout, so an export "succeeded" with holes where missing assets
+ * should be and the broken frame was even persisted as a snapshot):
+ *   - an image whose load FAILED is reported by rejecting with the src,
+ *   - a timed-out load (stall, no load/error event) is reported too, but
+ *     only after every other image had its chance — one slow CDN must not
+ *     mask three healthy ones,
+ *   - already-loaded images resolve immediately.
+ * The callers own the policy: they can fail the capture or mark the
+ * snapshot degraded instead of fixing a silently incomplete frame.
+ */
+const IMAGE_LOAD_TIMEOUT_MS = 5000;
 
 function waitForImage(image: HTMLImageElement): Promise<void> {
   if (image.complete && image.naturalWidth > 0) return Promise.resolve();
-  return new Promise((resolve) => {
-    const finish = () => {
-      image.removeEventListener('load', finish);
-      image.removeEventListener('error', finish);
+  return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const finishResolve = () => {
+      if (settled) return;
+      settled = true;
+      image.removeEventListener('load', finishResolve);
+      image.removeEventListener('error', finishReject);
       resolve();
     };
-    image.addEventListener('load', finish, { once: true });
-    image.addEventListener('error', finish, { once: true });
-    window.setTimeout(finish, 5000);
+    const finishReject = () => {
+      if (settled) return;
+      settled = true;
+      image.removeEventListener('load', finishResolve);
+      image.removeEventListener('error', finishReject);
+      reject(new Error(`image failed to load: ${image.src}`));
+    };
+    image.addEventListener('load', finishResolve, { once: true });
+    image.addEventListener('error', finishReject, { once: true });
+    window.setTimeout(finishReject, IMAGE_LOAD_TIMEOUT_MS);
   });
 }
 
 async function waitForCanvasAssets(stage: ExportStage): Promise<void> {
-  await Promise.all(
-    (stage.find?.('Image') ?? []).map((node) => {
+  const images = stage.find?.('Image') ?? [];
+  const pending = images
+    .map((node) => {
       const image = node.image?.();
-      return image instanceof HTMLImageElement ? waitForImage(image) : Promise.resolve();
-    }),
-  );
+      return image instanceof HTMLImageElement ? image : null;
+    })
+    .filter((image): image is HTMLImageElement => image !== null)
+    // Skip assets already known to have failed this session: their load
+    // event will never come, so waiting on them would burn the timeout and
+    // block the capture on an unrecoverable source. The capture proceeds
+    // and the caller decides how to surface the degraded frame.
+    .filter((image) => !isImageSrcFailed(image.src));
+
+  if (pending.length > 0) {
+    // Every image gets its own timeout; one rejection aborts the wait.
+    await Promise.all(pending.map((image) => waitForImage(image)));
+  }
   if (typeof document !== 'undefined' && document.fonts?.ready) await document.fonts.ready;
   await new Promise<void>((resolve) => {
     if (typeof requestAnimationFrame === 'function') {

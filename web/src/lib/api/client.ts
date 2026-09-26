@@ -292,7 +292,7 @@ async function executeWithRetry<T>(
   endpoint: string,
   method: string,
   retryOptions: RetryOptions,
-  fn: (signal: AbortSignal) => Promise<T>,
+  fn: (signal: AbortSignal, attempt: number) => Promise<T>,
   callerSignal?: AbortSignal
 ): Promise<T> {
   const {
@@ -309,7 +309,7 @@ async function executeWithRetry<T>(
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     try {
-      return await fn(controller.signal);
+      return await fn(controller.signal, attempt);
     } catch (error) {
       // Consumer cancellation (React Query unmount / period switch) is
       // NOT transient: rethrow the raw AbortError immediately, never
@@ -389,12 +389,16 @@ export async function apiFetch<T>(
     endpoint,
     method,
     { timeout, retries, retryDelay, idempotent },
-    async (signal) => {
+    async (signal, attempt) => {
       const { body: rawBody, signal: _consumerSignal, ...rest } = fetchOpts;
       const resolvedBody = typeof rawBody === 'function'
         ? (rawBody as () => BodyInit | null)()
         : rawBody;
-      const body = cloneBody(resolvedBody);
+      // Clone only for retries: attempt 0 can consume the caller's body
+      // directly (FormData/Blob/ArrayBuffer inputs are re-readable by
+      // fetch), so large uploads no longer pay a full multipart copy on
+      // the happy path. undefined → null keeps the historical wire shape.
+      const body = attempt === 0 ? (resolvedBody ?? null) : cloneBody(resolvedBody);
 
       // Caller-provided signal wins: when the consumer passes one (React
       // Query cancellation), forward it EXACTLY to fetch — cancellation
@@ -466,12 +470,13 @@ export async function fetchVoid(endpoint: string, options: ClientOptions = {}): 
     endpoint,
     method,
     { timeout, retries, retryDelay, idempotent },
-    async (signal) => {
+    async (signal, attempt) => {
       const { body: rawBody, signal: _consumerSignal, ...rest } = fetchOpts;
       const resolvedBody = typeof rawBody === 'function'
         ? (rawBody as () => BodyInit | null)()
         : rawBody;
-      const body = cloneBody(resolvedBody);
+      // Same clone-only-on-retry rule as apiFetch (see comment there).
+      const body = attempt === 0 ? (resolvedBody ?? null) : cloneBody(resolvedBody);
 
       // Same caller-signal rule as apiFetch: forward the consumer's signal
       // object exactly; no retry on consumer cancellation.

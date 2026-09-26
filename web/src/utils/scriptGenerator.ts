@@ -232,31 +232,6 @@ export function extractDriveId(raw: unknown): string {
 
 // ========== API Candidates ==========
 
-/**
- * Generates a list of API endpoint candidates for a given path
- * @param path - API path (e.g., '/api/drive/folder-info')
- * @param apiBase - Optional remote API base URL
- * @param origin - Optional origin (defaults to window.location.origin or empty string)
- */
-export function getApiCandidates(
-  path: string,
-  apiBase?: string | null,
-  origin?: string
-): string[] {
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  const resolvedOrigin = origin ?? (typeof window !== 'undefined' ? window.location.origin : '');
-  const sameOrigin = `${resolvedOrigin}${cleanPath}`;
-  const relative = cleanPath;
-  const remoteConfigured = apiBase ? `${apiBase.replace(/\/+$/, '')}${cleanPath}` : '';
-
-  const candidates = [sameOrigin, relative];
-  if (remoteConfigured && !candidates.includes(remoteConfigured)) {
-    candidates.push(remoteConfigured);
-  }
-
-  return candidates;
-}
-
 // ========== Error Message Extraction ==========
 
 /**

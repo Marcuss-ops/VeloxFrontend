@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { isRetiredYouTubeCatalogPath, isScopedEditorProjectId } from '@/lib/editor-ownership';
 import { isScopedProjectId } from '@/lib/project-scope';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,10 +9,14 @@ function read(relativePath: string): string {
   return readFileSync(join(ROOT, relativePath), 'utf8');
 }
 
+// The former lib/editor-ownership.ts delegation (isScopedEditorProjectId /
+// isRetiredYouTubeCatalogPath) was removed with the local projects catalog
+// (bd1ff37): authorization for ve_/vx_ documents lives in the InstaEdit BFF
+// and the retired YouTube catalog paths are pinned inline by the proxy
+// route. This suite keeps the boundary contract against the survivors.
+
 describe('InstaEdit/Velox project bridge boundary', () => {
   it('accepts only opaque ve_/vx_ project handles (single canonical resolver)', () => {
-    expect(isScopedEditorProjectId('ve_project_123')).toBe(true);
-    expect(isScopedEditorProjectId('vx_project_123')).toBe(true);
     expect(isScopedProjectId('ve_project_123')).toBe(true);
     expect(isScopedProjectId('vx_project_123')).toBe(true);
     // Non-scoped ids must NEVER be treated as InstaEdit-backed projects:
@@ -23,15 +26,13 @@ describe('InstaEdit/Velox project bridge boundary', () => {
     expect(isScopedProjectId('ve_')).toBe(false);
     expect(isScopedProjectId('vx_')).toBe(false);
     expect(isScopedProjectId('')).toBe(false);
-    // The ownership helper delegates to the canonical resolver.
-    expect(isScopedEditorProjectId('vx_project_123')).toBe(isScopedProjectId('vx_project_123'));
   });
 
-  it('retires every global YouTube catalog path', () => {
-    for (const path of ['/groups', '/channels', '/group-videos', '/videos/abc']) {
-      expect(isRetiredYouTubeCatalogPath(path)).toBe(true);
+  it('retires every global YouTube catalog path in the proxy route', () => {
+    const youtubeRoute = read('app/api/v1/youtube/[...path]/route.ts');
+    for (const prefix of ['/groups', '/channels', '/feed', '/group-videos', '/group-private-videos', '/videos']) {
+      expect(youtubeRoute).toContain(`'${prefix}'`);
     }
-    expect(isRetiredYouTubeCatalogPath('/editor/projects/ve_project_123')).toBe(false);
   });
 
   it('keeps the bridge minimal and one-way in the API surface', () => {

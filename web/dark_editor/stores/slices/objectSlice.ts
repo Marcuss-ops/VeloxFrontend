@@ -120,6 +120,7 @@ export const createObjectSlice = (
     set({
       objects: nextObjects,
       objectIds,
+      mutationVersion: get().mutationVersion + 1,
       selectedIds: [],
       pastPatches: [],
       futurePatches: [],
@@ -132,6 +133,7 @@ export const createObjectSlice = (
     set({
       objects: {},
       objectIds: [],
+      mutationVersion: get().mutationVersion + 1,
       selectedIds: [],
       pastPatches: [],
       futurePatches: [],

@@ -4,7 +4,6 @@ import { AuthProvider } from './AuthProvider';
 import { I18nProvider } from './I18nProvider';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ScriptProvider } from './ScriptProvider';
-import { VeloxAPIProvider } from '../../lib/api/VeloxAPIProvider';
 
 // QueryClient centralizzato con configurazione ottimizzata
 const queryClient = new QueryClient({
@@ -23,11 +22,9 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
             <QueryClientProvider client={queryClient}>
                 <AuthProvider>
                     <I18nProvider>
-                        <VeloxAPIProvider>
-                            <ScriptProvider>
-                                {children}
-                            </ScriptProvider>
-                        </VeloxAPIProvider>
+                        <ScriptProvider>
+                            {children}
+                        </ScriptProvider>
                     </I18nProvider>
                 </AuthProvider>
             </QueryClientProvider>

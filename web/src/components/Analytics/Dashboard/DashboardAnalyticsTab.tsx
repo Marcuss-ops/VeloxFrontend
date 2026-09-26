@@ -9,6 +9,7 @@ import {
     UserCircle
 } from 'lucide-react';
 import { AnalyticsTimelinePoint, AnalyticsSummary, TopVideo, TopChannel } from './types';
+import { fetchJSON } from '../../../lib/api/client';
 
 interface AnalyticsData {
     summary: AnalyticsSummary | null;
@@ -17,12 +18,6 @@ interface AnalyticsData {
     topChannels: TopChannel[];
     loading: boolean;
     error: string | null;
-}
-
-async function fetchJSON<T>(url: string): Promise<T> {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
 }
 
 export const DashboardAnalyticsTab: React.FC = () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Konva from 'konva';
-import { getCanvasElement, exportCanvasToBlob, exportStageToBlob } from '@/lib/canvasExport';
+import { exportStageToBlob } from '@/lib/canvasExport';
 
 // Mock canvas whose toBlob produces the final YouTube thumbnail blob.
 // Mirrors the in-browser semantics:
@@ -84,8 +84,9 @@ function createMockStage() {
  *
  * The `canvasExport` suite below pins the user-spec for the dark-editor's
  * YouTube thumbnail export pipeline. The production implementation lives in
- * `lib/canvasExport.ts` (exportStageToBlob + exportCanvasToBlob legacy
- * fallback). Each of the 5 items in the user spec is verified by one or
+ * `lib/canvasExport.ts` (exportStageToBlob; the legacy DOM-querySelector
+ * fallback was removed — every caller passes a Konva stage). Each of the
+ * 5 items in the user spec is verified by one or
  * more dedicated `it()` blocks in this file. If you change the production
  * code, look here first to see which assertions need updating.
  *
@@ -93,7 +94,7 @@ function createMockStage() {
  *     `document.querySelector('.canvas-container .konvajs-content canvas').toBlob()`.
  *
  *     Covered by:
- *       - "exportCanvasToBlob uses the stage path when stage and dimensions are provided"
+ *       - "converts webp format to jpeg before exporting"
  *       - "exportStageToBlob hides overlay nodes, resets stage transform,
  *          and restores them"
  *
@@ -182,25 +183,6 @@ describe('canvasExport', () => {
     vi.restoreAllMocks();
   });
 
-  it('getCanvasElement returns null when document is undefined', () => {
-    vi.stubGlobal('document', undefined);
-    expect(getCanvasElement()).toBeNull();
-  });
-
-  it('getCanvasElement queries the DOM for the canvas', () => {
-    const mockCanvas = { toBlob: vi.fn() } as unknown as HTMLCanvasElement;
-    vi.stubGlobal('document', {
-      querySelector: vi.fn().mockReturnValue(mockCanvas),
-    } as unknown as Document);
-    expect(getCanvasElement()).toBe(mockCanvas);
-  });
-
-  it('exportCanvasToBlob returns null when no canvas is found (legacy fallback)', async () => {
-    vi.stubGlobal('document', undefined);
-    const result = await exportCanvasToBlob('png', 90);
-    expect(result).toBeNull();
-  });
-
   it('exportStageToBlob hides overlay nodes, resets stage transform, and restores them', async () => {
     const stage = createMockStage();
     const visibleCalls: (boolean | undefined)[] = [];
@@ -233,55 +215,11 @@ describe('canvasExport', () => {
     expect(result?.blob).toBeInstanceOf(Blob);
   });
 
-  it('exportCanvasToBlob uses the stage path when stage and dimensions are provided', async () => {
-    const stage = createMockStage();
-    (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
-
-    const result = await exportCanvasToBlob('jpeg', 90, stage, 1920, 1080);
-
-    expect(stage.toDataURL).toHaveBeenCalled();
-    expect(result).not.toBeNull();
-    expect(result?.mime).toBe('image/jpeg');
-  });
-
-  it('produces a 1920x1080 thumbnail blob from a 1920x1080 logical canvas', async () => {
-    const stage = createMockStage();
-    (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
-
-    const createdCanvases: { width: number; height: number }[] = [];
-    vi.stubGlobal('document', {
-      createElement: vi.fn((tag: string) => {
-        const canvas = createMockCanvas(1920, 1080);
-        if (tag === 'canvas') {
-          createdCanvases.push({ width: canvas.width, height: canvas.height });
-        }
-        return canvas;
-      }),
-      querySelector: vi.fn(),
-    } as unknown as Document);
-
-    const result = await exportStageToBlob(stage, 1920, 1080, 'png', 90);
-
-    expect(stage.toDataURL).toHaveBeenCalledWith({
-      x: 0,
-      y: 0,
-      width: 1920,
-      height: 1080,
-      pixelRatio: 1,
-      mimeType: 'image/png',
-      quality: 0.9,
-    });
-    expect(createdCanvases).toContainEqual({ width: 1920, height: 1080 });
-    expect(result).not.toBeNull();
-    expect(result?.blob).toBeInstanceOf(Blob);
-    expect(result?.mime).toBe('image/png');
-  });
-
   it('converts webp format to jpeg before exporting', async () => {
     const stage = createMockStage();
     (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
 
-    const result = await exportCanvasToBlob('webp', 90, stage, 1920, 1080);
+    const result = await exportStageToBlob(stage, 1920, 1080, 'webp', 90);
 
     expect(stage.toDataURL).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -292,60 +230,13 @@ describe('canvasExport', () => {
     expect(result?.mime).toBe('image/jpeg');
   });
 
-  it('rejects unsupported formats when a stage is provided', async () => {
+  it('rejects unsupported formats', async () => {
     const stage = createMockStage();
     (stage.find as ReturnType<typeof vi.fn>).mockReturnValue([]);
 
-    await expect(exportCanvasToBlob('gif', 90, stage, 1920, 1080)).rejects.toThrow(
+    await expect(exportStageToBlob(stage, 1920, 1080, 'gif', 90)).rejects.toThrow(
       'Unsupported thumbnail format: gif'
     );
-  });
-
-  it('rejects unsupported formats in the legacy fallback', async () => {
-    const mockCanvas = { toBlob: vi.fn() } as unknown as HTMLCanvasElement;
-    vi.stubGlobal('document', {
-      querySelector: vi.fn().mockReturnValue(mockCanvas),
-    } as unknown as Document);
-
-    await expect(exportCanvasToBlob('gif', 90)).rejects.toThrow(
-      'Unsupported thumbnail format: gif'
-    );
-  });
-
-  it('exportCanvasToBlob legacy fallback: webp is canonicalised to image/jpeg before canvas.toBlob (no 400 from /media/presign)', async () => {
-    // The publish panel UI (FormatQualitySection) only exposes PNG and JPEG, so this
-    // legacy fallback path is only hit when a still-stage-unaware caller passes
-    // format='webp' programmatically. The lib MUST still canonicalise webp -> jpeg
-    // BEFORE calling canvas.toBlob(mime=...) so that the produced Blob.type is
-    // image/jpeg -- otherwise POST /media/presign would return HTTP 400
-    // "Unsupported thumbnail format" and the upload pipeline would abort.
-    const mockCanvas: HTMLCanvasElement = {
-      toBlob: vi.fn((callback: BlobCallback, mime?: string, _quality?: number) => {
-        callback(
-          new Blob(['jpeg-bytes'], { type: mime ?? 'image/jpeg' }) as unknown as globalThis.Blob,
-        );
-      }),
-    } as unknown as HTMLCanvasElement;
-    vi.stubGlobal('document', {
-      querySelector: vi.fn().mockReturnValue(mockCanvas),
-      createElement: vi.fn(),
-    } as unknown as Document);
-
-    const result = await exportCanvasToBlob('webp', 90);
-
-    // 1. The mime passed INTO canvas.toBlob is image/jpeg (webp canonicalised).
-    const toBlobCalls = (mockCanvas.toBlob as ReturnType<typeof vi.fn>).mock.calls;
-    expect(toBlobCalls.length, 'canvas.toBlob should be invoked exactly once').toBe(1);
-    expect(toBlobCalls[0][1], 'webp must be canonicalised to image/jpeg BEFORE canvas.toBlob').toBe('image/jpeg');
-    // 2. Quality is forwarded (jpeg isn't png so q applies).
-    expect(toBlobCalls[0][2], 'jpeg quality (0.9) must be forwarded to canvas.toBlob').toBe(0.9);
-
-    // 3. The returned ExportedBlob (what callers hand to the upload pipeline):
-    expect(result, 'legacy fallback with webp must succeed and NOT throw Unsupported thumbnail format').not.toBeNull();
-    expect(result!.mime, 'returned ExportedBlob.mime must be image/jpeg').toBe('image/jpeg');
-    // result.blob.type is the field /media/presign reads from the multipart
-    // Content-Type -- this is THE assertion that prevents the 400.
-    expect(result!.blob.type, 'returned Blob.type must be image/jpeg -- POST /media/presign rejects image/webp with 400').toBe('image/jpeg');
   });
 
   it('exportStageToBlob("webp", ...): imageToBlob(canvas.toBlob) receives image/jpeg (not image/webp) -- POST /media/presign stays 200', async () => {

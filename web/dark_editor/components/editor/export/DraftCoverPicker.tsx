@@ -23,6 +23,7 @@ export function DraftCoverPicker({ drafts, selectedDraftId, loading, onSelect }:
         {drafts.map((draft) => {
           const selected = draft.id === selectedDraftId;
           return <button key={draft.id} type="button" onClick={() => onSelect(draft)} className={`relative overflow-hidden rounded-lg border text-left ${selected ? 'border-black ring-2 ring-black/15' : 'border-black/[0.10]'}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- blob:/proxy-served preview URLs inside a fixed-size card; next/image adds no value here */}
             {draft.previewUrl ? <img src={draft.previewUrl} alt={draft.name} className="aspect-video w-full object-cover" /> : <div className="flex aspect-video items-center justify-center bg-[#f0f0ed]"><ImageIcon className="h-6 w-6 text-black/25" /></div>}
             <span className="block truncate px-2 py-1.5 text-xs font-medium">{draft.name}</span>
             {selected && <span className="absolute right-2 top-2 rounded-full bg-black p-1 text-white"><Check className="h-3 w-3" /></span>}

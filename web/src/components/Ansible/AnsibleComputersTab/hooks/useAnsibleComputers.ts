@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnsibleComputer, AnsibleRun, AnsibleComputerLog, WorkerStatus, ActionCapability, CapabilitiesResponse } from '../../types';
 import { fetchJSON, ansibleApi } from '../../../../lib/api';
+import { usePolling } from '../../../../hooks/usePolling';
 
 interface AnsibleComputersData {
     computers: AnsibleComputer[];
@@ -92,9 +93,8 @@ export function useAnsibleComputers(intervalMs = 30000): AnsibleComputersData {
     const [workersStatus, setWorkersStatus] = useState<WorkerStatus[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const intervalRef = useRef<number | null>(null);
 
-    const fetchAll = useCallback(async () => {
+    const fetchAll = useCallback(async (signal: AbortSignal) => {
         try {
             // Fetch computers from API
             const rawData = await fetchJSON<Record<string, unknown>>('/api/v1/admin/ansible/computers/list');
@@ -136,16 +136,22 @@ export function useAnsibleComputers(intervalMs = 30000): AnsibleComputersData {
             setComputers(merged);
             setComputersMap(mergedMap);
 
+            if (signal.aborted) return;
             setError(null);
         } catch (e: unknown) {
+            if (signal.aborted) return;
             const errorMsg = e instanceof Error ? e.message : 'Fetch error';
             console.error('[Ansible] Data fetch error:', errorMsg);
             setError(errorMsg);
         } finally {
-            setLoading(false);
+            if (!signal.aborted) setLoading(false);
         }
     }, []);
 
+
+    // Unified polling authority: single-flight, visibility-gated, abortable
+    // (replaces the raw setInterval that could overlap slow responses).
+    const { refresh } = usePolling(fetchAll, intervalMs);
 
     // Fetch logs for a specific computer
     const fetchComputerLogs = useCallback(async (computerId: string): Promise<AnsibleComputerLog[]> => {
@@ -157,17 +163,6 @@ export function useAnsibleComputers(intervalMs = 30000): AnsibleComputersData {
         }
     }, []);
 
-    useEffect(() => {
-        fetchAll();
-        intervalRef.current = window.setInterval(fetchAll, intervalMs);
-
-        return () => {
-            if (intervalRef.current !== null) {
-                clearInterval(intervalRef.current);
-            }
-        };
-    }, [fetchAll, intervalMs]);
-
     return {
         computers,
         computersMap,
@@ -176,7 +171,7 @@ export function useAnsibleComputers(intervalMs = 30000): AnsibleComputersData {
         workersStatus,
         loading,
         error,
-        refresh: fetchAll,
+        refresh,
         fetchComputerLogs
     };
 }

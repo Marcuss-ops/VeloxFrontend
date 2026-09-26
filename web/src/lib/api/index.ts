@@ -26,33 +26,9 @@ export type { Project, CreateProjectRequest } from './projectsApi';
 export { deliveriesApi } from './deliveriesApi';
 export type { Delivery, DeliveryStatus } from './deliveriesApi';
 
-// Legacy Bridge typed React adapter
-export {
-  LoadingManager,
-  normalizeError,
-  LegacyApiProvider,
-  useLegacyApi,
-  useLegacyLoadingState,
-  useLegacyToast,
-  useVeloxAPI,
-  VeloxAPIProvider,
-} from './legacyBridge';
-export type {
-  ApiResponse,
-  JobPayload,
-  JobsListResponse,
-  WorkerPayload,
-  SubmissionPayload,
-  LoadingState,
-  NormalizedError,
-  ToastType,
-  ToastOptions,
-  ToastHandler,
-  LegacyApiAdapter,
-  LegacyApiProviderProps,
-  LegacyApiContextValue,
-} from './legacyBridge';
-
+// The Legacy Bridge React adapter (legacyBridge.tsx) was removed: it had
+// zero production consumers — the canonical path is the typed per-domain
+// API modules re-exported below plus React Query at the call sites.
 
 export { jobsApi } from './jobsApi';
 export type { Job, JobsResponse, JobStatus } from './jobsApi';

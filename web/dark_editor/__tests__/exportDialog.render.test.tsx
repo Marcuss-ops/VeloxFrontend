@@ -78,7 +78,12 @@ describe('ExportDialog composition', () => {
         render(<ExportDialog />);
 
         expect(await screen.findByText('Pubblica copertine')).toBeTruthy();
-        expect(screen.getByText('Esporta PNG')).toBeTruthy();
+        // Publish-only footer (the 'Esporta PNG' button was removed by
+        // 1b2459c): the local download entry point is gone, 'Annulla' is
+        // always present, and the publish CTA only appears with targets.
+        expect(screen.getByText('Annulla')).toBeTruthy();
+        expect(screen.queryByText('Esporta PNG')).toBeNull();
+        expect(screen.queryByText('Pubblica su YouTube')).toBeNull();
         expect(screen.getByText('Titolo, descrizione e tag')).toBeTruthy();
     });
 
@@ -90,7 +95,7 @@ describe('ExportDialog composition', () => {
 
         // The publish panel unmounts and no legacy panel remains.
         expect(screen.queryByText('Pubblica copertine')).toBeNull();
-        expect(screen.queryByText('Esporta PNG')).toBeNull();
+        expect(screen.queryByText('Annulla')).toBeNull();
     });
 
     it('uses the onClose prop instead of the store close', async () => {

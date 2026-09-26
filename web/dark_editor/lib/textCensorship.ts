@@ -148,6 +148,15 @@ function getRandomChar(chars: string[]): string {
 }
 
 // Utility function to check if text contains profanity
+// The dictionary regexes carry the 'g' flag (getProfanityCount relies on
+// global matching), and String.match resets lastIndex internally — but
+// RegExp.test() ADVANCES it. Always reset before testing, or repeated calls
+// with the same regex would skip matches.
+function testGlobalRegex(regex: RegExp, text: string): boolean {
+  regex.lastIndex = 0;
+  return regex.test(text);
+}
+
 export function hasProfanity(text: string): boolean {
   const lowerText = text.toLowerCase();
   for (const token of tokenize(lowerText)) {
@@ -156,7 +165,9 @@ export function hasProfanity(text: string): boolean {
     }
   }
   for (const regex of PROFANITY_REGEX_MAP.values()) {
-    if (lowerText.match(regex)) {
+    // test() instead of match(): no match-array/substring allocations on
+    // the (frequent) negative path.
+    if (testGlobalRegex(regex, lowerText)) {
       return true;
     }
   }
@@ -199,7 +210,7 @@ export function getProfanityWords(text: string): string[] {
       if (tokens.has(lower)) {
         foundWords.push(lower);
       }
-    } else if (lowerText.match(PROFANITY_REGEX_MAP.get(profane)!)) {
+    } else if (testGlobalRegex(PROFANITY_REGEX_MAP.get(profane)!, lowerText)) {
       foundWords.push(lower);
     }
   }

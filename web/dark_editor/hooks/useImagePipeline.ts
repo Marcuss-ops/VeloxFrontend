@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { applyAllFilters } from '@/lib/imageFilters';
+import { applyAllFilters, acquireScratchCanvas, releaseScratchCanvas } from '@/lib/imageFilters';
 import { resolveEditorAssetUrl } from '@/lib/api';
 import { traceCropShape } from '@/lib/cropClipGeometry';
 import { markImageLoadFailed, markImageLoadSucceeded } from '@/lib/imageLoadTracker';
@@ -128,7 +128,10 @@ export function useImagePipeline(obj: ImageObject): ImagePipelineResult {
     outputCanvas.height = height;
     const outputCtx = outputCanvas.getContext('2d')!;
 
-    const maskCanvas = document.createElement('canvas');
+    // The mask is consumed synchronously (drawImage copies), so a pooled
+    // scratch surface is safe here; only the OUTPUT canvas is handed to
+    // the renderer and must stay caller-owned.
+    const maskCanvas = acquireScratchCanvas();
     maskCanvas.width = width;
     maskCanvas.height = height;
     const maskCtx = maskCanvas.getContext('2d')!;
@@ -139,7 +142,7 @@ export function useImagePipeline(obj: ImageObject): ImagePipelineResult {
     }
 
     outputCtx.filter = `blur(${feather}px)`;
-    outputCtx.drawImage(maskCanvas, 0, 0);
+    outputCtx.drawImage(maskCanvas as unknown as CanvasImageSource, 0, 0);
     outputCtx.filter = 'none';
 
     outputCtx.globalCompositeOperation = 'source-in';
@@ -157,6 +160,7 @@ export function useImagePipeline(obj: ImageObject): ImagePipelineResult {
       outputCtx.drawImage(processedImage, 0, 0, width, height);
     }
 
+    releaseScratchCanvas(maskCanvas);
     setFeatheredImage(outputCanvas);
   }, [processedImage, originalImage, width, height, cropRect, cropMode, cropPathPoints, feather]);
 

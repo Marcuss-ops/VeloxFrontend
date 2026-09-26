@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid filename' }, { status: 400 });
     }
 
-    // Clamp value to safe bounds
+    // Clamp value to the client contract: value ∈ [-100, 100].
     const clampedValue = Math.max(-100, Math.min(100, value));
 
     const buffer = getTempFile(filename);
@@ -35,21 +35,28 @@ export async function POST(request: NextRequest) {
     const sharp = (await import('sharp')).default;
     let image = sharp(buffer);
 
+    // Unit contract: the client sends a signed percentage where 0 = neutral.
+    // sharp's modulate multipliers are neutral at 1.0, so map via
+    // factor = 1 + value/100 (never below 0). Contrast uses
+    // out = (in - 128) * factor + 128, i.e. sharp.linear(factor, 128*(1-factor)).
+    const brightnessFactor = Math.max(0, 1 + clampedValue / 100);
+
     switch (filter_type) {
       case 'brightness':
-        image = image.modulate({ brightness: clampedValue });
+        image = image.modulate({ brightness: brightnessFactor });
         break;
       case 'contrast':
-        image = image.linear(clampedValue, -(128 * clampedValue) + 128);
+        image = image.linear(brightnessFactor, 128 * (1 - brightnessFactor));
         break;
       case 'saturation':
-        image = image.modulate({ saturation: clampedValue });
+        image = image.modulate({ saturation: brightnessFactor });
         break;
       case 'blur':
-        image = image.blur(Math.max(0.3, Math.min(100, clampedValue * 10)));
+        // Sigma in pixels: cap a +100 request at a sane 25px blur.
+        image = image.blur(clampedValue <= 0 ? 0.3 : Math.min(25, Math.max(0.3, clampedValue / 10)));
         break;
       case 'sharpen':
-        image = image.sharpen({ sigma: Math.max(0.3, Math.min(10, clampedValue * 5)) });
+        image = image.sharpen({ sigma: Math.min(10, Math.max(0.3, clampedValue / 10)) });
         break;
       case 'grayscale':
         image = image.grayscale();

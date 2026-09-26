@@ -11,24 +11,11 @@ export interface ExportedBlob {
   mime: string;
 }
 
-/** Fallback legacy helper: finds the first visible Konva canvas in the DOM.
- *  Kept only for backwards compatibility; prefer passing a Konva stage ref. */
-export function getCanvasElement(): HTMLCanvasElement | null {
-  if (typeof document === 'undefined') {
-    return null;
-  }
-  const selectors = [
-    '.canvas-container .konvajs-content canvas',
-    '.konvajs-content canvas',
-    '.canvas-container canvas',
-    'canvas.konvajs-content',
-  ];
-  for (const sel of selectors) {
-    const el = document.querySelector(sel) as HTMLCanvasElement | null;
-    if (el) return el;
-  }
-  return null;
-}
+// The former DOM-querySelector fallback (getCanvasElement +
+// exportCanvasToBlob) is gone: every production caller routes through
+// captureEditorCanvasBlob (lib/canvasPreview.ts), which requires a Konva
+// stage ref, so the viewport-size capture can never silently replace the
+// logical-document capture.
 
 const YOUTUBE_THUMBNAIL_WIDTH = 1920;
 const YOUTUBE_THUMBNAIL_HEIGHT = 1080;
@@ -156,45 +143,4 @@ export async function exportStageToBlob(
 
   if (!blob) return null;
   return { blob, mime };
-}
-
-/** Public export entry point. When a Konva stage and the project logical
- *  dimensions are provided the export is overlay-free and sized to
- *  1920x1080; otherwise it degrades to the legacy DOM querySelector behaviour. */
-export function exportCanvasToBlob(
-  format: string,
-  quality: number,
-  stage?: Konva.Stage | null,
-  canvasWidth?: number,
-  canvasHeight?: number
-): Promise<ExportedBlob | null> {
-  // WebP is not accepted by YouTube; transparently produce JPEG instead.
-  const outputFormat = canonicalFormat(format);
-
-  if (stage && canvasWidth != null && canvasHeight != null) {
-    return exportStageToBlob(stage, canvasWidth, canvasHeight, outputFormat, quality);
-  }
-
-  // Legacy fallback — kept only for callers that still lack a stage ref.
-  const canvasEl = getCanvasElement();
-  if (!canvasEl) {
-    return Promise.resolve(null);
-  }
-
-  const { mime, valid } = normalizeFormat(outputFormat);
-  if (!valid) {
-    return Promise.reject(new Error(`Unsupported thumbnail format: ${format}`));
-  }
-  const q = Math.max(0.01, Math.min(1, quality / 100));
-
-  return new Promise<ExportedBlob | null>((resolve) => {
-    canvasEl.toBlob(
-      (b) => {
-        if (!b) return resolve(null);
-        resolve({ blob: b, mime });
-      },
-      mime,
-      mime === 'image/png' ? undefined : q
-    );
-  });
 }

@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { getDeliveryEventTimeline } from './veloxApi';
+import { deriveDeliveryStatusSteps } from './veloxApi';
 
-describe('getDeliveryEventTimeline', () => {
+describe('deriveDeliveryStatusSteps', () => {
   it('marks artifact_verified as active with no prior completed events', () => {
-    const events = getDeliveryEventTimeline('artifact_verified');
+    const events = deriveDeliveryStatusSteps('artifact_verified');
     expect(events.map((e) => ({ key: e.key, completed: e.completed, active: e.active }))).toEqual([
       { key: 'artifact_verified', completed: true, active: true },
       { key: 'queued', completed: false, active: false },
@@ -13,7 +13,7 @@ describe('getDeliveryEventTimeline', () => {
   });
 
   it('marks queued as active and artifact_verified as completed', () => {
-    const events = getDeliveryEventTimeline('queued');
+    const events = deriveDeliveryStatusSteps('queued');
     expect(events.map((e) => ({ key: e.key, completed: e.completed, active: e.active }))).toEqual([
       { key: 'artifact_verified', completed: true, active: false },
       { key: 'queued', completed: true, active: true },
@@ -23,7 +23,7 @@ describe('getDeliveryEventTimeline', () => {
   });
 
   it('marks publishing as active and all prior steps as completed', () => {
-    const events = getDeliveryEventTimeline('publishing');
+    const events = deriveDeliveryStatusSteps('publishing');
     expect(events.map((e) => ({ key: e.key, completed: e.completed, active: e.active }))).toEqual([
       { key: 'artifact_verified', completed: true, active: false },
       { key: 'queued', completed: true, active: false },
@@ -33,7 +33,7 @@ describe('getDeliveryEventTimeline', () => {
   });
 
   it('maps waiting_provider to the publishing step', () => {
-    const events = getDeliveryEventTimeline('waiting_provider');
+    const events = deriveDeliveryStatusSteps('waiting_provider');
     expect(events.map((e) => ({ key: e.key, completed: e.completed, active: e.active }))).toEqual([
       { key: 'artifact_verified', completed: true, active: false },
       { key: 'queued', completed: true, active: false },
@@ -43,7 +43,7 @@ describe('getDeliveryEventTimeline', () => {
   });
 
   it('marks all pipeline events as completed for published', () => {
-    const events = getDeliveryEventTimeline('published');
+    const events = deriveDeliveryStatusSteps('published');
     expect(events.map((e) => ({ key: e.key, completed: e.completed, active: e.active }))).toEqual([
       { key: 'artifact_verified', completed: true, active: false },
       { key: 'queued', completed: true, active: false },
@@ -55,7 +55,7 @@ describe('getDeliveryEventTimeline', () => {
   it('appends a synthetic failed event for terminal failure statuses', () => {
     const failureStatuses = ['failed', 'blocked_auth', 'dead_letter'] as const;
     for (const status of failureStatuses) {
-      const events = getDeliveryEventTimeline(status);
+      const events = deriveDeliveryStatusSteps(status);
       const failed = events[events.length - 1];
       expect(failed.key).toBe('failed');
       expect(failed.active).toBe(true);
@@ -66,7 +66,7 @@ describe('getDeliveryEventTimeline', () => {
   });
 
   it('treats unknown statuses as pending (no completed or active events)', () => {
-    const events = getDeliveryEventTimeline('unknown_status');
+    const events = deriveDeliveryStatusSteps('unknown_status');
     expect(events.every((e) => !e.completed && !e.active)).toBe(true);
   });
 });

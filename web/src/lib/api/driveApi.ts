@@ -32,6 +32,35 @@ export const driveApi = {
     return { folders: result.folders || [] };
   },
 
+  /** List the subfolders of `parentId` (POST /api/drive/folders wire contract). */
+  subfolders: (parentId: string): Promise<{ folders: DriveFolder[] }> =>
+    fetchJSON<{ folders?: DriveFolder[] }>('/api/drive/folders', {
+      method: 'POST',
+      body: JSON.stringify({ parent_id: parentId }),
+    }).then((result) => ({ folders: result?.folders ?? [] })),
+
+  /** Fetch the files contained in `parentId` (POST /api/drive/files wire contract). */
+  filesOf: (parentId: string): Promise<{ files: DriveFile[] }> =>
+    fetchJSON<{ files?: DriveFile[] }>('/api/drive/files', {
+      method: 'POST',
+      body: JSON.stringify({ parent_id: parentId }),
+    }).then((result) => ({ files: result?.files ?? [] })),
+
+  /** Read the extracted audio track of a video clip. */
+  fileAudio: (fileId: string): Promise<{ audioUrl?: string }> =>
+    fetchJSON<{ audioUrl?: string }>(`/api/drive/file/${encodeURIComponent(fileId)}/audio`),
+
+  /** Read the transcript/text sidecar of a clip. */
+  fileText: (fileId: string): Promise<{ text?: string; content?: string }> =>
+    fetchJSON<{ text?: string; content?: string }>(`/api/drive/file/${encodeURIComponent(fileId)}/text`),
+
+  /** Download the raw bytes of a Drive file (binary response). */
+  fileDownload: (fileId: string): Promise<Blob> =>
+    fetch(`/api/drive/file/${encodeURIComponent(fileId)}`).then(async (response) => {
+      if (!response.ok) throw new ApiError(response.status, response.statusText);
+      return response.blob();
+    }),
+
   /** Create a folder */
   createFolder: (name: string, parentId?: string) =>
     fetchJSON<{ success: boolean; folder_id: string; name: string }>('/api/drive/create-folder', {
@@ -40,22 +69,16 @@ export const driveApi = {
     }),
 
   /** Upload a file */
-  uploadFile: async (file: File, folderId?: string, projectName?: string): Promise<{ success: boolean; file_id?: string; web_view_link?: string; error?: string }> => {
+  uploadFile: (file: File, folderId?: string, projectName?: string): Promise<{ success: boolean; file_id?: string; web_view_link?: string; error?: string }> => {
     const formData = new FormData();
     formData.append('file', file);
     if (folderId) formData.append('folder_id', folderId);
     if (projectName) formData.append('project_name', projectName);
 
-    const response = await fetch('/api/drive/upload', {
+    return fetchJSON<{ success: boolean; file_id?: string; web_view_link?: string; error?: string }>('/api/drive/upload', {
       method: 'POST',
       body: formData,
     });
-
-    if (!response.ok) {
-      throw new ApiError(response.status, response.statusText);
-    }
-
-    return response.json();
   },
 
   /** Download a file */

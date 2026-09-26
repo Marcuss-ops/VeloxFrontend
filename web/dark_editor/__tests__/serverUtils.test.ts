@@ -3,7 +3,6 @@ import {
   generateFilename,
   getTempFileUrl,
   getNvidiaApiKey,
-  deleteTempFile,
   getTempFile,
   ensureDirectories,
 } from '@/lib/server-utils';
@@ -65,18 +64,6 @@ describe('server-utils', () => {
     expect(getNvidiaApiKey()).toBeNull();
   });
 
-  it('deleteTempFile returns true when file exists and deletes it', () => {
-    mockExistsSync.mockReturnValue(true);
-    expect(deleteTempFile('file.png')).toBe(true);
-    expect(mockUnlinkSync).toHaveBeenCalled();
-  });
-
-  it('deleteTempFile returns false when file does not exist', () => {
-    mockExistsSync.mockReturnValue(false);
-    expect(deleteTempFile('file.png')).toBe(false);
-    expect(mockUnlinkSync).not.toHaveBeenCalled();
-  });
-
   it('getTempFile returns a buffer when file exists', () => {
     mockExistsSync.mockReturnValue(true);
     mockReadFileSync.mockReturnValue(Buffer.from('data'));
@@ -92,7 +79,8 @@ describe('server-utils', () => {
   it('ensureDirectories creates missing directories', () => {
     mockExistsSync.mockReturnValue(false);
     ensureDirectories();
-    expect(mockMkdirSync).toHaveBeenCalledTimes(3);
+    // DATA_DIR + TEMP_DIR only: the projects dir died with the local catalog.
+    expect(mockMkdirSync).toHaveBeenCalledTimes(2);
   });
 
   it('ensureDirectories does nothing when directories already exist', () => {
