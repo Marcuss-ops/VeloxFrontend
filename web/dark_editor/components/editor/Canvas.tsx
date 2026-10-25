@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { Stage, Layer, Rect, Transformer, Circle, Line, Group } from 'react-konva';
 import { useEditorStore, type CanvasObject } from '@/stores/editorStore';
 import { useObjectsArray } from '@/hooks/useObjectsArray';
@@ -18,6 +18,9 @@ import { useCanvasViewport } from '@/hooks/useCanvasViewport';
 import { useCanvasSelection } from '@/hooks/useCanvasSelection';
 import { useCanvasCrop } from '@/hooks/useCanvasCrop';
 import { useCanvasPanZoom } from '@/hooks/useCanvasPanZoom';
+import { keepTransformerAnchorsInsideStage } from '@/lib/konvaAnchorVisibility';
+import { toStageCoords } from '@/lib/canvasCropMath';
+import { v4 as uuidv4 } from 'uuid';
 
 interface CanvasProps {
   containerRef?: React.RefObject<HTMLDivElement>;
@@ -57,7 +60,6 @@ const Canvas = React.forwardRef<CanvasHandle, CanvasProps>((props, ref) => {
     cropEditingMode,
   } = useUIStore();
 
-  const [guides] = useState<{ v: number[]; h: number[] }>({ v: [], h: [] });
 
   const viewport = useCanvasViewport(containerRef);
   const { viewportSize, displayScale, displayOffsetX, displayOffsetY } = viewport;
@@ -101,7 +103,7 @@ const Canvas = React.forwardRef<CanvasHandle, CanvasProps>((props, ref) => {
       if (!pointer) return;
       const x = (pointer.x - displayOffsetX) / displayScale;
       const y = (pointer.y - displayOffsetY) / displayScale;
-      const id = `${activeTool}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const id = uuidv4();
       const base = {
         id,
         x: Math.max(0, x - 120),
@@ -212,7 +214,7 @@ const Canvas = React.forwardRef<CanvasHandle, CanvasProps>((props, ref) => {
         onTouchMove={handleStageMouseMove}
         onMouseUp={handleStageMouseUp}
         onTouchEnd={handleStageMouseUp}
-        style={{ cursor: isPanning ? 'grab' : (cropEditingId && cropEditingMode === 'free' ? 'crosshair' : 'default') }}
+        style={{ cursor: isPanning ? 'grab' : (cropEditingId && cropEditingMode === 'lasso' ? 'crosshair' : 'default') }}
       >
         <Layer>
           {/* Canvas background */}
@@ -231,14 +233,7 @@ const Canvas = React.forwardRef<CanvasHandle, CanvasProps>((props, ref) => {
               <GridOverlay width={canvasWidth} height={canvasHeight} gridSize={gridSize} />
             ) : null}
 
-            {guides.v.map((x, i) => (
-              <Rect key={`gvline-${i}`} x={x} y={0} width={1} height={canvasHeight} fill="rgba(59,130,246,0.8)" listening={false} />
-            ))}
-            {guides.h.map((y, i) => (
-              <Rect key={`ghline-${i}`} x={0} y={y} width={canvasWidth} height={1} fill="rgba(59,130,246,0.8)" listening={false} />
-            ))}
-
-            {cropTarget && cropDraft && cropEditingMode !== 'free' && (
+            {cropTarget && cropDraft && cropEditingMode !== 'lasso' && (
               <CropSelectionOverlay
                 target={cropTarget}
                 draft={cropDraft}
@@ -246,18 +241,18 @@ const Canvas = React.forwardRef<CanvasHandle, CanvasProps>((props, ref) => {
                 onDraftChange={setCropDraft}
               />
             )}
-            {cropTarget && cropEditingMode === 'free' && (
+            {cropTarget && cropEditingMode === 'lasso' && (
               <>
               {lassoPoints.length > 0 && (
                 <Line
                   points={[
-                    ...lassoPoints.map(p => [
-                      cropTarget.x + p.x * (cropTarget.scaleX || 1),
-                      cropTarget.y + p.y * (cropTarget.scaleY || 1)
-                    ]).flat(),
+                    ...lassoPoints.flatMap((p) => {
+                      const point = toStageCoords(cropTarget, p);
+                      return [point.x, point.y];
+                    }),
                     ...(lassoPoints.length >= 3 ? [
-                      cropTarget.x + lassoPoints[0].x * (cropTarget.scaleX || 1),
-                      cropTarget.y + lassoPoints[0].y * (cropTarget.scaleY || 1)
+                      toStageCoords(cropTarget, lassoPoints[0]).x,
+                      toStageCoords(cropTarget, lassoPoints[0]).y,
                     ] : [])
                   ]}
                   stroke="#38bdf8"
@@ -270,8 +265,8 @@ const Canvas = React.forwardRef<CanvasHandle, CanvasProps>((props, ref) => {
                 return (
                   <Circle
                     key={idx}
-                    x={cropTarget.x + p.x * (cropTarget.scaleX || 1)}
-                    y={cropTarget.y + p.y * (cropTarget.scaleY || 1)}
+                    x={toStageCoords(cropTarget, p).x}
+                    y={toStageCoords(cropTarget, p).y}
                     radius={isStart ? 8 : 5}
                     fill={isStart ? "#10b981" : "#38bdf8"}
                     stroke="#ffffff"
@@ -296,6 +291,7 @@ const Canvas = React.forwardRef<CanvasHandle, CanvasProps>((props, ref) => {
 
             <Transformer
               ref={transformerRef}
+              anchorStyleFunc={keepTransformerAnchorsInsideStage}
               boundBoxFunc={(oldBox, newBox) => {
                 if (newBox.width < 5 || newBox.height < 5) return oldBox;
                 return newBox;

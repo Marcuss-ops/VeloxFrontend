@@ -151,6 +151,7 @@ export const createHistorySlice = (
       mutationVersion: get().mutationVersion + 1,
       pastPatches: [...pastPatches, nextEntry],
       futurePatches: futurePatches.slice(1),
+      selectedIds: [],
     });
   },
 

@@ -96,6 +96,13 @@ export function useImagePipeline(obj: ImageObject): ImagePipelineResult {
         if (isActive) {
           setProcessedImage(canvas);
         }
+      }).catch((error: unknown) => {
+        if (!isActive) return;
+        // Keep the source visible if the worker fails or times out. A stale
+        // result is expected when a newer slider value supersedes this job.
+        if (error instanceof Error && error.message === 'Stale image filter result') return;
+        console.error('Image filter processing failed:', error);
+        setProcessedImage(originalImage);
       });
     }, 50);
 
@@ -134,7 +141,7 @@ export function useImagePipeline(obj: ImageObject): ImagePipelineResult {
     const maskCanvas = acquireScratchCanvas();
     maskCanvas.width = width;
     maskCanvas.height = height;
-    const maskCtx = maskCanvas.getContext('2d')!;
+    const maskCtx = maskCanvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
     maskCtx.fillStyle = 'white';
     if (traceCropShape(maskCtx, cropMode, width, height, cropPathPoints)) {

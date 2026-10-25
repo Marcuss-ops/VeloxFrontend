@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import {
   saveProject as apiSaveProject,
-  getProject as apiGetProject,
   deleteProject as apiDeleteProject,
 } from '@/lib/api';
 
@@ -31,7 +30,6 @@ export interface ProjectState {
 
   // Project operations
   createProject: (name?: string) => Promise<Project | null>;
-  loadProject: (id: string) => Promise<Project | null>;
   saveProject: (canvasData: Record<string, unknown>, previewFilename?: string) => Promise<boolean>;
   deleteProject: (id: string) => Promise<boolean>;
   updateProjectName: (name: string) => void;
@@ -44,7 +42,8 @@ export const useProjectStore = create<ProjectState>((set, get) => {
   // Autosave can be triggered again while a previous request is still in
   // flight. Serialize writes so an older request can never finish after a
   // newer one and restore stale canvas data on the next reload.
-  let saveChain: Promise<boolean> = Promise.resolve(true);
+  const queuedSaves: Array<{ payload: Parameters<typeof apiSaveProject>[0]; revision: number; waiters: Array<(value: boolean) => void> }> = [];
+  let saveRunning = false;
   let saveRevision = 0;
 
   return ({
@@ -67,36 +66,12 @@ export const useProjectStore = create<ProjectState>((set, get) => {
     return null;
   },
 
-  loadProject: async (id) => {
-    set({ isLoading: true });
-    try {
-      const data = await apiGetProject(id);
-
-      const project: Project = {
-        id: data.id,
-        name: data.name,
-        type: data.type,
-        canvas_json: data.canvas_json,
-        preview_url: data.preview_url,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-      };
-
-      set({ currentProject: project, isDirty: false, isLoading: false });
-      return project;
-    } catch (error) {
-      console.error('Failed to load project:', error);
-      set({ isLoading: false });
-      return null;
-    }
-  },
-
   saveProject: (canvasData, previewFilename) => {
     const project = get().currentProject;
     if (!project) return Promise.resolve(false);
 
     const revision = ++saveRevision;
-    const payload = {
+    const payload: Parameters<typeof apiSaveProject>[0] = {
       id: project.id,
       name: project.name,
       type: project.type,
@@ -106,23 +81,36 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       preview_filename: previewFilename,
     };
 
-    const write = async (): Promise<boolean> => {
-      set({ isSaving: true });
-      try {
-        await apiSaveProject(payload);
-        if (revision === saveRevision) {
-          set({ isDirty: false, isSaving: false, lastSaved: new Date() });
-        }
-        return true;
-      } catch (error) {
-        console.error('Failed to save project:', error);
-        if (revision === saveRevision) set({ isSaving: false });
-        return false;
+    return new Promise<boolean>((resolve) => {
+      const queuedIndex = queuedSaves.findIndex((item) => item.payload.id === payload.id);
+      if (queuedIndex >= 0) {
+        const previous = queuedSaves[queuedIndex];
+        // The latest complete snapshot for this project wins while writes
+        // are in flight; saves for other project tabs keep their own slot.
+        queuedSaves[queuedIndex] = { payload, revision, waiters: [...previous.waiters, resolve] };
+      } else {
+        queuedSaves.push({ payload, revision, waiters: [resolve] });
       }
-    };
-
-    saveChain = saveChain.catch(() => false).then(write);
-    return saveChain;
+      if (saveRunning) return;
+      saveRunning = true;
+      void (async () => {
+        while (queuedSaves.length > 0) {
+          const current = queuedSaves.shift()!;
+          set({ isSaving: true });
+          let succeeded = false;
+          try {
+            await apiSaveProject(current.payload);
+            succeeded = true;
+            if (current.revision === saveRevision) set({ isDirty: false, isSaving: false, lastSaved: new Date() });
+          } catch (error) {
+            console.error('Failed to save project:', error);
+            if (current.revision === saveRevision) set({ isSaving: false });
+          }
+          current.waiters.forEach((waiter) => waiter(succeeded));
+        }
+        saveRunning = false;
+      })();
+    });
   },
 
   deleteProject: async (id) => {

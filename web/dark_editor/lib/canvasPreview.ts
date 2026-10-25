@@ -218,8 +218,45 @@ export async function captureEditorCanvasPreviewFile(
   // Konva can have a pending draw after a text edit or transform. Flush it
   // before reading the bitmap so the persisted preview and the export use the
   // same frame that the user currently sees.
-  const blob = await captureEditorCanvasBlob(stage, width, height);
-  if (!blob) return null;
+  const source = await captureEditorCanvasBlob(stage, width, height);
+  if (!source) return null;
 
-  return new File([blob], 'preview.png', { type: 'image/png' });
+  // Preview uploads have a strict 2 MB service limit. A lossless 1920x1080
+  // PNG can exceed it easily for photo covers, so encode a bounded JPEG and
+  // reduce its dimensions only when quality reduction is not enough.
+  const bitmap = await createImageBitmap(source);
+  try {
+    const maxBytes = 1_900_000;
+    const attempts = [
+      { scale: 1, quality: 0.82 },
+      { scale: 1, quality: 0.68 },
+      { scale: 0.85, quality: 0.78 },
+      { scale: 0.7, quality: 0.76 },
+      { scale: 0.55, quality: 0.72 },
+      { scale: 0.4, quality: 0.68 },
+    ];
+
+    for (const attempt of attempts) {
+      const output = document.createElement('canvas');
+      output.width = Math.max(1, Math.round(bitmap.width * attempt.scale));
+      output.height = Math.max(1, Math.round(bitmap.height * attempt.scale));
+      const context = output.getContext('2d');
+      if (!context) continue;
+      // JPEG has no alpha channel; use the editor's usual white page color
+      // behind transparent pixels in the composition.
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, output.width, output.height);
+      context.drawImage(bitmap, 0, 0, output.width, output.height);
+      const encoded = await new Promise<Blob | null>((resolve) => {
+        output.toBlob(resolve, 'image/jpeg', attempt.quality);
+      });
+      if (encoded && encoded.size <= maxBytes) {
+        return new File([encoded], 'preview.jpg', { type: 'image/jpeg' });
+      }
+    }
+  } finally {
+    bitmap.close();
+  }
+
+  throw new Error('Could not encode a preview below the 2 MB limit.');
 }

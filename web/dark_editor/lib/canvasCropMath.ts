@@ -33,9 +33,25 @@ export function toLocalCoords(
   const scaleY = target.scaleY || 1;
   const stageX = (pointer.x - displayOffsetX) / displayScale;
   const stageY = (pointer.y - displayOffsetY) / displayScale;
+  const radians = -(target.rotation || 0) * Math.PI / 180;
+  const dx = stageX - target.x;
+  const dy = stageY - target.y;
+  const localX = dx * Math.cos(radians) - dy * Math.sin(radians);
+  const localY = dx * Math.sin(radians) + dy * Math.cos(radians);
   return {
-    x: (stageX - target.x) / scaleX,
-    y: (stageY - target.y) / scaleY,
+    x: localX / scaleX,
+    y: localY / scaleY,
+  };
+}
+
+/** Map image-local coordinates to the unscaled canvas stage, including rotation. */
+export function toStageCoords(target: ImageObject, point: { x: number; y: number }): { x: number; y: number } {
+  const radians = (target.rotation || 0) * Math.PI / 180;
+  const x = point.x * (target.scaleX || 1);
+  const y = point.y * (target.scaleY || 1);
+  return {
+    x: target.x + x * Math.cos(radians) - y * Math.sin(radians),
+    y: target.y + x * Math.sin(radians) + y * Math.cos(radians),
   };
 }
 
@@ -86,8 +102,8 @@ export function lassoBounds(
   return {
     x: clampMinX,
     y: clampMinY,
-    width: Math.max(20, clampMaxX - clampMinX),
-    height: Math.max(20, clampMaxY - clampMinY),
+    width: clampMaxX - clampMinX,
+    height: clampMaxY - clampMinY,
   };
 }
 

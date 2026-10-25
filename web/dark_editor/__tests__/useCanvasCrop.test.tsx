@@ -155,7 +155,7 @@ describe('useCanvasCrop', () => {
   it('commits a lasso crop from the drawn free-hand path', () => {
     act(() => {
       useEditorStore.getState().addObject(makeImage());
-      useUIStore.getState().startCropEditing('img-1', 'free');
+      useUIStore.getState().startCropEditing('img-1', 'lasso');
     });
 
     const getPointerPosition = vi.fn()

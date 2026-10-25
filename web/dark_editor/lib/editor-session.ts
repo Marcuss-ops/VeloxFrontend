@@ -18,7 +18,10 @@ export class EditorUnauthorizedError extends Error {
 // bearer is never reused after it dies, and (b) allows concurrent editor
 // opens for DIFFERENT projects without one exchange clobbering the other.
 //
-// Note: the token IS persisted to sessionStorage (storeSession) so a refresh
+// Security note: sessionStorage is readable by same-origin JavaScript, so an
+// XSS can access this bearer. Its tab-scoped lifetime avoids localStorage
+// persistence; the application still relies on strict XSS prevention.
+// The token IS persisted to sessionStorage (storeSession) so a refresh
 // of the editor tab can resume without re-minting; the in-memory cache is
 // only a faster path on top of that storage.
 const sessionCache = new Map<string, StoredSession>();
@@ -87,18 +90,34 @@ function storeSession(projectId: string, token: string, expiresAt?: number): voi
 }
 
 async function mintLaunchToken(projectId: string): Promise<string> {
-  const csrfToken = typeof document !== 'undefined'
+  const rawCsrfToken = typeof document !== 'undefined'
     ? document.cookie.split('; ').find((cookie) => cookie.startsWith('csrf_token='))?.slice('csrf_token='.length)
     : undefined;
-  const response = await fetch(`${INSTAEDIT_API_URL}/api/v1/editor/launch`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(csrfToken ? { 'X-CSRF-Token': decodeURIComponent(csrfToken) } : {}),
-    },
-    body: JSON.stringify({ project_id: projectId }),
-  });
+  let csrfToken = rawCsrfToken;
+  if (rawCsrfToken) {
+    try { csrfToken = decodeURIComponent(rawCsrfToken); } catch { csrfToken = rawCsrfToken; }
+  }
+  let response: Response;
+  try {
+    response = await fetch(`${INSTAEDIT_API_URL}/api/v1/editor/launch`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+      },
+      body: JSON.stringify({ project_id: projectId }),
+    });
+  } catch {
+    // A cross-origin rejection (CORS allowlist miss, DNS failure, or the
+    // API answering 502 behind the reverse proxy — a proxy error page
+    // carries no CORS headers, which the browser reports as a CORS
+    // failure) surfaces as a bare TypeError("Failed to fetch"). Wrap it
+    // so the gate's error banner names the actual culprit.
+    throw new Error(
+      `Impossibile contattare ${INSTAEDIT_API_URL} per il launch token (API non raggiungibile oppure origine editor non consentita dalle CORS).`,
+    );
+  }
   const payload = await response.json().catch(() => ({})) as { launch_token?: string; error?: string };
   if (!response.ok || !payload.launch_token) {
     if (response.status === 401) throw new EditorUnauthorizedError();

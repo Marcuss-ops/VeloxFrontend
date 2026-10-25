@@ -34,7 +34,7 @@ export function useKeyboard() {
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
-        (target && target.isContentEditable)
+        (target && (target.isContentEditable || target.closest('button,[role="button"],[role="combobox"],[role="listbox"],select,[tabindex]:not([tabindex="-1"])')))
       ) {
         return;
       }

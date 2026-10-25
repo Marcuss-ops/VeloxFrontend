@@ -5,7 +5,7 @@ import Konva from 'konva';
 import type { RefObject } from 'react';
 import { useEditorStore, type ImageObject } from '@/stores/editorStore';
 import { useUIStore, type CropMode } from '@/stores/uiStore';
-import { foldCropRect, lassoBounds, lassoRelativePath, toLocalCoords } from '@/lib/canvasCropMath';
+import { foldCropRect, lassoBounds, lassoRelativePath, toLocalCoords, toStageCoords } from '@/lib/canvasCropMath';
 
 interface CanvasLassoOptions {
   stageRef: RefObject<Konva.Stage | null>;
@@ -60,18 +60,15 @@ export function useCanvasLasso(opts: CanvasLassoOptions): CanvasLassoApi {
 
     const baseWidth = Math.max(1, cropTarget.width);
     const baseHeight = Math.max(1, cropTarget.height);
-    const scaleX = cropTarget.scaleX || 1;
-    const scaleY = cropTarget.scaleY || 1;
-
     // Bounding box of the polygon path, clamped to the image dimensions.
     const bounds = lassoBounds(lassoPoints, baseWidth, baseHeight);
+    if (bounds.width <= 0 || bounds.height <= 0) return;
     // Fold into the previous cropRect to prevent aspect stretching.
     const nextCropRect = foldCropRect(cropTarget, bounds);
     const cropPathPoints = lassoRelativePath(lassoPoints, bounds);
 
     updateObject(cropTarget.id, {
-      x: cropTarget.x + bounds.x * scaleX,
-      y: cropTarget.y + bounds.y * scaleY,
+      ...toStageCoords(cropTarget, bounds),
       width: bounds.width,
       height: bounds.height,
       cropRect: nextCropRect,
@@ -88,7 +85,7 @@ export function useCanvasLasso(opts: CanvasLassoOptions): CanvasLassoApi {
   const handleStageMouseDown = useCallback(
     (_e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
       if (isPanning) return;
-      if (cropEditingId && cropEditingMode === 'free' && cropTarget) {
+      if (cropEditingId && cropEditingMode === 'lasso' && cropTarget) {
         const stage = stageRef.current;
         if (!stage) return;
         const pointer = stage.getPointerPosition();

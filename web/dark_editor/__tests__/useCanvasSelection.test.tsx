@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 //
-// Unit tests for useCanvasSelection: pins the geometry commit on drag and
-// transform end (rounded) and the Transformer↔selection synchronisation,
+// Unit tests for useCanvasSelection: pins the grid snap on drag, rounded
+// transform end and the Transformer↔selection synchronisation,
 // including the crop-target exclusion.
 
 import React from 'react';
@@ -41,7 +41,8 @@ afterEach(() => {
 });
 
 describe('useCanvasSelection', () => {
-  it('commits rounded geometry on drag end', () => {
+  it('snaps geometry to the configured grid on drag end', () => {
+    useUIStore.getState().setGridSize(16);
     act(() => {
       useEditorStore.getState().addObject(makeObject({ id: 'obj-1' }));
     });
@@ -61,8 +62,8 @@ describe('useCanvasSelection', () => {
     });
 
     const obj = useEditorStore.getState().objects['obj-1'];
-    expect(obj.x).toBe(11); // Math.round(10.6)
-    expect(obj.y).toBe(20); // Math.round(20.4)
+    expect(obj.x).toBe(16);
+    expect(obj.y).toBe(16);
   });
 
   it('commits rounded transform geometry on transform end', () => {

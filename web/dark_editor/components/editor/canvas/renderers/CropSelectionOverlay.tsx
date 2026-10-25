@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Line, Rect, Transformer } from 'react-konva';
+import { Group, Line, Rect, Transformer } from 'react-konva';
 import Konva from 'konva';
 import type { CanvasObject } from '@/stores/editorStore';
 import { shieldRects, thirdsGuideLines } from '@/lib/cropClipGeometry';
+import { keepTransformerAnchorsInsideStage } from '@/lib/konvaAnchorVisibility';
 
 type CropDraft = { x: number; y: number; width: number; height: number };
 
@@ -25,8 +26,8 @@ export function CropSelectionOverlay({
   const scaleX = Math.max(0.0001, target.scaleX || 1);
   const scaleY = Math.max(0.0001, target.scaleY || 1);
   const stageBounds = {
-    x: target.x,
-    y: target.y,
+    x: 0,
+    y: 0,
     width: Math.max(1, target.width * scaleX),
     height: Math.max(1, target.height * scaleY),
   };
@@ -91,8 +92,8 @@ export function CropSelectionOverlay({
   };
 
   const stageRect = {
-    x: stageBounds.x + draft.x * scaleX,
-    y: stageBounds.y + draft.y * scaleY,
+    x: draft.x * scaleX,
+    y: draft.y * scaleY,
     width: draft.width * scaleX,
     height: draft.height * scaleY,
   };
@@ -101,7 +102,7 @@ export function CropSelectionOverlay({
   const guideLines = thirdsGuideLines(stageRect);
 
   return (
-    <>
+    <Group x={target.x} y={target.y} rotation={target.rotation || 0}>
       {/* Dimming / Shield Areas (Photoshop style) */}
       {shields.map((rect, index) => (
         <Rect key={index} {...rect} fill="rgba(0, 0, 0, 0.55)" listening={false} />
@@ -133,11 +134,14 @@ export function CropSelectionOverlay({
         onMouseDown={(e) => {
           e.cancelBubble = true;
         }}
+        onDragMove={(e) => syncFromNode(e.target as Konva.Rect)}
         onDragEnd={(e) => syncFromNode(e.target as Konva.Rect)}
+        onTransform={(e) => syncFromNode(e.target as Konva.Rect)}
         onTransformEnd={(e) => syncFromNode(e.target as Konva.Rect)}
       />
       <Transformer
         ref={transformerRef}
+        anchorStyleFunc={keepTransformerAnchorsInsideStage}
         rotateEnabled={false}
         keepRatio={keepRatio}
         centeredScaling={false}
@@ -167,6 +171,6 @@ export function CropSelectionOverlay({
           };
         }}
       />
-    </>
+    </Group>
   );
 }

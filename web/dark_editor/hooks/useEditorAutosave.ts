@@ -37,6 +37,7 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
   const { currentProject, isDirty, saveProject } = useProjectStore();
   const objects = useEditorStore((state) => state.objects);
   const lastPreviewAtRef = useRef<number>(0);
+  const pendingThumbnailRef = useRef<{ projectId: string; mediaId: string } | null>(null);
   const autosaveTimerRef = useRef<number | null>(null);
 
   const performSave = useCallback(async (opts?: { forcePreview?: boolean }) => {
@@ -85,8 +86,15 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
               shouldAttach = !session?.thumbnail_media_id;
             }
             if (shouldAttach) {
-              const mediaId = await uploadMediaAsset(previewFile, `${currentProject.id}_preview.png`);
+              let mediaId = pendingThumbnailRef.current?.projectId === currentProject.id
+                ? pendingThumbnailRef.current.mediaId
+                : null;
+              if (!mediaId) {
+                mediaId = await uploadMediaAsset(previewFile, `${currentProject.id}_preview.jpg`);
+                pendingThumbnailRef.current = { projectId: currentProject.id, mediaId };
+              }
               await updateEditorSessionThumbnail(currentProject.id, mediaId);
+              pendingThumbnailRef.current = null;
             }
           } else {
             const uploaded = await uploadImage(previewFile);
@@ -96,6 +104,11 @@ export function useEditorAutosave({ canvasRef, sessionGate, hydratedRef }: UseEd
         }
       } catch (err) {
         console.warn('Preview capture/upload failed', err);
+        // Stamp the throttle clock on FAILURE too: otherwise a persistently
+        // failing capture/upload (e.g. oversized or unreachable media
+        // endpoint) is retried on EVERY subsequent autosave, spamming the
+        // console and the media endpoint. Data saves below still proceed.
+        lastPreviewAtRef.current = now;
       }
     }
 

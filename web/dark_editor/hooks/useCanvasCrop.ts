@@ -83,7 +83,7 @@ export function useCanvasCrop(opts: CanvasCropOptions): CanvasCropApi {
       if (!cropEditingId) return;
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (cropEditingMode === 'free') {
+        if (cropEditingMode === 'lasso') {
           commitLassoCrop();
         } else {
           commitCrop();

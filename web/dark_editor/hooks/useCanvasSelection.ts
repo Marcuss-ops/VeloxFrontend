@@ -27,7 +27,7 @@ export function useCanvasSelection(
   transformerRef: RefObject<Konva.Transformer | null>
 ): CanvasSelectionApi {
   const { selectedIds, updateObject } = useEditorStore();
-  const { cropEditingId } = useUIStore();
+  const { cropEditingId, snapToGrid, gridSize } = useUIStore();
 
   // Update transformer when selection changes
   useEffect(() => {
@@ -45,12 +45,15 @@ export function useCanvasSelection(
   const handleDragEnd = useCallback(
     (obj: CanvasObject, e: Konva.KonvaEventObject<DragEvent>) => {
       const node = e.target;
+      const step = Math.max(1, gridSize);
+      const x = snapToGrid ? Math.round(node.x() / step) * step : node.x();
+      const y = snapToGrid ? Math.round(node.y() / step) * step : node.y();
       updateObject(obj.id, {
-        x: Math.round(node.x()),
-        y: Math.round(node.y()),
+        x: Math.round(x),
+        y: Math.round(y),
       });
     },
-    [updateObject]
+    [gridSize, snapToGrid, updateObject]
   );
 
   const handleTransformEnd = useCallback(

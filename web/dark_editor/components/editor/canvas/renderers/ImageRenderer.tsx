@@ -4,6 +4,7 @@ import React from 'react';
 import { Group, Image as KonvaImage, Rect } from 'react-konva';
 import Konva from 'konva';
 import { useImagePipeline } from '@/hooks/useImagePipeline';
+import { useImageAlphaBounds } from '@/hooks/useImageAlphaBounds';
 import { traceCropShape } from '@/lib/cropClipGeometry';
 import type { ImageObject } from '@/stores/editorStore';
 import type { CommonProps, ShadowProps } from './shared';
@@ -27,7 +28,9 @@ export function ImageRenderer({
   const { src, width, height, cropRect, cropMode, cropPathPoints, feather, blur, sharpen, pixelation, processing } = obj;
   const { shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY, ...restShadowProps } = shadowProps;
 
-  const { originalImage, processedImage, featheredImage } = useImagePipeline(obj);
+  const { processedImage, featheredImage } = useImagePipeline(obj);
+  const activeImage = featheredImage || processedImage;
+  const alphaBounds = useImageAlphaBounds(activeImage);
 
   if (!processedImage) {
     return (
@@ -47,16 +50,34 @@ export function ImageRenderer({
     );
   }
 
-  const cropProps = cropRect && originalImage
-    ? {
-        crop: {
-          x: cropRect.x * originalImage.naturalWidth,
-          y: cropRect.y * originalImage.naturalHeight,
-          width: cropRect.width * originalImage.naturalWidth,
-          height: cropRect.height * originalImage.naturalHeight,
-        },
-      }
-    : {};
+  const activeWidth = activeImage
+    ? (('naturalWidth' in activeImage ? activeImage.naturalWidth : 0) || activeImage.width)
+    : width;
+  const activeHeight = activeImage
+    ? (('naturalHeight' in activeImage ? activeImage.naturalHeight : 0) || activeImage.height)
+    : height;
+  const sourceCrop = featheredImage
+    ? { x: 0, y: 0, width: 1, height: 1 }
+    : (cropRect || { x: 0, y: 0, width: 1, height: 1 });
+  const cropLeft = sourceCrop.x * activeWidth;
+  const cropTop = sourceCrop.y * activeHeight;
+  const cropRight = (sourceCrop.x + sourceCrop.width) * activeWidth;
+  const cropBottom = (sourceCrop.y + sourceCrop.height) * activeHeight;
+  const visibleLeft = Math.max(cropLeft, alphaBounds?.x ?? 0);
+  const visibleTop = Math.max(cropTop, alphaBounds?.y ?? 0);
+  const visibleRight = Math.min(cropRight, (alphaBounds?.x ?? activeWidth) + (alphaBounds?.width ?? activeWidth));
+  const visibleBottom = Math.min(cropBottom, (alphaBounds?.y ?? activeHeight) + (alphaBounds?.height ?? activeHeight));
+  const hasVisibleIntersection = visibleRight > visibleLeft && visibleBottom > visibleTop;
+  const visibleCrop = hasVisibleIntersection
+    ? { x: visibleLeft, y: visibleTop, width: visibleRight - visibleLeft, height: visibleBottom - visibleTop }
+    : { x: cropLeft, y: cropTop, width: cropRight - cropLeft, height: cropBottom - cropTop };
+  const visibleImageProps = {
+    x: (visibleCrop.x - cropLeft) / Math.max(1, cropRight - cropLeft) * width,
+    y: (visibleCrop.y - cropTop) / Math.max(1, cropBottom - cropTop) * height,
+    width: visibleCrop.width / Math.max(1, cropRight - cropLeft) * width,
+    height: visibleCrop.height / Math.max(1, cropBottom - cropTop) * height,
+    crop: visibleCrop,
+  };
 
   const clipFunc = (() => {
     if (!cropMode || cropMode === 'free') return undefined;
@@ -66,8 +87,6 @@ export function ImageRenderer({
     };
   })();
 
-  const activeImage = featheredImage || processedImage;
-  const activeCropProps = featheredImage ? {} : cropProps;
   const activeClipFunc = featheredImage ? undefined : clipFunc;
 
   // Note: shadowOffset/shadowOpacity were previously spread onto the Group
@@ -77,11 +96,9 @@ export function ImageRenderer({
   return (
     <Group {...commonProps} clipFunc={activeClipFunc}>
       <KonvaImage
-        image={activeImage}
-        width={width}
-        height={height}
+        image={activeImage || undefined}
+        {...visibleImageProps}
         key={`img-${src}-${blur}-${sharpen}-${pixelation}-${feather ? 'feathered' : 'normal'}`}
-        {...activeCropProps}
         shadowColor={shadowColor}
         shadowBlur={shadowBlur}
         shadowOffsetX={shadowOffsetX}

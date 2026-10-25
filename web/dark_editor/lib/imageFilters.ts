@@ -53,8 +53,9 @@ export class ImageFilterProcessor {
   private scratch: HTMLCanvasElement | OffscreenCanvas;
   private scratchCtx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   private worker: Worker | null = null;
-  private pendingJobs: Map<string, { resolve: (data: ImageData) => void, reject: (err: Error) => void }> = new Map();
+  private pendingJobs: Map<string, { resolve: (data: ImageData) => void, reject: (err: Error) => void, timer: ReturnType<typeof setTimeout>, image: object }> = new Map();
   private jobIdCounter = 0;
+  private latestJobByImage = new WeakMap<object, string>();
 
   constructor() {
     this.scratch = acquireScratchCanvas();
@@ -66,6 +67,12 @@ export class ImageFilterProcessor {
     if (typeof window !== 'undefined' && !this.worker) {
       this.worker = new Worker(new URL('./workers/filterWorker.ts', import.meta.url), { type: 'module' });
       this.worker.onmessage = this.handleWorkerMessage.bind(this);
+      this.worker.onerror = (event) => {
+        event.preventDefault();
+        this.failAllJobs(new Error('Image filter worker failed'));
+        this.worker?.terminate();
+        this.worker = null;
+      };
     }
   }
 
@@ -73,12 +80,25 @@ export class ImageFilterProcessor {
     const { jobId, success, imageData, error } = e.data;
     const job = this.pendingJobs.get(jobId);
     if (job) {
+      clearTimeout(job.timer);
+      this.pendingJobs.delete(jobId);
+      if (this.latestJobByImage.get(job.image) !== jobId) {
+        job.reject(new Error('Stale image filter result'));
+        return;
+      }
       if (success) {
         job.resolve(imageData);
       } else {
         job.reject(new Error(error));
       }
-      this.pendingJobs.delete(jobId);
+    }
+  }
+
+  private failAllJobs(error: Error) {
+    for (const [id, job] of this.pendingJobs) {
+      clearTimeout(job.timer);
+      job.reject(error);
+      this.pendingJobs.delete(id);
     }
   }
 
@@ -123,9 +143,18 @@ export class ImageFilterProcessor {
     const imageData = this.scratchCtx.getImageData(0, 0, width, height);
     releaseScratchCanvas(this.scratch);
     const jobId = `job_${this.jobIdCounter++}`;
+    this.latestJobByImage.set(image, jobId);
 
     return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const job = this.pendingJobs.get(jobId);
+        if (!job) return;
+        this.pendingJobs.delete(jobId);
+        job.reject(new Error('Image filter worker timed out'));
+      }, 30_000);
       this.pendingJobs.set(jobId, {
+        image,
+        timer,
         resolve: (processedData: ImageData) => {
           // Fresh scratch for the result blit (the previous one may already
           // be recycled); then copy into a caller-owned output canvas.
@@ -143,11 +172,19 @@ export class ImageFilterProcessor {
 
       // Transfer the buffer to the worker (zero-copy transfer if possible)
       if (this.worker) {
-        this.worker.postMessage(
-          { jobId, imageData, width, height, options },
-          [imageData.data.buffer]
-        );
+        try {
+          this.worker.postMessage(
+            { jobId, imageData, width, height, options },
+            [imageData.data.buffer]
+          );
+        } catch (error) {
+          clearTimeout(timer);
+          this.pendingJobs.delete(jobId);
+          reject(error instanceof Error ? error : new Error('Unable to send image to filter worker'));
+        }
       } else {
+        clearTimeout(timer);
+        this.pendingJobs.delete(jobId);
         reject(new Error("Worker not initialized"));
       }
     });

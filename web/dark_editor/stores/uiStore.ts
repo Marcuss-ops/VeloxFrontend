@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type Tool = 'select' | 'pan' | 'text' | 'rect' | 'circle' | 'image' | 'blur' | 'sharpen' | 'pixelation';
-export type CropMode = 'free' | 'square' | 'circle';
+export type CropMode = 'free' | 'square' | 'circle' | 'lasso';
 export interface UIState {
   // Active tool
   activeTool: Tool;
